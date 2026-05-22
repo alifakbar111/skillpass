@@ -4,3 +4,5 @@ drizzle/
 .env
 *.log
 .DS_Store
+.qwen/
+docs/
