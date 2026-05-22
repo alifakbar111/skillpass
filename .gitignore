@@ -2,3 +2,5 @@ node_modules/
 dist/
 drizzle/
 .env
+*.log
+.DS_Store
