@@ -1,0 +1,75 @@
+# SkillPass — Agent Guide
+
+## Stack
+- **Runtime**: Bun (not Node.js — all commands use `bun`)
+- **Server**: Elysia 1.x with `@elysiajs/jwt`, `@elysiajs/cors`, `@elysiajs/swagger`
+- **Frontend**: React 19 SPA (not Next.js), React Router v7, Vite 7
+- **Styling**: Tailwind CSS v4 + DaisyUI 5 (no `tailwind.config.*` — uses `@import "tailwindcss"; @plugin "daisyui"` in CSS)
+- **DB**: PostgreSQL + Drizzle ORM (`drizzle-kit`)
+
+## Monorepo layout
+```
+skillpass/          — root: orchestration (concurrently runs both)
+├── server/         — Elysia API entrypoint: src/index.ts
+│   ├── src/db/     — Drizzle schema + client
+│   ├── src/routes/ — One file per domain, export named *Routes
+│   └── src/middleware/auth.ts
+├── web/            — React SPA entrypoint: src/main.tsx
+│   └── src/        — pages/, components/, hooks/useAuth.tsx, lib/api.ts
+└── docs/superpowers/ — specs + plans
+```
+
+## Essential commands (run from root)
+
+| Action | Command |
+|---|---|
+| Dev (server + web concurrently) | `bun run dev` |
+| Dev server only | `bun run dev:server` |
+| Dev web only | `bun run dev:web` |
+| Push Drizzle schema | `bun run db:push` |
+| Seed DB (industries) | `bun run db:seed` |
+| Start fresh | `docker compose up db -d && bun run db:push && bun run db:seed` |
+| Typecheck server | `bun --cwd server typecheck` (tsc --noEmit) |
+| Typecheck web | `bun --cwd web typecheck` (tsc --noEmit) |
+| Test server | `bun --cwd server test` (Bun test runner) |
+| Test web | `bun --cwd web test` (vitest) |
+| Build web (tsc + vite) | `bun run build` |
+| Docker full stack | `bun run docker:up` / `bun run docker:down` |
+
+**Order matters**: `db:push` before `db:seed` before `dev`.
+
+## Dev URLs
+- Web: http://localhost:5173
+- API: http://localhost:3000
+- Swagger: http://localhost:3000/docs
+- Vite proxies `/api` → `:3000` (see web/vite.config.ts)
+
+## Server conventions
+- Routes use `new Elysia({ prefix: '/api/v1/...' })` pattern
+- Body validation via Elysia `t.*` (`t.String`, `t.Object`, etc.)
+- JWT auth uses `@elysiajs/jwt` plugin + `.resolve()` hook in route files (see `src/routes/profiles.ts` for pattern)
+- Password hashing uses `Bun.password.hash` (native bcrypt, no npm package)
+- All routes registered explicitly in `src/index.ts`
+- `process.env.JWT_SECRET` — defaults to `'skillpass-dev-secret-change-in-prod'`
+
+## Frontend conventions
+- API calls go through `src/lib/api.ts` — auto-attaches Bearer token, auto-refreshes on 401
+- Path alias `@/*` → `src/*` (tsconfig paths)
+- Auth state via `AuthProvider` in `hooks/useAuth.tsx` — reads tokens from localStorage
+- Token storage: `accessToken` + `refreshToken` in localStorage
+- Route definitions in `src/App.tsx`, inside `<AuthProvider>` + `<RootLayout>`
+
+## DB / Drizzle
+- Schema: `server/src/db/schema.ts`
+- Migrations: `drizzle-kit push` (no migration file workflow — direct push)
+- Seed: `server/seed.ts` (currently only industry categories)
+- No migration history committed; `drizzle/` is gitignored
+
+## Testing
+- **No tests exist yet** in either package
+- Server runner: `bun test` (Bun built-in)
+- Web runner: `vitest` with `happy-dom`, `@testing-library/react`
+- If adding tests, match the package's runner (Bun vs vitest)
+
+## Current phase
+Phase 1: auth, profiles, company verification, candidate search, job postings, Skill Passport.
