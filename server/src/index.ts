@@ -1,27 +1,30 @@
-import { Elysia } from 'elysia';
 import { cors } from '@elysiajs/cors';
 import { swagger } from '@elysiajs/swagger';
-
+import { Elysia } from 'elysia';
+import { adminRoutes } from './routes/admin';
 import { authRoutes } from './routes/auth';
-import { profileRoutes } from './routes/profiles';
-import { passportRoutes } from './routes/passport';
 import { companyRoutes } from './routes/companies';
 import { jobRoutes } from './routes/jobs';
-import { searchRoutes } from './routes/search';
+import { passportRoutes } from './routes/passport';
+import { profileRoutes } from './routes/profiles';
 import { referenceRoutes } from './routes/reference';
-import { adminRoutes } from './routes/admin';
+import { searchRoutes } from './routes/search';
 
 const app = new Elysia()
-  .use(cors({
-    origin: process.env.CORS_ORIGIN || 'http://localhost:4200',
-    credentials: true,
-  }))
-  .use(swagger({
-    path: '/docs',
-    documentation: {
-      info: { title: 'SkillPass API', version: '1.0.0', description: 'Talent marketplace & skill passport API' },
-    },
-  }));
+  .use(
+    cors({
+      origin: process.env.CORS_ORIGIN || 'http://localhost:4200',
+      credentials: true,
+    }),
+  )
+  .use(
+    swagger({
+      path: '/docs',
+      documentation: {
+        info: { title: 'SkillPass API', version: '1.0.0', description: 'Talent marketplace & skill passport API' },
+      },
+    }),
+  );
 
 // Register route groups
 app

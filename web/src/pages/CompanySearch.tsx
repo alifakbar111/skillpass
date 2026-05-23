@@ -1,10 +1,16 @@
-import { useState, useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { api } from '../lib/api';
 
 interface Candidate {
-  id: string; name: string; avatarUrl?: string; headline?: string;
-  about?: string; yearsOfExperience?: number; slug: string; skills: string[];
+  id: string;
+  name: string;
+  avatarUrl?: string;
+  headline?: string;
+  about?: string;
+  yearsOfExperience?: number;
+  slug: string;
+  skills: string[];
 }
 
 export function CompanySearch() {
@@ -30,30 +36,49 @@ export function CompanySearch() {
     setLoading(false);
   };
 
-  useEffect(() => { search(); }, []);
+  // biome-ignore lint/correctness/useExhaustiveDependencies: search intentionally not in deps to avoid auto-rerun on input change
+  useEffect(() => {
+    search();
+  }, []);
 
   return (
     <div className="max-w-4xl mx-auto p-4 space-y-4">
       <h1 className="text-2xl font-bold">Find Candidates</h1>
       <div className="card bg-base-200 p-4">
         <div className="flex flex-wrap gap-2">
-          <input className="input input-bordered flex-1" placeholder="Search by name, title, skill..."
-            value={query} onChange={e => setQuery(e.target.value)} />
-          <select className="select select-bordered" value={industry} onChange={e => setIndustry(e.target.value)}>
+          <input
+            className="input input-bordered flex-1"
+            placeholder="Search by name, title, skill..."
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+          />
+          <select className="select select-bordered" value={industry} onChange={(e) => setIndustry(e.target.value)}>
             <option value="">All Industries</option>
-            {industries.map(ind => <option key={ind.id} value={ind.name}>{ind.name}</option>)}
+            {industries.map((ind) => (
+              <option key={ind.id} value={ind.name}>
+                {ind.name}
+              </option>
+            ))}
           </select>
-          <input className="input input-bordered w-48" placeholder="Skills (comma-separated)"
-            value={skills} onChange={e => setSkills(e.target.value)} />
-          <button className="btn btn-primary" onClick={search} disabled={loading}>
+          <input
+            className="input input-bordered w-48"
+            placeholder="Skills (comma-separated)"
+            value={skills}
+            onChange={(e) => setSkills(e.target.value)}
+          />
+          <button type="button" className="btn btn-primary" onClick={search} disabled={loading}>
             {loading ? <span className="loading loading-spinner" /> : 'Search'}
           </button>
         </div>
       </div>
 
       <div className="space-y-2">
-        {candidates.map(c => (
-          <Link key={c.id} to={`/profiles/${c.slug}`} className="card bg-base-200 p-4 block hover:bg-base-300 transition-colors">
+        {candidates.map((c) => (
+          <Link
+            key={c.id}
+            to={`/profiles/${c.slug}`}
+            className="card bg-base-200 p-4 block hover:bg-base-300 transition-colors"
+          >
             <div className="flex items-center gap-3">
               <div className="avatar placeholder">
                 <div className="bg-neutral text-neutral-content rounded-full w-12">
@@ -65,7 +90,11 @@ export function CompanySearch() {
                 {c.headline && <p className="text-sm opacity-70">{c.headline}</p>}
                 {c.skills.length > 0 && (
                   <div className="flex flex-wrap gap-1 mt-1">
-                    {c.skills.slice(0, 5).map(s => <span key={s} className="badge badge-sm">{s}</span>)}
+                    {c.skills.slice(0, 5).map((s) => (
+                      <span key={s} className="badge badge-sm">
+                        {s}
+                      </span>
+                    ))}
                     {c.skills.length > 5 && <span className="text-xs opacity-50">+{c.skills.length - 5}</span>}
                   </div>
                 )}
@@ -73,9 +102,7 @@ export function CompanySearch() {
             </div>
           </Link>
         ))}
-        {candidates.length === 0 && !loading && (
-          <p className="text-center opacity-50 py-8">No candidates found</p>
-        )}
+        {candidates.length === 0 && !loading && <p className="text-center opacity-50 py-8">No candidates found</p>}
       </div>
     </div>
   );

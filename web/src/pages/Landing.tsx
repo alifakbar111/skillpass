@@ -1,15 +1,19 @@
+import { Award, Briefcase, Search } from 'lucide-react';
 import { Link } from 'react-router-dom';
-import { Briefcase, Search, Award } from 'lucide-react';
 
 export function Landing() {
   return (
     <div className="hero min-h-[80vh] bg-base-100">
       <div className="hero-content text-center">
         <div className="max-w-2xl">
-          <h1 className="text-5xl font-bold mb-4">Your Career,<br />One Passport</h1>
+          <h1 className="text-5xl font-bold mb-4">
+            Your Career,
+            <br />
+            One Passport
+          </h1>
           <p className="text-lg opacity-70 mb-8">
-            Build your complete career profile. Let AI evaluate your skills.
-            Get discovered by verified companies. Grow with personalized feedback.
+            Build your complete career profile. Let AI evaluate your skills. Get discovered by verified companies. Grow
+            with personalized feedback.
           </p>
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
@@ -31,8 +35,12 @@ export function Landing() {
           </div>
 
           <div className="flex gap-4 justify-center">
-            <Link to="/auth/register" className="btn btn-primary btn-lg">Get Started</Link>
-            <Link to="/jobs" className="btn btn-outline btn-lg">Browse Jobs</Link>
+            <Link to="/auth/register" className="btn btn-primary btn-lg">
+              Get Started
+            </Link>
+            <Link to="/jobs" className="btn btn-outline btn-lg">
+              Browse Jobs
+            </Link>
           </div>
         </div>
       </div>

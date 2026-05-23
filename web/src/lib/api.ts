@@ -26,16 +26,16 @@ async function refreshAccessToken(): Promise<string | null> {
     body: JSON.stringify({ refreshToken }),
   });
 
-  if (!res.ok) { clearTokens(); return null; }
+  if (!res.ok) {
+    clearTokens();
+    return null;
+  }
   const data = await res.json();
   setTokens(data.accessToken);
   return data.accessToken;
 }
 
-export async function api<T = unknown>(
-  path: string,
-  options: RequestInit = {}
-): Promise<T> {
+export async function api<T = unknown>(path: string, options: RequestInit = {}): Promise<T> {
   const { accessToken } = getTokens();
   const headers = new Headers(options.headers);
   headers.set('Content-Type', 'application/json');
@@ -75,7 +75,11 @@ export async function login(email: string, password: string): Promise<LoginRespo
 }
 
 export async function register(body: {
-  email: string; username: string; password: string; name: string; role: 'jobseeker' | 'company';
+  email: string;
+  username: string;
+  password: string;
+  name: string;
+  role: 'jobseeker' | 'company';
 }): Promise<LoginResponse> {
   const data = await api<LoginResponse>('/auth/register', {
     method: 'POST',
@@ -86,6 +90,8 @@ export async function register(body: {
 }
 
 export async function logout(): Promise<void> {
-  try { await api('/auth/logout', { method: 'POST' }); } catch {}
+  try {
+    await api('/auth/logout', { method: 'POST' });
+  } catch {}
   clearTokens();
 }

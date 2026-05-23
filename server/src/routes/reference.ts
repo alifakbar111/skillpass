@@ -1,6 +1,6 @@
+import { eq } from 'drizzle-orm';
 import { Elysia } from 'elysia';
 import { db, schema } from '../db';
-import { eq } from 'drizzle-orm';
 
 export const referenceRoutes = new Elysia({ prefix: '/api/v1' })
   .get('/industries', async () => {

@@ -9,9 +9,14 @@
     "db:push": "bun --cwd server db:push",
     "db:seed": "bun --cwd server seed",
     "docker:up": "docker compose up --build",
-    "docker:down": "docker compose down"
+    "docker:down": "docker compose down",
+    "lint": "biome check .",
+    "lint:fix": "biome check --write --unsafe .",
+    "format": "biome format --write .",
+    "format:check": "biome format ."
   },
   "devDependencies": {
-    "concurrently": "^9.1.0"
+    "concurrently": "^9.1.0",
+    "@biomejs/biome": "^2.4.15"
   }
 }

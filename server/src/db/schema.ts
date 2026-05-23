@@ -1,8 +1,15 @@
-import { pgTable, text, uuid, timestamp, boolean, integer, jsonb, pgEnum } from 'drizzle-orm/pg-core';
 import { relations } from 'drizzle-orm';
+import { boolean, integer, jsonb, pgEnum, pgTable, text, timestamp, uuid } from 'drizzle-orm/pg-core';
 
 export const roleEnum = pgEnum('role', ['jobseeker', 'company']);
-export const experienceTypeEnum = pgEnum('experience_type', ['employment', 'gig', 'education', 'certification', 'project', 'volunteering']);
+export const experienceTypeEnum = pgEnum('experience_type', [
+  'employment',
+  'gig',
+  'education',
+  'certification',
+  'project',
+  'volunteering',
+]);
 export const verificationStatusEnum = pgEnum('verification_status', ['pending', 'verified', 'rejected']);
 export const experienceLevelEnum = pgEnum('experience_level', ['entry', 'mid', 'senior', 'lead']);
 export const jobStatusEnum = pgEnum('job_status', ['open', 'closed']);
@@ -21,7 +28,10 @@ export const users = pgTable('users', {
 
 export const companies = pgTable('companies', {
   id: uuid('id').defaultRandom().primaryKey(),
-  userId: uuid('user_id').references(() => users.id).notNull().unique(),
+  userId: uuid('user_id')
+    .references(() => users.id)
+    .notNull()
+    .unique(),
   companyName: text('company_name').notNull(),
   website: text('website'),
   industry: text('industry').notNull(),
@@ -34,7 +44,10 @@ export const companies = pgTable('companies', {
 
 export const jobseekerProfiles = pgTable('jobseeker_profiles', {
   id: uuid('id').defaultRandom().primaryKey(),
-  userId: uuid('user_id').references(() => users.id).notNull().unique(),
+  userId: uuid('user_id')
+    .references(() => users.id)
+    .notNull()
+    .unique(),
   headline: text('headline'),
   about: text('about'),
   yearsOfExperience: integer('years_of_experience'),
@@ -43,7 +56,9 @@ export const jobseekerProfiles = pgTable('jobseeker_profiles', {
 
 export const jobExperiences = pgTable('job_experiences', {
   id: uuid('id').defaultRandom().primaryKey(),
-  profileId: uuid('profile_id').references(() => jobseekerProfiles.id).notNull(),
+  profileId: uuid('profile_id')
+    .references(() => jobseekerProfiles.id)
+    .notNull(),
   type: experienceTypeEnum('type').notNull(),
   title: text('title').notNull(),
   organization: text('organization').notNull(),
@@ -70,7 +85,9 @@ export const tags = pgTable('tags', {
 
 export const jobPostings = pgTable('job_postings', {
   id: uuid('id').defaultRandom().primaryKey(),
-  companyId: uuid('company_id').references(() => companies.id).notNull(),
+  companyId: uuid('company_id')
+    .references(() => companies.id)
+    .notNull(),
   title: text('title').notNull(),
   description: text('description').notNull(),
   industry: text('industry').notNull(),

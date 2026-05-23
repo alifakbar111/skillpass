@@ -1,15 +1,25 @@
-import { createContext, useContext, useState, useEffect, useCallback, type ReactNode } from 'react';
-import { api, login as apiLogin, register as apiRegister, logout as apiLogout, clearTokens, type LoginResponse } from '../lib/api';
+import { createContext, type ReactNode, useCallback, useContext, useEffect, useState } from 'react';
+import { api, login as apiLogin, logout as apiLogout, register as apiRegister, clearTokens } from '../lib/api';
 
 interface User {
-  id: string; email: string; username: string; name: string; role: 'jobseeker' | 'company';
+  id: string;
+  email: string;
+  username: string;
+  name: string;
+  role: 'jobseeker' | 'company';
 }
 
 interface AuthContextType {
   user: User | null;
   loading: boolean;
   login: (email: string, password: string) => Promise<void>;
-  register: (data: { email: string; username: string; password: string; name: string; role: 'jobseeker' | 'company' }) => Promise<void>;
+  register: (data: {
+    email: string;
+    username: string;
+    password: string;
+    name: string;
+    role: 'jobseeker' | 'company';
+  }) => Promise<void>;
   logout: () => Promise<void>;
 }
 
@@ -37,21 +47,26 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setUser(data.user);
   }, []);
 
-  const register = useCallback(async (data: { email: string; username: string; password: string; name: string; role: 'jobseeker' | 'company' }) => {
-    const res = await apiRegister(data);
-    setUser(res.user);
-  }, []);
+  const register = useCallback(
+    async (data: {
+      email: string;
+      username: string;
+      password: string;
+      name: string;
+      role: 'jobseeker' | 'company';
+    }) => {
+      const res = await apiRegister(data);
+      setUser(res.user);
+    },
+    [],
+  );
 
   const logout = useCallback(async () => {
     await apiLogout();
     setUser(null);
   }, []);
 
-  return (
-    <AuthContext.Provider value={{ user, loading, login, register, logout }}>
-      {children}
-    </AuthContext.Provider>
-  );
+  return <AuthContext.Provider value={{ user, loading, login, register, logout }}>{children}</AuthContext.Provider>;
 }
 
 export function useAuth() {

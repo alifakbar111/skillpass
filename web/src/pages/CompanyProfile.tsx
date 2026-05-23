@@ -1,6 +1,6 @@
-import { useState, useEffect, type FormEvent } from 'react';
-import { api } from '../lib/api';
+import { type FormEvent, useEffect, useState } from 'react';
 import { useAuth } from '../hooks/useAuth';
+import { api } from '../lib/api';
 
 export function CompanyProfile() {
   const { user } = useAuth();
@@ -12,7 +12,14 @@ export function CompanyProfile() {
   useEffect(() => {
     api<Array<{ id: string; name: string }>>('/industries').then(setIndustries);
     api<{ companyName: string; website?: string; industry: string; description?: string }>('/company/profile')
-      .then((data) => setForm({ companyName: data.companyName, website: data.website || '', industry: data.industry, description: data.description || '' }))
+      .then((data) =>
+        setForm({
+          companyName: data.companyName,
+          website: data.website || '',
+          industry: data.industry,
+          description: data.description || '',
+        }),
+      )
       .finally(() => setLoading(false));
   }, []);
 
@@ -23,7 +30,12 @@ export function CompanyProfile() {
     setSaving(false);
   };
 
-  if (loading) return <div className="flex justify-center p-8"><span className="loading loading-spinner loading-lg" /></div>;
+  if (loading)
+    return (
+      <div className="flex justify-center p-8">
+        <span className="loading loading-spinner loading-lg" />
+      </div>
+    );
   if (!user || user.role !== 'company') return <div className="text-center p-8 text-error">Access denied</div>;
 
   return (
@@ -32,25 +44,42 @@ export function CompanyProfile() {
       <form onSubmit={handleSubmit} className="card bg-base-200 p-4 space-y-4">
         <label className="form-control">
           <span className="label-text">Company Name</span>
-          <input className="input input-bordered" value={form.companyName}
-            onChange={e => setForm({ ...form, companyName: e.target.value })} required />
+          <input
+            className="input input-bordered"
+            value={form.companyName}
+            onChange={(e) => setForm({ ...form, companyName: e.target.value })}
+            required
+          />
         </label>
         <label className="form-control">
           <span className="label-text">Website</span>
-          <input className="input input-bordered" value={form.website}
-            onChange={e => setForm({ ...form, website: e.target.value })} />
+          <input
+            className="input input-bordered"
+            value={form.website}
+            onChange={(e) => setForm({ ...form, website: e.target.value })}
+          />
         </label>
         <label className="form-control">
           <span className="label-text">Industry</span>
-          <select className="select select-bordered" value={form.industry}
-            onChange={e => setForm({ ...form, industry: e.target.value })}>
-            {industries.map(ind => <option key={ind.id} value={ind.name}>{ind.name}</option>)}
+          <select
+            className="select select-bordered"
+            value={form.industry}
+            onChange={(e) => setForm({ ...form, industry: e.target.value })}
+          >
+            {industries.map((ind) => (
+              <option key={ind.id} value={ind.name}>
+                {ind.name}
+              </option>
+            ))}
           </select>
         </label>
         <label className="form-control">
           <span className="label-text">Description</span>
-          <textarea className="textarea textarea-bordered h-24" value={form.description}
-            onChange={e => setForm({ ...form, description: e.target.value })} />
+          <textarea
+            className="textarea textarea-bordered h-24"
+            value={form.description}
+            onChange={(e) => setForm({ ...form, description: e.target.value })}
+          />
         </label>
         <button type="submit" className="btn btn-primary" disabled={saving}>
           {saving ? <span className="loading loading-spinner" /> : 'Save'}

@@ -1,12 +1,25 @@
+import { ExternalLink } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { api } from '../lib/api';
 import { useAuth } from '../hooks/useAuth';
-import { ExternalLink } from 'lucide-react';
+import { api } from '../lib/api';
 
 interface PassportData {
-  name: string; avatarUrl?: string; headline?: string; about?: string;
-  yearsOfExperience?: number; experiences: Array<{ type: string; title: string; organization: string; startDate: string; endDate?: string; isCurrent: boolean; description?: string; skillsUsed?: string[] }>;
+  name: string;
+  avatarUrl?: string;
+  headline?: string;
+  about?: string;
+  yearsOfExperience?: number;
+  experiences: Array<{
+    type: string;
+    title: string;
+    organization: string;
+    startDate: string;
+    endDate?: string;
+    isCurrent: boolean;
+    description?: string;
+    skillsUsed?: string[];
+  }>;
 }
 
 export function JobseekerPassport() {
@@ -19,7 +32,12 @@ export function JobseekerPassport() {
     }
   }, [user]);
 
-  if (!data) return <div className="flex justify-center p-8"><span className="loading loading-spinner loading-lg" /></div>;
+  if (!data)
+    return (
+      <div className="flex justify-center p-8">
+        <span className="loading loading-spinner loading-lg" />
+      </div>
+    );
 
   return (
     <div className="max-w-2xl mx-auto p-4 space-y-4">
@@ -40,7 +58,9 @@ export function JobseekerPassport() {
           <div>
             <h2 className="text-xl font-bold">{data.name}</h2>
             {data.headline && <p className="opacity-70">{data.headline}</p>}
-            {data.yearsOfExperience !== undefined && <p className="text-sm opacity-50">{data.yearsOfExperience} years of experience</p>}
+            {data.yearsOfExperience !== undefined && (
+              <p className="text-sm opacity-50">{data.yearsOfExperience} years of experience</p>
+            )}
           </div>
         </div>
         {data.about && <p className="opacity-70 mb-4">{data.about}</p>}
@@ -50,13 +70,21 @@ export function JobseekerPassport() {
         <h3 className="font-semibold mb-3">Experience</h3>
         <div className="space-y-2">
           {data.experiences.map((exp, i) => (
+            // biome-ignore lint/suspicious/noArrayIndexKey: experiences array has no stable id in this view
             <div key={i} className="p-3 bg-base-100 rounded-box">
               <p className="font-medium">{exp.title}</p>
-              <p className="text-sm opacity-70">{exp.organization} · {exp.startDate} {exp.isCurrent ? '- Present' : exp.endDate ? `- ${exp.endDate}` : ''}</p>
+              <p className="text-sm opacity-70">
+                {exp.organization} · {exp.startDate}{' '}
+                {exp.isCurrent ? '- Present' : exp.endDate ? `- ${exp.endDate}` : ''}
+              </p>
               {exp.description && <p className="text-sm mt-1 opacity-60">{exp.description}</p>}
               {exp.skillsUsed && exp.skillsUsed.length > 0 && (
                 <div className="flex flex-wrap gap-1 mt-1">
-                  {exp.skillsUsed.map(s => <span key={s} className="badge badge-sm">{s}</span>)}
+                  {exp.skillsUsed.map((s) => (
+                    <span key={s} className="badge badge-sm">
+                      {s}
+                    </span>
+                  ))}
                 </div>
               )}
             </div>
