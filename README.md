@@ -35,9 +35,9 @@ bun run db:seed
 bun run dev
 ```
 
-- **Web:** http://localhost:5173
-- **API:** http://localhost:3000
-- **Swagger docs:** http://localhost:3000/docs
+- **Web:** http://localhost:4200
+- **API:** http://localhost:8800
+- **Swagger docs:** http://localhost:8800/docs
 
 ## Full Docker Setup
 

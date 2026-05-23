@@ -39,10 +39,10 @@ skillpass/          — root: orchestration (concurrently runs both)
 **Order matters**: `db:push` before `db:seed` before `dev`.
 
 ## Dev URLs
-- Web: http://localhost:5173
-- API: http://localhost:3000
-- Swagger: http://localhost:3000/docs
-- Vite proxies `/api` → `:3000` (see web/vite.config.ts)
+- Web: http://localhost:4200
+- API: http://localhost:8800
+- Swagger: http://localhost:8800/docs
+- Vite proxies `/api` → `:8800` (see web/vite.config.ts)
 
 ## Server conventions
 - Routes use `new Elysia({ prefix: '/api/v1/...' })` pattern

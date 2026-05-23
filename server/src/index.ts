@@ -13,7 +13,7 @@ import { adminRoutes } from './routes/admin';
 
 const app = new Elysia()
   .use(cors({
-    origin: process.env.CORS_ORIGIN || 'http://localhost:5173',
+    origin: process.env.CORS_ORIGIN || 'http://localhost:4200',
     credentials: true,
   }))
   .use(swagger({
@@ -37,7 +37,7 @@ app
 // Health check
 app.get('/api/v1/health', () => ({ status: 'ok', timestamp: new Date().toISOString() }));
 
-const port = Number(process.env.PORT || 3000);
+const port = Number(process.env.PORT || 8800);
 app.listen(port);
 
 console.log(`🦊 SkillPass API running at http://localhost:${port}`);

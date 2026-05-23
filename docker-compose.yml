@@ -18,15 +18,15 @@ services:
     build:
       context: ./server
     ports:
-      - "3000:3000"
+      - "8800:8800"
     depends_on:
       db:
         condition: service_healthy
     environment:
       DATABASE_URL: postgres://postgres:postgres@db:5432/skillpass
       JWT_SECRET: skillpass-dev-secret
-      CORS_ORIGIN: http://localhost:5173
-      PORT: 3000
+      CORS_ORIGIN: http://localhost:4200
+      PORT: 8800
     command: >
       sh -c "bun run db:push && bun run seed && bun run src/index.ts"
 
@@ -34,7 +34,7 @@ services:
     build:
       context: ./web
     ports:
-      - "5173:80"
+      - "4200:80"
     depends_on:
       - server
 
