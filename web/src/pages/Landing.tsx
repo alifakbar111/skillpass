@@ -1,7 +1,9 @@
 import { Award, Briefcase, Search } from 'lucide-react';
 import { Link } from 'react-router-dom';
+import { useAuth } from '../hooks/useAuth';
 
 export function Landing() {
+  const { user } = useAuth();
   return (
     <div className="hero min-h-[80vh] bg-base-100">
       <div className="hero-content text-center">
@@ -35,9 +37,15 @@ export function Landing() {
           </div>
 
           <div className="flex gap-4 justify-center">
-            <Link to="/auth/register" className="btn btn-primary btn-lg">
-              Get Started
-            </Link>
+            {user ? (
+              <Link to="/jobseeker/profile" className="btn btn-primary btn-lg">
+                View My Profile
+              </Link>
+            ) : (
+              <Link to="/auth/register" className="btn btn-primary btn-lg">
+                Get Started
+              </Link>
+            )}
             <Link to="/jobs" className="btn btn-outline btn-lg">
               Browse Jobs
             </Link>
