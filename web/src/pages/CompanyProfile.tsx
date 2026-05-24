@@ -1,4 +1,5 @@
 import { type FormEvent, useEffect, useState } from 'react';
+import { LoadingFallback, LoadingSpinner } from '../components/ui/LoadingFallback';
 import { useAuth } from '../hooks/useAuth';
 import { api } from '../lib/api';
 
@@ -30,12 +31,7 @@ export function CompanyProfile() {
     setSaving(false);
   };
 
-  if (loading)
-    return (
-      <div className="flex justify-center p-8" role="status" aria-label="Loading company profile">
-        <span className="loading loading-spinner loading-lg" aria-hidden="true" />
-      </div>
-    );
+  if (loading) return <LoadingFallback text="Loading company profile" />;
   if (!user || user.role !== 'company') return <div className="text-center p-8 text-error">Access denied</div>;
 
   return (
@@ -82,7 +78,7 @@ export function CompanyProfile() {
           />
         </label>
         <button type="submit" className="btn btn-primary" disabled={saving}>
-          {saving ? <span className="loading loading-spinner" aria-hidden="true" /> : 'Save'}
+          {saving ? <LoadingSpinner /> : 'Save'}
         </button>
       </form>
     </div>

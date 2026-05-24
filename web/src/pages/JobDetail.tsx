@@ -1,6 +1,7 @@
 import { Briefcase, Calendar, DollarSign, MapPin } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
+import { LoadingFallback } from '../components/ui/LoadingFallback';
 import { api } from '../lib/api';
 
 interface Job {
@@ -25,12 +26,7 @@ export function JobDetail() {
     if (id) api<Job>(`/jobs/${id}`).then(setJob);
   }, [id]);
 
-  if (!job)
-    return (
-      <div className="flex justify-center p-8" role="status" aria-label="Loading job details">
-        <span className="loading loading-spinner loading-lg" aria-hidden="true" />
-      </div>
-    );
+  if (!job) return <LoadingFallback text="Loading job details" />;
 
   return (
     <div className="max-w-2xl mx-auto p-4">

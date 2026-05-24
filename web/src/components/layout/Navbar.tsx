@@ -18,16 +18,13 @@ export function Navbar() {
     setDropdownOpen((prev) => !prev);
   };
 
-  const handleDropdownKeyDown = useCallback(
-    (e: React.KeyboardEvent) => {
-      if (e.key === 'Escape') {
-        setDropdownOpen(false);
-        const toggle = dropdownRef.current?.querySelector('[aria-haspopup]') as HTMLElement | null;
-        toggle?.focus();
-      }
-    },
-    [],
-  );
+  const handleDropdownKeyDown = useCallback((e: React.KeyboardEvent) => {
+    if (e.key === 'Escape') {
+      setDropdownOpen(false);
+      const toggle = dropdownRef.current?.querySelector('[aria-haspopup]') as HTMLElement | null;
+      toggle?.focus();
+    }
+  }, []);
 
   return (
     <div className="navbar bg-base-100 shadow-sm sticky top-0 z-50">
@@ -73,7 +70,9 @@ export function Navbar() {
                   onKeyDown={handleDropdownKeyDown}
                 >
                   <li className="menu-label text-xs text-muted">{user.email}</li>
-                  <li><hr className="divider my-1" /></li>
+                  <li>
+                    <hr className="divider my-1" />
+                  </li>
                   {user.role === 'company' && (
                     <li>
                       <Link to="/company/profile" onClick={() => setDropdownOpen(false)}>

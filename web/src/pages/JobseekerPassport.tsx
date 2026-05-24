@@ -1,6 +1,7 @@
 import { ExternalLink } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
+import { LoadingFallback } from '../components/ui/LoadingFallback';
 import { useAuth } from '../hooks/useAuth';
 import { api } from '../lib/api';
 
@@ -32,19 +33,14 @@ export function JobseekerPassport() {
     }
   }, [user]);
 
-  if (!data)
-    return (
-      <div className="flex justify-center p-8" role="status" aria-label="Loading passport">
-        <span className="loading loading-spinner loading-lg" aria-hidden="true" />
-      </div>
-    );
+  if (!data) return <LoadingFallback text="Loading passport" />;
 
   return (
     <div className="max-w-2xl mx-auto p-4 space-y-4">
       <div className="flex justify-between items-center">
         <h1 className="text-2xl font-bold">My Passport</h1>
-          <Link to={`/profiles/${user?.username}`} className="btn btn-outline btn-sm gap-2" target="_blank">
-            <ExternalLink size={14} aria-hidden="true" /> View Public
+        <Link to={`/profiles/${user?.username}`} className="btn btn-outline btn-sm gap-2" target="_blank">
+          <ExternalLink size={14} aria-hidden="true" /> View Public
         </Link>
       </div>
 

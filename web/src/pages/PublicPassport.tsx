@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
+import { LoadingFallback } from '../components/ui/LoadingFallback';
 import { api } from '../lib/api';
 
 interface PassportData {
@@ -38,12 +39,7 @@ export function PublicPassport() {
         <p className="text-error">{error}</p>
       </div>
     );
-  if (!data)
-    return (
-      <div className="flex justify-center p-8" role="status" aria-label="Loading profile">
-        <span className="loading loading-spinner loading-lg" aria-hidden="true" />
-      </div>
-    );
+  if (!data) return <LoadingFallback text="Loading profile" />;
 
   return (
     <div className="max-w-2xl mx-auto p-4 space-y-4">

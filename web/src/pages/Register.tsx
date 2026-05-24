@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { Link, useNavigate } from 'react-router-dom';
+import { LoadingSpinner } from '../components/ui/LoadingFallback';
 import { useAuth } from '../hooks/useAuth';
 
 type RegisterForm = {
@@ -145,7 +146,7 @@ export function Register() {
               </p>
             )}
             <button type="submit" className="btn btn-primary w-full" disabled={loading}>
-              {loading ? <span className="loading loading-spinner" aria-hidden="true" /> : 'Create Account'}
+              {loading ? <LoadingSpinner /> : 'Create Account'}
             </button>
           </form>
           <p className="text-sm text-center mt-4">

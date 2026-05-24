@@ -1,6 +1,6 @@
 import { jwt } from '@elysiajs/jwt';
 import { and, eq } from 'drizzle-orm';
-import { Elysia, t, status } from 'elysia';
+import { Elysia, status, t } from 'elysia';
 import { db, schema } from '../db';
 
 const JWT_SECRET = process.env.JWT_SECRET || 'skillpass-dev-secret-change-in-prod';

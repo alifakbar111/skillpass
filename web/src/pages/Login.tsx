@@ -1,5 +1,6 @@
 import { type FormEvent, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
+import { LoadingSpinner } from '../components/ui/LoadingFallback';
 import { useAuth } from '../hooks/useAuth';
 
 export function Login() {
@@ -57,8 +58,13 @@ export function Login() {
                 {error}
               </p>
             )}
-            <button type="submit" className="btn btn-primary w-full" disabled={loading} aria-describedby={error ? 'login-error' : undefined}>
-              {loading ? <span className="loading loading-spinner" aria-hidden="true" /> : 'Sign In'}
+            <button
+              type="submit"
+              className="btn btn-primary w-full"
+              disabled={loading}
+              aria-describedby={error ? 'login-error' : undefined}
+            >
+              {loading ? <LoadingSpinner /> : 'Sign In'}
             </button>
           </form>
           <p className="text-sm text-center mt-4">

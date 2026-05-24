@@ -1,6 +1,7 @@
 import { Pencil, Plus, X } from 'lucide-react';
 import { type FormEvent, useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
+import { LoadingSpinner } from '../components/ui/LoadingFallback';
 import { api } from '../lib/api';
 
 interface Job {
@@ -136,7 +137,7 @@ export function CompanyJobs() {
           </div>
           <div className="flex gap-2">
             <button type="submit" className="btn btn-primary" disabled={saving}>
-              {saving ? <span className="loading loading-spinner" aria-hidden="true" /> : 'Post Job'}
+              {saving ? <LoadingSpinner /> : 'Post Job'}
             </button>
             <button type="button" className="btn" onClick={() => setShowForm(false)}>
               Cancel
@@ -166,7 +167,12 @@ export function CompanyJobs() {
                   <Pencil size={14} aria-hidden="true" />
                 </Link>
                 {job.status === 'open' && (
-                  <button type="button" className="btn btn-ghost btn-xs text-error" onClick={() => closeJob(job.id)} aria-label={`Close ${job.title}`}>
+                  <button
+                    type="button"
+                    className="btn btn-ghost btn-xs text-error"
+                    onClick={() => closeJob(job.id)}
+                    aria-label={`Close ${job.title}`}
+                  >
                     <X size={14} aria-hidden="true" />
                   </button>
                 )}

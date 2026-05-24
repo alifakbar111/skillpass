@@ -1,5 +1,6 @@
 import { Plus, Trash2 } from 'lucide-react';
 import { type FormEvent, useEffect, useState } from 'react';
+import { LoadingFallback, LoadingSpinner } from '../components/ui/LoadingFallback';
 import { useAuth } from '../hooks/useAuth';
 import { api } from '../lib/api';
 
@@ -71,7 +72,10 @@ export function JobseekerProfile() {
 
   const addExperience = async (e: FormEvent) => {
     e.preventDefault();
-    const skills = expForm.skills.split(',').map((s) => s.trim()).filter(Boolean);
+    const skills = expForm.skills
+      .split(',')
+      .map((s) => s.trim())
+      .filter(Boolean);
     const added = await api<Experience>('/profiles/me/experience', {
       method: 'POST',
       body: JSON.stringify({
@@ -80,9 +84,7 @@ export function JobseekerProfile() {
         endDate: expForm.isCurrent ? undefined : expForm.endDate || undefined,
       }),
     });
-    setProfile((prev) =>
-      prev ? { ...prev, experiences: [...prev.experiences, added] } : null,
-    );
+    setProfile((prev) => (prev ? { ...prev, experiences: [...prev.experiences, added] } : null));
     setShowExpForm(false);
     setExpForm({
       type: 'employment',
@@ -99,18 +101,11 @@ export function JobseekerProfile() {
 
   const deleteExperience = async (id: string) => {
     await api(`/profiles/me/experience/${id}`, { method: 'DELETE' });
-    setProfile((prev) =>
-      prev ? { ...prev, experiences: prev.experiences.filter((e) => e.id !== id) } : null,
-    );
+    setProfile((prev) => (prev ? { ...prev, experiences: prev.experiences.filter((e) => e.id !== id) } : null));
   };
 
-  if (loading) {
-    return (
-      <div className="flex justify-center p-8" role="status" aria-label="Loading profile">
-        <span className="loading loading-spinner loading-lg" aria-hidden="true" />
-      </div>
-    );
-  }
+  if (loading) return <LoadingFallback text="Loading profile" />;
+  if (!user || user.role !== 'jobseeker') return <div className="text-center p-8 text-error">Access denied</div>;
 
   return (
     <div className="max-w-2xl mx-auto p-4 space-y-6">
@@ -120,7 +115,9 @@ export function JobseekerProfile() {
       <form onSubmit={saveProfile} className="card bg-base-200 p-6 space-y-4">
         <h2 className="font-semibold">Profile Details</h2>
         <div className="form-control">
-          <label htmlFor="headline" className="label-text mb-1">Headline</label>
+          <label htmlFor="headline" className="label-text mb-1">
+            Headline
+          </label>
           <input
             id="headline"
             className="input input-bordered"
@@ -130,7 +127,9 @@ export function JobseekerProfile() {
           />
         </div>
         <div className="form-control">
-          <label htmlFor="about" className="label-text mb-1">About</label>
+          <label htmlFor="about" className="label-text mb-1">
+            About
+          </label>
           <textarea
             id="about"
             className="textarea textarea-bordered"
@@ -140,7 +139,9 @@ export function JobseekerProfile() {
           />
         </div>
         <div className="form-control">
-          <label htmlFor="yearsOfExperience" className="label-text mb-1">Years of Experience</label>
+          <label htmlFor="yearsOfExperience" className="label-text mb-1">
+            Years of Experience
+          </label>
           <input
             id="yearsOfExperience"
             type="number"
@@ -150,7 +151,7 @@ export function JobseekerProfile() {
           />
         </div>
         <button type="submit" className="btn btn-primary" disabled={saving}>
-          {saving ? <span className="loading loading-spinner loading-sm" aria-hidden="true" /> : 'Save Profile'}
+          {saving ? <LoadingSpinner size="sm" /> : 'Save Profile'}
         </button>
       </form>
 
@@ -158,11 +159,7 @@ export function JobseekerProfile() {
       <div className="card bg-base-200 p-4">
         <div className="flex justify-between items-center mb-3">
           <h2 className="font-semibold">Experience</h2>
-          <button
-            type="button"
-            className="btn btn-outline btn-sm gap-1"
-            onClick={() => setShowExpForm(!showExpForm)}
-          >
+          <button type="button" className="btn btn-outline btn-sm gap-1" onClick={() => setShowExpForm(!showExpForm)}>
             <Plus size={16} aria-hidden="true" /> Add
           </button>
         </div>
@@ -170,7 +167,9 @@ export function JobseekerProfile() {
         {showExpForm && (
           <form onSubmit={addExperience} className="space-y-3 mb-4 p-3 bg-base-100 rounded-box">
             <div className="form-control">
-              <label htmlFor="exp-type" className="label-text mb-1">Type</label>
+              <label htmlFor="exp-type" className="label-text mb-1">
+                Type
+              </label>
               <select
                 id="exp-type"
                 className="select select-bordered"
@@ -186,7 +185,9 @@ export function JobseekerProfile() {
               </select>
             </div>
             <div className="form-control">
-              <label htmlFor="exp-title" className="label-text mb-1">Title</label>
+              <label htmlFor="exp-title" className="label-text mb-1">
+                Title
+              </label>
               <input
                 id="exp-title"
                 className="input input-bordered"
@@ -196,7 +197,9 @@ export function JobseekerProfile() {
               />
             </div>
             <div className="form-control">
-              <label htmlFor="exp-org" className="label-text mb-1">Organization</label>
+              <label htmlFor="exp-org" className="label-text mb-1">
+                Organization
+              </label>
               <input
                 id="exp-org"
                 className="input input-bordered"
@@ -206,7 +209,9 @@ export function JobseekerProfile() {
             </div>
             <div className="grid grid-cols-2 gap-2">
               <div className="form-control">
-                <label htmlFor="exp-start" className="label-text mb-1">Start Date</label>
+                <label htmlFor="exp-start" className="label-text mb-1">
+                  Start Date
+                </label>
                 <input
                   id="exp-start"
                   type="text"
@@ -218,7 +223,9 @@ export function JobseekerProfile() {
                 />
               </div>
               <div className="form-control">
-                <label htmlFor="exp-end" className="label-text mb-1">End Date</label>
+                <label htmlFor="exp-end" className="label-text mb-1">
+                  End Date
+                </label>
                 <input
                   id="exp-end"
                   type="text"
@@ -240,7 +247,9 @@ export function JobseekerProfile() {
               <span className="label-text">I currently work here</span>
             </label>
             <div className="form-control">
-              <label htmlFor="exp-desc" className="label-text mb-1">Description</label>
+              <label htmlFor="exp-desc" className="label-text mb-1">
+                Description
+              </label>
               <textarea
                 id="exp-desc"
                 className="textarea textarea-bordered"
@@ -250,7 +259,9 @@ export function JobseekerProfile() {
               />
             </div>
             <div className="form-control">
-              <label htmlFor="exp-skills" className="label-text mb-1">Skills (comma separated)</label>
+              <label htmlFor="exp-skills" className="label-text mb-1">
+                Skills (comma separated)
+              </label>
               <input
                 id="exp-skills"
                 className="input input-bordered"
@@ -263,11 +274,7 @@ export function JobseekerProfile() {
               <button type="submit" className="btn btn-primary btn-sm">
                 Add Experience
               </button>
-              <button
-                type="button"
-                className="btn btn-ghost btn-sm"
-                onClick={() => setShowExpForm(false)}
-              >
+              <button type="button" className="btn btn-ghost btn-sm" onClick={() => setShowExpForm(false)}>
                 Cancel
               </button>
             </div>
@@ -275,9 +282,7 @@ export function JobseekerProfile() {
         )}
 
         {profile?.experiences.length === 0 && (
-          <p className="text-sm text-muted py-4 text-center">
-            No experience added yet. Click "Add" to get started.
-          </p>
+          <p className="text-sm text-muted py-4 text-center">No experience added yet. Click "Add" to get started.</p>
         )}
 
         <div className="space-y-2">

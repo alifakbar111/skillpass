@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
+import { LoadingSpinner } from '../components/ui/LoadingFallback';
 import { api } from '../lib/api';
 
 interface Candidate {
@@ -53,7 +54,12 @@ export function CompanySearch() {
             onChange={(e) => setQuery(e.target.value)}
             aria-label="Search query"
           />
-          <select className="select select-bordered" value={industry} onChange={(e) => setIndustry(e.target.value)} aria-label="Filter by industry">
+          <select
+            className="select select-bordered"
+            value={industry}
+            onChange={(e) => setIndustry(e.target.value)}
+            aria-label="Filter by industry"
+          >
             <option value="">All Industries</option>
             {industries.map((ind) => (
               <option key={ind.id} value={ind.name}>
@@ -69,7 +75,7 @@ export function CompanySearch() {
             aria-label="Filter by skills"
           />
           <button type="button" className="btn btn-primary" onClick={search} disabled={loading}>
-            {loading ? <span className="loading loading-spinner" aria-hidden="true" /> : 'Search'}
+            {loading ? <LoadingSpinner /> : 'Search'}
           </button>
         </div>
       </search>
