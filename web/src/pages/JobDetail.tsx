@@ -27,8 +27,8 @@ export function JobDetail() {
 
   if (!job)
     return (
-      <div className="flex justify-center p-8">
-        <span className="loading loading-spinner loading-lg" />
+      <div className="flex justify-center p-8" role="status" aria-label="Loading job details">
+        <span className="loading loading-spinner loading-lg" aria-hidden="true" />
       </div>
     );
 
@@ -38,20 +38,20 @@ export function JobDetail() {
         <h1 className="text-2xl font-bold mb-2">{job.title}</h1>
         <div className="flex flex-wrap gap-3 text-sm opacity-70 mb-4">
           <span className="flex items-center gap-1">
-            <Briefcase size={14} /> {job.industry}
+            <Briefcase size={14} aria-hidden="true" /> {job.industry}
           </span>
           {job.location && (
             <span className="flex items-center gap-1">
-              <MapPin size={14} /> {job.location}
+              <MapPin size={14} aria-hidden="true" /> {job.location}
             </span>
           )}
           {job.salaryRange && (
             <span className="flex items-center gap-1">
-              <DollarSign size={14} /> {job.salaryRange}
+              <DollarSign size={14} aria-hidden="true" /> {job.salaryRange}
             </span>
           )}
           <span className="flex items-center gap-1">
-            <Calendar size={14} /> {job.createdAt?.slice(0, 10)}
+            <Calendar size={14} aria-hidden="true" /> {job.createdAt?.slice(0, 10)}
           </span>
         </div>
 

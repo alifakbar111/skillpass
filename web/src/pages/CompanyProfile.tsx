@@ -32,8 +32,8 @@ export function CompanyProfile() {
 
   if (loading)
     return (
-      <div className="flex justify-center p-8">
-        <span className="loading loading-spinner loading-lg" />
+      <div className="flex justify-center p-8" role="status" aria-label="Loading company profile">
+        <span className="loading loading-spinner loading-lg" aria-hidden="true" />
       </div>
     );
   if (!user || user.role !== 'company') return <div className="text-center p-8 text-error">Access denied</div>;
@@ -82,7 +82,7 @@ export function CompanyProfile() {
           />
         </label>
         <button type="submit" className="btn btn-primary" disabled={saving}>
-          {saving ? <span className="loading loading-spinner" /> : 'Save'}
+          {saving ? <span className="loading loading-spinner" aria-hidden="true" /> : 'Save'}
         </button>
       </form>
     </div>

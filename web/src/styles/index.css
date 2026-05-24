@@ -1,2 +1,41 @@
 @import "tailwindcss";
 @plugin "daisyui";
+
+/* ===== Accessibility overrides ===== */
+
+/* Skip-to-content link (hidden until focused) */
+.skip-link {
+  position: absolute;
+  top: -100%;
+  left: 0;
+  z-index: 9999;
+  padding: 0.5rem 1rem;
+  background: oklch(var(--p));
+  color: oklch(var(--pc));
+  font-weight: 600;
+  text-decoration: none;
+  transition: top 0.1s;
+}
+.skip-link:focus {
+  top: 0;
+}
+
+/* Visible focus indicators for keyboard navigation */
+:focus-visible {
+  outline: 2px solid oklch(var(--p));
+  outline-offset: 2px;
+  border-radius: var(--rounded-btn, 0.5rem);
+}
+
+/* Remove focus outline for mouse users */
+:focus:not(:focus-visible) {
+  outline: none;
+}
+
+/* Contrast-safe text (replaces opacity-60 / opacity-70) */
+.text-muted {
+  color: oklch(from var(--text-base-content, oklch(0.37 0 0)) l c h / 0.7);
+}
+.text-muted-strong {
+  color: oklch(from var(--text-base-content, oklch(0.37 0 0)) l c h / 0.85);
+}

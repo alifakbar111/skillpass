@@ -65,7 +65,7 @@ export function CompanyJobs() {
       <div className="flex justify-between items-center">
         <h1 className="text-2xl font-bold">My Job Postings</h1>
         <button type="button" className="btn btn-primary btn-sm" onClick={() => setShowForm(!showForm)}>
-          <Plus size={16} /> New Job
+          <Plus size={16} aria-hidden="true" /> New Job
         </button>
       </div>
 
@@ -89,6 +89,7 @@ export function CompanyJobs() {
             className="select select-bordered"
             value={form.industry}
             onChange={(e) => setForm({ ...form, industry: e.target.value })}
+            aria-label="Industry"
           >
             {industries.map((ind) => (
               <option key={ind.id} value={ind.name}>
@@ -100,6 +101,7 @@ export function CompanyJobs() {
             className="select select-bordered"
             value={form.experienceLevel}
             onChange={(e) => setForm({ ...form, experienceLevel: e.target.value })}
+            aria-label="Experience level"
           >
             <option value="entry">Entry</option>
             <option value="mid">Mid</option>
@@ -134,7 +136,7 @@ export function CompanyJobs() {
           </div>
           <div className="flex gap-2">
             <button type="submit" className="btn btn-primary" disabled={saving}>
-              {saving ? <span className="loading loading-spinner" /> : 'Post Job'}
+              {saving ? <span className="loading loading-spinner" aria-hidden="true" /> : 'Post Job'}
             </button>
             <button type="button" className="btn" onClick={() => setShowForm(false)}>
               Cancel
@@ -160,12 +162,12 @@ export function CompanyJobs() {
                 </div>
               </div>
               <div className="flex gap-1">
-                <Link to={`/jobs/${job.id}`} className="btn btn-ghost btn-xs">
-                  <Pencil size={14} />
+                <Link to={`/jobs/${job.id}`} className="btn btn-ghost btn-xs" aria-label={`Edit ${job.title}`}>
+                  <Pencil size={14} aria-hidden="true" />
                 </Link>
                 {job.status === 'open' && (
-                  <button type="button" className="btn btn-ghost btn-xs text-error" onClick={() => closeJob(job.id)}>
-                    <X size={14} />
+                  <button type="button" className="btn btn-ghost btn-xs text-error" onClick={() => closeJob(job.id)} aria-label={`Close ${job.title}`}>
+                    <X size={14} aria-hidden="true" />
                   </button>
                 )}
               </div>

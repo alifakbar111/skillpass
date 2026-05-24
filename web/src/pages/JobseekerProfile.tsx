@@ -71,10 +71,7 @@ export function JobseekerProfile() {
 
   const addExperience = async (e: FormEvent) => {
     e.preventDefault();
-    const skills = expForm.skills
-      .split(',')
-      .map((s) => s.trim())
-      .filter(Boolean);
+    const skills = expForm.skills.split(',').map((s) => s.trim()).filter(Boolean);
     const added = await api<Experience>('/profiles/me/experience', {
       method: 'POST',
       body: JSON.stringify({
@@ -83,7 +80,10 @@ export function JobseekerProfile() {
         endDate: expForm.isCurrent ? undefined : expForm.endDate || undefined,
       }),
     });
-    setProfile((prev) => (prev ? { ...prev, experiences: [...prev.experiences, added] } : null));
+    setProfile((prev) =>
+      prev ? { ...prev, experiences: [...prev.experiences, added] } : null,
+    );
+    setShowExpForm(false);
     setExpForm({
       type: 'employment',
       title: '',
@@ -95,169 +95,211 @@ export function JobseekerProfile() {
       industry: '',
       skills: '',
     });
-    setShowExpForm(false);
   };
 
   const deleteExperience = async (id: string) => {
     await api(`/profiles/me/experience/${id}`, { method: 'DELETE' });
-    setProfile((prev) => (prev ? { ...prev, experiences: prev.experiences.filter((e) => e.id !== id) } : null));
+    setProfile((prev) =>
+      prev ? { ...prev, experiences: prev.experiences.filter((e) => e.id !== id) } : null,
+    );
   };
 
-  if (loading)
+  if (loading) {
     return (
-      <div className="flex justify-center p-8">
-        <span className="loading loading-spinner loading-lg" />
+      <div className="flex justify-center p-8" role="status" aria-label="Loading profile">
+        <span className="loading loading-spinner loading-lg" aria-hidden="true" />
       </div>
     );
-  if (!user || user.role !== 'jobseeker') return <div className="text-center p-8 text-error">Access denied</div>;
+  }
 
   return (
-    <div className="max-w-xl mx-auto p-4 space-y-6">
+    <div className="max-w-2xl mx-auto p-4 space-y-6">
       <h1 className="text-2xl font-bold">My Profile</h1>
 
-      <form onSubmit={saveProfile} className="card bg-base-200 p-4 space-y-4">
-        <label className="form-control">
-          <div className="label-text">Headline</div>
+      {/* Profile form */}
+      <form onSubmit={saveProfile} className="card bg-base-200 p-6 space-y-4">
+        <h2 className="font-semibold">Profile Details</h2>
+        <div className="form-control">
+          <label htmlFor="headline" className="label-text mb-1">Headline</label>
           <input
-            className="input input-bordered w-full"
+            id="headline"
+            className="input input-bordered"
             value={form.headline}
             onChange={(e) => setForm({ ...form, headline: e.target.value })}
-            placeholder="e.g. Senior Software Engineer"
+            placeholder="e.g. Senior Full-Stack Developer"
           />
-        </label>
-        <label className="form-control">
-          <div className="label-text">About</div>
+        </div>
+        <div className="form-control">
+          <label htmlFor="about" className="label-text mb-1">About</label>
           <textarea
-            className="textarea textarea-bordered h-24 w-full"
+            id="about"
+            className="textarea textarea-bordered"
+            rows={4}
             value={form.about}
             onChange={(e) => setForm({ ...form, about: e.target.value })}
-            placeholder="Tell companies about yourself"
           />
-        </label>
-        <label className="form-control">
-          <div className="label-text">Years of Experience</div>
+        </div>
+        <div className="form-control">
+          <label htmlFor="yearsOfExperience" className="label-text mb-1">Years of Experience</label>
           <input
+            id="yearsOfExperience"
             type="number"
-            className="input input-bordered w-full"
+            className="input input-bordered w-32"
             value={form.yearsOfExperience}
             onChange={(e) => setForm({ ...form, yearsOfExperience: Number(e.target.value) })}
           />
-        </label>
+        </div>
         <button type="submit" className="btn btn-primary" disabled={saving}>
-          {saving ? <span className="loading loading-spinner" /> : 'Save Profile'}
+          {saving ? <span className="loading loading-spinner loading-sm" aria-hidden="true" /> : 'Save Profile'}
         </button>
       </form>
 
+      {/* Experience list */}
       <div className="card bg-base-200 p-4">
-        <div className="flex justify-between items-center mb-4">
-          <h2 className="text-xl font-semibold">Experience</h2>
-          <button type="button" className="btn btn-primary btn-sm" onClick={() => setShowExpForm(!showExpForm)}>
-            <Plus size={16} /> Add
+        <div className="flex justify-between items-center mb-3">
+          <h2 className="font-semibold">Experience</h2>
+          <button
+            type="button"
+            className="btn btn-outline btn-sm gap-1"
+            onClick={() => setShowExpForm(!showExpForm)}
+          >
+            <Plus size={16} aria-hidden="true" /> Add
           </button>
         </div>
 
         {showExpForm && (
-          <form onSubmit={addExperience} className="space-y-3 mb-4 p-3 border border-base-300 rounded-box">
-            <select
-              className="select select-bordered w-full"
-              value={expForm.type}
-              onChange={(e) => setExpForm({ ...expForm, type: e.target.value })}
-            >
-              <option value="employment">Employment</option>
-              <option value="gig">Gig / Freelance</option>
-              <option value="education">Education</option>
-              <option value="certification">Certification</option>
-              <option value="project">Project</option>
-              <option value="volunteering">Volunteering</option>
-            </select>
-            <input
-              className="input input-bordered w-full"
-              placeholder="Title / Degree"
-              value={expForm.title}
-              onChange={(e) => setExpForm({ ...expForm, title: e.target.value })}
-              required
-            />
-            <input
-              className="input input-bordered w-full"
-              placeholder="Organization / Institution"
-              value={expForm.organization}
-              onChange={(e) => setExpForm({ ...expForm, organization: e.target.value })}
-              required
-            />
-            <div className="flex gap-2">
+          <form onSubmit={addExperience} className="space-y-3 mb-4 p-3 bg-base-100 rounded-box">
+            <div className="form-control">
+              <label htmlFor="exp-type" className="label-text mb-1">Type</label>
+              <select
+                id="exp-type"
+                className="select select-bordered"
+                value={expForm.type}
+                onChange={(e) => setExpForm({ ...expForm, type: e.target.value })}
+              >
+                <option value="employment">Employment</option>
+                <option value="gig">Gig</option>
+                <option value="education">Education</option>
+                <option value="certification">Certification</option>
+                <option value="project">Project</option>
+                <option value="volunteering">Volunteering</option>
+              </select>
+            </div>
+            <div className="form-control">
+              <label htmlFor="exp-title" className="label-text mb-1">Title</label>
               <input
-                type="date"
-                className="input input-bordered flex-1"
-                value={expForm.startDate}
-                onChange={(e) => setExpForm({ ...expForm, startDate: e.target.value })}
+                id="exp-title"
+                className="input input-bordered"
+                value={expForm.title}
+                onChange={(e) => setExpForm({ ...expForm, title: e.target.value })}
                 required
               />
+            </div>
+            <div className="form-control">
+              <label htmlFor="exp-org" className="label-text mb-1">Organization</label>
               <input
-                type="date"
-                className="input input-bordered flex-1"
-                value={expForm.endDate}
-                onChange={(e) => setExpForm({ ...expForm, endDate: e.target.value })}
-                disabled={expForm.isCurrent}
+                id="exp-org"
+                className="input input-bordered"
+                value={expForm.organization}
+                onChange={(e) => setExpForm({ ...expForm, organization: e.target.value })}
               />
             </div>
-            <label className="flex items-center gap-2">
+            <div className="grid grid-cols-2 gap-2">
+              <div className="form-control">
+                <label htmlFor="exp-start" className="label-text mb-1">Start Date</label>
+                <input
+                  id="exp-start"
+                  type="text"
+                  className="input input-bordered"
+                  placeholder="2020-01"
+                  value={expForm.startDate}
+                  onChange={(e) => setExpForm({ ...expForm, startDate: e.target.value })}
+                  required
+                />
+              </div>
+              <div className="form-control">
+                <label htmlFor="exp-end" className="label-text mb-1">End Date</label>
+                <input
+                  id="exp-end"
+                  type="text"
+                  className="input input-bordered"
+                  placeholder="2023-12"
+                  value={expForm.endDate}
+                  onChange={(e) => setExpForm({ ...expForm, endDate: e.target.value })}
+                  disabled={expForm.isCurrent}
+                />
+              </div>
+            </div>
+            <label className="flex items-center gap-2 cursor-pointer">
               <input
                 type="checkbox"
                 className="checkbox checkbox-sm"
                 checked={expForm.isCurrent}
                 onChange={(e) => setExpForm({ ...expForm, isCurrent: e.target.checked })}
               />
-              <span className="text-sm">I currently work here</span>
+              <span className="label-text">I currently work here</span>
             </label>
-            <textarea
-              className="textarea textarea-bordered w-full"
-              placeholder="Description"
-              value={expForm.description}
-              onChange={(e) => setExpForm({ ...expForm, description: e.target.value })}
-            />
-            <input
-              className="input input-bordered w-full"
-              placeholder="Skills (comma-separated)"
-              value={expForm.skills}
-              onChange={(e) => setExpForm({ ...expForm, skills: e.target.value })}
-            />
-            <button type="submit" className="btn btn-primary btn-sm">
-              Add Experience
-            </button>
+            <div className="form-control">
+              <label htmlFor="exp-desc" className="label-text mb-1">Description</label>
+              <textarea
+                id="exp-desc"
+                className="textarea textarea-bordered"
+                rows={3}
+                value={expForm.description}
+                onChange={(e) => setExpForm({ ...expForm, description: e.target.value })}
+              />
+            </div>
+            <div className="form-control">
+              <label htmlFor="exp-skills" className="label-text mb-1">Skills (comma separated)</label>
+              <input
+                id="exp-skills"
+                className="input input-bordered"
+                value={expForm.skills}
+                onChange={(e) => setExpForm({ ...expForm, skills: e.target.value })}
+                placeholder="React, TypeScript, Node.js"
+              />
+            </div>
+            <div className="flex gap-2">
+              <button type="submit" className="btn btn-primary btn-sm">
+                Add Experience
+              </button>
+              <button
+                type="button"
+                className="btn btn-ghost btn-sm"
+                onClick={() => setShowExpForm(false)}
+              >
+                Cancel
+              </button>
+            </div>
           </form>
+        )}
+
+        {profile?.experiences.length === 0 && (
+          <p className="text-sm text-muted py-4 text-center">
+            No experience added yet. Click "Add" to get started.
+          </p>
         )}
 
         <div className="space-y-2">
           {profile?.experiences.map((exp) => (
-            <div key={exp.id} className="flex justify-between items-start p-3 bg-base-100 rounded-box">
+            <div key={exp.id} className="p-3 bg-base-100 rounded-box flex justify-between items-start">
               <div>
                 <p className="font-medium">{exp.title}</p>
-                <p className="text-sm opacity-70">
-                  {exp.organization} · {exp.startDate}{' '}
-                  {exp.isCurrent ? '- Present' : exp.endDate ? `- ${exp.endDate}` : ''}
+                <p className="text-sm text-muted">
+                  {exp.organization} &middot; {exp.startDate}
+                  {exp.isCurrent ? ' - Present' : exp.endDate ? ` - ${exp.endDate}` : ''}
                 </p>
-                {exp.skillsUsed && exp.skillsUsed.length > 0 && (
-                  <div className="flex flex-wrap gap-1 mt-1">
-                    {exp.skillsUsed.map((s) => (
-                      <span key={s} className="badge badge-sm">
-                        {s}
-                      </span>
-                    ))}
-                  </div>
-                )}
               </div>
               <button
                 type="button"
                 className="btn btn-ghost btn-xs text-error"
                 onClick={() => deleteExperience(exp.id)}
+                aria-label={`Delete ${exp.title}`}
               >
-                <Trash2 size={14} />
+                <Trash2 size={16} aria-hidden="true" />
               </button>
             </div>
           ))}
-          {(!profile?.experiences || profile.experiences.length === 0) && (
-            <p className="text-sm opacity-50 text-center py-4">No experience added yet</p>
-          )}
         </div>
       </div>
     </div>

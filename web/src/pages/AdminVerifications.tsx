@@ -64,7 +64,7 @@ export function AdminVerifications() {
                   disabled={actionLoading === company.id}
                   onClick={() => handleAction(company.id, 'approve')}
                 >
-                  <Check size={16} /> Approve
+                  <Check size={16} aria-hidden="true" /> Approve
                 </button>
                 <button
                   type="button"
@@ -72,7 +72,7 @@ export function AdminVerifications() {
                   disabled={actionLoading === company.id}
                   onClick={() => handleAction(company.id, 'reject')}
                 >
-                  <X size={16} /> Reject
+                  <X size={16} aria-hidden="true" /> Reject
                 </button>
               </div>
             </div>

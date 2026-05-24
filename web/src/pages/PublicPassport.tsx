@@ -40,8 +40,8 @@ export function PublicPassport() {
     );
   if (!data)
     return (
-      <div className="flex justify-center p-8">
-        <span className="loading loading-spinner loading-lg" />
+      <div className="flex justify-center p-8" role="status" aria-label="Loading profile">
+        <span className="loading loading-spinner loading-lg" aria-hidden="true" />
       </div>
     );
 
@@ -56,13 +56,13 @@ export function PublicPassport() {
           </div>
           <div>
             <h1 className="text-2xl font-bold">{data.name}</h1>
-            {data.headline && <p className="opacity-70">{data.headline}</p>}
+            {data.headline && <p className="text-muted-strong">{data.headline}</p>}
             {data.yearsOfExperience !== undefined && (
-              <p className="text-sm opacity-50">{data.yearsOfExperience} years of experience</p>
+              <p className="text-sm text-muted">{data.yearsOfExperience} years of experience</p>
             )}
           </div>
         </div>
-        {data.about && <p className="opacity-70 mb-4">{data.about}</p>}
+        {data.about && <p className="text-muted-strong mb-4">{data.about}</p>}
       </div>
 
       <div className="card bg-base-200 p-4">

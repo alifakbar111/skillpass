@@ -34,8 +34,8 @@ export function JobseekerPassport() {
 
   if (!data)
     return (
-      <div className="flex justify-center p-8">
-        <span className="loading loading-spinner loading-lg" />
+      <div className="flex justify-center p-8" role="status" aria-label="Loading passport">
+        <span className="loading loading-spinner loading-lg" aria-hidden="true" />
       </div>
     );
 
@@ -43,8 +43,8 @@ export function JobseekerPassport() {
     <div className="max-w-2xl mx-auto p-4 space-y-4">
       <div className="flex justify-between items-center">
         <h1 className="text-2xl font-bold">My Passport</h1>
-        <Link to={`/profiles/${user?.username}`} className="btn btn-outline btn-sm gap-2" target="_blank">
-          <ExternalLink size={14} /> View Public
+          <Link to={`/profiles/${user?.username}`} className="btn btn-outline btn-sm gap-2" target="_blank">
+            <ExternalLink size={14} aria-hidden="true" /> View Public
         </Link>
       </div>
 
@@ -57,13 +57,13 @@ export function JobseekerPassport() {
           </div>
           <div>
             <h2 className="text-xl font-bold">{data.name}</h2>
-            {data.headline && <p className="opacity-70">{data.headline}</p>}
+            {data.headline && <p className="text-muted-strong">{data.headline}</p>}
             {data.yearsOfExperience !== undefined && (
-              <p className="text-sm opacity-50">{data.yearsOfExperience} years of experience</p>
+              <p className="text-sm text-muted">{data.yearsOfExperience} years of experience</p>
             )}
           </div>
         </div>
-        {data.about && <p className="opacity-70 mb-4">{data.about}</p>}
+        {data.about && <p className="text-muted-strong mb-4">{data.about}</p>}
       </div>
 
       <div className="card bg-base-200 p-4">

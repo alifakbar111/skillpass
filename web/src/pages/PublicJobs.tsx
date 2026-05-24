@@ -32,6 +32,7 @@ export function PublicJobs() {
         className="select select-bordered w-full max-w-xs"
         value={industry}
         onChange={(e) => setIndustry(e.target.value)}
+        aria-label="Filter by industry"
       >
         <option value="">All Industries</option>
         {industries.map((ind) => (
@@ -49,7 +50,7 @@ export function PublicJobs() {
             className="card bg-base-200 p-4 block hover:bg-base-300 transition-colors"
           >
             <div className="flex items-start gap-3">
-              <Briefcase className="mt-1 opacity-50" size={20} />
+              <Briefcase className="mt-1 opacity-50" size={20} aria-hidden="true" />
               <div>
                 <h3 className="font-semibold">{job.title}</h3>
                 <p className="text-sm opacity-70">

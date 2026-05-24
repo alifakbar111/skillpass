@@ -1,3 +1,4 @@
+import { useCallback, useRef, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../hooks/useAuth';
 import { ThemeToggle } from '../ui/ThemeToggle';
@@ -5,11 +6,28 @@ import { ThemeToggle } from '../ui/ThemeToggle';
 export function Navbar() {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
+  const [dropdownOpen, setDropdownOpen] = useState(false);
+  const dropdownRef = useRef<HTMLDivElement>(null);
 
   const handleLogout = async () => {
     await logout();
     navigate('/');
   };
+
+  const toggleDropdown = () => {
+    setDropdownOpen((prev) => !prev);
+  };
+
+  const handleDropdownKeyDown = useCallback(
+    (e: React.KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        setDropdownOpen(false);
+        const toggle = dropdownRef.current?.querySelector('[aria-haspopup]') as HTMLElement | null;
+        toggle?.focus();
+      }
+    },
+    [],
+  );
 
   return (
     <div className="navbar bg-base-100 shadow-sm sticky top-0 z-50">
@@ -36,27 +54,40 @@ export function Navbar() {
                 </Link>
               </>
             )}
-            <div className="dropdown dropdown-end">
-              {/* biome-ignore lint/a11y/useSemanticElements: DaisyUI dropdown toggle pattern */}
-              <div tabIndex={0} role="button" className="btn btn-ghost btn-circle avatar placeholder">
+            <div className="dropdown dropdown-end" ref={dropdownRef}>
+              <button
+                type="button"
+                className="btn btn-ghost btn-circle avatar placeholder"
+                onClick={toggleDropdown}
+                aria-haspopup="true"
+                aria-expanded="false"
+                aria-label="User menu"
+              >
                 <div className="bg-neutral text-neutral-content rounded-full w-10">
                   <span>{user.name?.charAt(0)?.toLocaleUpperCase() ?? '?'}</span>
                 </div>
-              </div>
-              <ul className="menu dropdown-content bg-base-100 rounded-box z-1 mt-3 w-52 p-2 shadow-sm">
-                <li className="menu-label text-xs opacity-60">{user.email}</li>
-                <div className="divider my-1" />
-                {user.role === 'company' && (
+              </button>
+              {dropdownOpen && (
+                <ul
+                  className="menu dropdown-content bg-base-100 rounded-box z-1 mt-3 w-52 p-2 shadow-sm"
+                  onKeyDown={handleDropdownKeyDown}
+                >
+                  <li className="menu-label text-xs text-muted">{user.email}</li>
+                  <li><hr className="divider my-1" /></li>
+                  {user.role === 'company' && (
+                    <li>
+                      <Link to="/company/profile" onClick={() => setDropdownOpen(false)}>
+                        Company Profile
+                      </Link>
+                    </li>
+                  )}
                   <li>
-                    <Link to="/company/profile">Company Profile</Link>
+                    <button type="button" onClick={handleLogout} className="text-error">
+                      Logout
+                    </button>
                   </li>
-                )}
-                <li>
-                  <button type="button" onClick={handleLogout} className="text-error">
-                    Logout
-                  </button>
-                </li>
-              </ul>
+                </ul>
+              )}
             </div>
           </>
         ) : (

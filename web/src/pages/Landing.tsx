@@ -13,26 +13,26 @@ export function Landing() {
             <br />
             One Passport
           </h1>
-          <p className="text-lg opacity-70 mb-8">
+          <p className="text-lg text-muted-strong mb-8">
             Build your complete career profile. Let AI evaluate your skills. Get discovered by verified companies. Grow
             with personalized feedback.
           </p>
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
             <div className="card bg-base-200 p-4">
-              <Briefcase className="mx-auto mb-2" size={28} />
+              <Briefcase className="mx-auto mb-2" size={28} aria-hidden="true" />
               <h3 className="font-semibold">Build Profile</h3>
-              <p className="text-sm opacity-60">Add every experience — job, gig, project, or education</p>
+              <p className="text-sm text-muted">Add every experience — job, gig, project, or education</p>
             </div>
             <div className="card bg-base-200 p-4">
-              <Search className="mx-auto mb-2" size={28} />
+              <Search className="mx-auto mb-2" size={28} aria-hidden="true" />
               <h3 className="font-semibold">Get Discovered</h3>
-              <p className="text-sm opacity-60">Verified companies find you by skills and experience</p>
+              <p className="text-sm text-muted">Verified companies find you by skills and experience</p>
             </div>
             <div className="card bg-base-200 p-4">
-              <Award className="mx-auto mb-2" size={28} />
+              <Award className="mx-auto mb-2" size={28} aria-hidden="true" />
               <h3 className="font-semibold">Grow Faster</h3>
-              <p className="text-sm opacity-60">Know your strengths and get suggestions to improve</p>
+              <p className="text-sm text-muted">Know your strengths and get suggestions to improve</p>
             </div>
           </div>
 
