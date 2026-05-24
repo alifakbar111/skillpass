@@ -1,18 +1,18 @@
 import { jwt } from '@elysiajs/jwt';
 import { eq } from 'drizzle-orm';
-import { Elysia, t } from 'elysia';
+import { Elysia, t, status } from 'elysia';
 import { db, schema } from '../db';
 
 const JWT_SECRET = process.env.JWT_SECRET || 'skillpass-dev-secret-change-in-prod';
 
 export const companyRoutes = new Elysia({ prefix: '/api/v1/company' })
   .use(jwt({ secret: JWT_SECRET, name: 'jwt' }))
-  .resolve(async ({ headers, jwt: j, error }) => {
+  .derive(async ({ headers, jwt: j }) => {
     const auth = headers.authorization;
-    if (!auth?.startsWith('Bearer ')) return error(401, 'Unauthorized');
+    if (!auth?.startsWith('Bearer ')) return status(401, 'Unauthorized');
     const payload = await j.verify(auth.slice(7));
-    if (!payload) return error(401, 'Unauthorized');
-    if (payload.role !== 'company') return error(403, 'Forbidden: company role required');
+    if (!payload) return status(401, 'Unauthorized');
+    if (payload.role !== 'company') return status(403, 'Forbidden: company role required');
     return { userId: payload.userId as string };
   })
   .get('/profile', async ({ userId, error }) => {

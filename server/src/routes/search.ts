@@ -1,18 +1,18 @@
 import { jwt } from '@elysiajs/jwt';
 import { eq } from 'drizzle-orm';
-import { Elysia } from 'elysia';
+import { Elysia, status } from 'elysia';
 import { db, schema } from '../db';
 
 const JWT_SECRET = process.env.JWT_SECRET || 'skillpass-dev-secret-change-in-prod';
 
 export const searchRoutes = new Elysia({ prefix: '/api/v1/search' })
   .use(jwt({ secret: JWT_SECRET, name: 'jwt' }))
-  .resolve(async ({ headers, jwt: j, error }) => {
+  .derive(async ({ headers, jwt: j }) => {
     const auth = headers.authorization;
-    if (!auth?.startsWith('Bearer ')) return error(401, 'Unauthorized');
+    if (!auth?.startsWith('Bearer ')) return status(401, 'Unauthorized');
     const payload = await j.verify(auth.slice(7));
-    if (!payload) return error(401, 'Unauthorized');
-    if (payload.role !== 'company') return error(403, 'Forbidden');
+    if (!payload) return status(401, 'Unauthorized');
+    if (payload.role !== 'company') return status(403, 'Forbidden');
 
     const [company] = await db
       .select()
@@ -20,7 +20,7 @@ export const searchRoutes = new Elysia({ prefix: '/api/v1/search' })
       .where(eq(schema.companies.userId, payload.userId as string))
       .limit(1);
 
-    if (!company || company.verificationStatus !== 'verified') return error(403, 'Company not verified');
+    if (!company || company.verificationStatus !== 'verified') return status(403, 'Company not verified');
     return { userId: payload.userId as string };
   })
   .get('/candidates', async ({ query }) => {
