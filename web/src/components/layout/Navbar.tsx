@@ -40,7 +40,7 @@ export function Navbar() {
               {/* biome-ignore lint/a11y/useSemanticElements: DaisyUI dropdown toggle pattern */}
               <div tabIndex={0} role="button" className="btn btn-ghost btn-circle avatar placeholder">
                 <div className="bg-neutral text-neutral-content rounded-full w-10">
-                  <span>{user.name.charAt(0).toUpperCase()}</span>
+                  <span>{user.name?.charAt(0)?.toLocaleUpperCase() ?? '?'}</span>
                 </div>
               </div>
               <ul className="menu dropdown-content bg-base-100 rounded-box z-1 mt-3 w-52 p-2 shadow-sm">

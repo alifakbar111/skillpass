@@ -32,9 +32,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     const accessToken = localStorage.getItem('accessToken');
     if (accessToken) {
-      // Try fetching current user — if fails, tokens are stale
-      api<{ id: string; email: string; username: string; name: string; role: 'jobseeker' | 'company' }>('/profiles/me')
-        .then((u) => setUser(u as unknown as User))
+      api<User>('/profiles/me')
+        .then((u) => setUser(u))
         .catch(() => clearTokens())
         .finally(() => setLoading(false));
     } else {
