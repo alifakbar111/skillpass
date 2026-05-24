@@ -41,7 +41,17 @@ skillpass/          — root: orchestration (concurrently runs both)
 | Build web (tsc + vite) | `bun run build` |
 | Docker full stack | `bun run docker:up` / `bun run docker:down` |
 
-**Order matters**: `db:push` before `db:seed` before `dev`.
+**Local dev startup (non-Docker)** — the server connects to PostgreSQL on `localhost:5432` by default.
+Before running `bun run dev`, you must:
+
+1. `docker compose up db -d`           — start the database container
+2. `bun run db:push`                   — push schema to the DB
+3. `bun run db:seed`                   — seed initial data
+4. `bun run dev`                        — now safe to start server + web
+
+**Docker full stack** — `bun run docker:up` / `bun run docker:down` runs everything in containers (DB, server, web).
+
+> If you skip step 1, the server will fail to start with a clear error message telling you to run `docker compose up db -d`.
 
 ## Dev URLs
 - Web: http://localhost:4200
