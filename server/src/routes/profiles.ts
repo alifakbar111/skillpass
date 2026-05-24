@@ -1,17 +1,17 @@
 import { jwt } from '@elysiajs/jwt';
 import { and, eq } from 'drizzle-orm';
-import { Elysia, t } from 'elysia';
+import { Elysia, t, status } from 'elysia';
 import { db, schema } from '../db';
 
 const JWT_SECRET = process.env.JWT_SECRET || 'skillpass-dev-secret-change-in-prod';
 
 export const profileRoutes = new Elysia({ prefix: '/api/v1/profiles' })
   .use(jwt({ secret: JWT_SECRET, name: 'jwt' }))
-  .resolve(async ({ headers, jwt: j, error }) => {
+  .derive(async ({ headers, jwt: j }) => {
     const auth = headers.authorization;
-    if (!auth?.startsWith('Bearer ')) return error(401, 'Unauthorized');
+    if (!auth?.startsWith('Bearer ')) return status(401, 'Unauthorized');
     const payload = await j.verify(auth.slice(7));
-    if (!payload) return error(401, 'Unauthorized');
+    if (!payload) return status(401, 'Unauthorized');
     return { userId: payload.userId as string, role: payload.role as string };
   })
   .get('/me', async ({ userId, error }) => {
@@ -23,13 +23,25 @@ export const profileRoutes = new Elysia({ prefix: '/api/v1/profiles' })
 
     if (profile.length === 0) return error(404, 'Profile not found');
 
+    const [user] = await db
+      .select({
+        name: schema.users.name,
+        email: schema.users.email,
+        username: schema.users.username,
+        role: schema.users.role,
+        avatarUrl: schema.users.avatarUrl,
+      })
+      .from(schema.users)
+      .where(eq(schema.users.id, profile[0].userId))
+      .limit(1);
+
     const experiences = await db
       .select()
       .from(schema.jobExperiences)
       .where(eq(schema.jobExperiences.profileId, profile[0].id))
       .orderBy(schema.jobExperiences.startDate);
 
-    return { ...profile[0], experiences };
+    return { ...profile[0], ...user, experiences };
   })
   .put(
     '/me',
