@@ -112,33 +112,33 @@ export function JobseekerProfile() {
   if (!user || user.role !== 'jobseeker') return <div className="text-center p-8 text-error">Access denied</div>;
 
   return (
-    <div className="max-w-2xl mx-auto p-4 space-y-6">
+    <div className="max-w-xl mx-auto p-4 space-y-6">
       <h1 className="text-2xl font-bold">My Profile</h1>
 
       <form onSubmit={saveProfile} className="card bg-base-200 p-4 space-y-4">
         <label className="form-control">
-          <span className="label-text">Headline</span>
+          <div className="label-text">Headline</div>
           <input
-            className="input input-bordered"
+            className="input input-bordered w-full"
             value={form.headline}
             onChange={(e) => setForm({ ...form, headline: e.target.value })}
             placeholder="e.g. Senior Software Engineer"
           />
         </label>
         <label className="form-control">
-          <span className="label-text">About</span>
+          <div className="label-text">About</div>
           <textarea
-            className="textarea textarea-bordered h-24"
+            className="textarea textarea-bordered h-24 w-full"
             value={form.about}
             onChange={(e) => setForm({ ...form, about: e.target.value })}
             placeholder="Tell companies about yourself"
           />
         </label>
         <label className="form-control">
-          <span className="label-text">Years of Experience</span>
+          <div className="label-text">Years of Experience</div>
           <input
             type="number"
-            className="input input-bordered"
+            className="input input-bordered w-full"
             value={form.yearsOfExperience}
             onChange={(e) => setForm({ ...form, yearsOfExperience: Number(e.target.value) })}
           />
