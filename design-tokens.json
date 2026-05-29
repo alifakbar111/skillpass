@@ -1,0 +1,95 @@
+{
+  "meta": {
+    "name": "SkillPass Design Tokens",
+    "version": "1.0.0",
+    "description": "Design tokens extracted from the existing codebase and proposed refinements"
+  },
+  "color": {
+    "description": "All colors are DaisyUI semantic tokens. No custom hex values are used in the codebase.",
+    "semantic": {
+      "bg-base-100": "--color-base-100",
+      "bg-base-200": "--color-base-200",
+      "bg-base-300": "--color-base-300",
+      "text-base-content": "--color-base-content",
+      "text-error": "--color-error",
+      "text-primary": "--color-primary",
+      "bg-neutral": "--color-neutral",
+      "text-neutral-content": "--color-neutral-content"
+    },
+    "proposed": {
+      "description": "Proposed named palette extending DaisyUI defaults — defined via @theme in index.css",
+      "primary": "#4F46E5",
+      "primary-content": "#FFFFFF",
+      "secondary": "#7C3AED",
+      "accent": "#F59E0B",
+      "neutral": "#1F2937"
+    }
+  },
+  "typography": {
+    "description": "Current: OS system stack. Proposed: Outfit (heading/body) + Fira Code (mono).",
+    "fontFamily": {
+      "current": {
+        "body": "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif",
+        "mono": "ui-monospace, SFMono-Regular, 'SF Mono', Menlo, Consolas, monospace"
+      },
+      "proposed": {
+        "body": "'Outfit', sans-serif",
+        "mono": "'Fira Code', monospace"
+      }
+    },
+    "fontSize": {
+      "xs": "0.75rem",
+      "sm": "0.875rem",
+      "base": "1rem",
+      "lg": "1.125rem",
+      "xl": "1.25rem",
+      "2xl": "1.5rem",
+      "3xl": "1.875rem",
+      "4xl": "2.25rem",
+      "5xl": "3rem"
+    },
+    "fontWeight": {
+      "medium": 500,
+      "semibold": 600,
+      "bold": 700
+    },
+    "lineHeight": {
+      "tight": "1.15",
+      "normal": "1.5",
+      "relaxed": "1.75"
+    }
+  },
+  "spacing": {
+    "description": "Tailwind's default 4px-based spacing scale. Consistent across all pages.",
+    "scale": {
+      "1": "0.25rem",
+      "2": "0.5rem",
+      "3": "0.75rem",
+      "4": "1rem",
+      "6": "1.5rem",
+      "8": "2rem"
+    },
+    "page": {
+      "containerMaxWidth": "var(--max-w-2xl, 42rem)",
+      "padding": "1rem",
+      "sectionGap": "1.5rem"
+    }
+  },
+  "borderRadius": {
+    "DEFAULT": "0.5rem",
+    "lg": "0.75rem",
+    "full": "9999px",
+    "box": "1rem"
+  },
+  "boxShadow": {
+    "sm": "0 1px 2px 0 rgb(0 0 0 / 0.05)",
+    "DEFAULT": "none",
+    "md": "0 4px 6px -1px rgb(0 0 0 / 0.1)"
+  },
+  "breakpoints": {
+    "sm": "640px",
+    "md": "768px",
+    "lg": "1024px",
+    "xl": "1280px"
+  }
+}

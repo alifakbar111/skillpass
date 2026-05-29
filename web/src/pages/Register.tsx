@@ -47,8 +47,8 @@ export function Register() {
         <div className="card bg-base-200 w-full p-6">
           <h1 className="text-2xl font-bold mb-6 text-center">Create Account</h1>
           <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
-            <fieldset className="border border-base-300 rounded-lg p-4" aria-label="Account type">
-              <legend className="font-semibold px-1">I am a&hellip;</legend>
+            <fieldset className="fieldset" aria-label="Account type">
+              <legend className="fieldset-legend">I am a&hellip;</legend>
               <div className="flex gap-2">
                 <button
                   type="button"
@@ -68,8 +68,8 @@ export function Register() {
                 </button>
               </div>
             </fieldset>
-            <fieldset className="border border-base-300 rounded-lg p-4">
-              <legend className="font-semibold px-1">Account Details</legend>
+            <fieldset className="fieldset">
+              <legend className="fieldset-legend">Account Details</legend>
               <div className="space-y-4">
                 <label className="form-control w-full">
                   <div className="label-text mb-1">Full Name</div>
