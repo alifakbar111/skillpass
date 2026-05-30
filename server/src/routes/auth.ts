@@ -19,6 +19,15 @@ export const authRoutes = new Elysia({ prefix: '/api/v1/auth' })
         return error(409, 'Email already registered');
       }
 
+      const coFields = body as {
+        companyName?: string;
+        businessRegistration?: string;
+        website?: string;
+        address?: string;
+        contact?: string;
+      };
+      const displayName = role === 'company' ? coFields.companyName || name : name;
+
       const passwordHash = await hashPassword(password);
       const user = await db
         .insert(schema.users)
@@ -26,7 +35,7 @@ export const authRoutes = new Elysia({ prefix: '/api/v1/auth' })
           email,
           username,
           passwordHash,
-          name,
+          name: displayName,
           role,
         })
         .returning();
@@ -37,10 +46,24 @@ export const authRoutes = new Elysia({ prefix: '/api/v1/auth' })
           slug: username,
         });
       } else if (role === 'company') {
+        const coBody = body as {
+          companyName?: string;
+          businessRegistration?: string;
+          website?: string;
+          address?: string;
+          contact?: string;
+        };
         await db.insert(schema.companies).values({
           userId: user[0].id,
-          companyName: name,
+          companyName: displayName,
           industry: 'Technology',
+          verificationDocs: {
+            businessRegistration: coBody.businessRegistration ?? '',
+            website: coBody.website ?? '',
+            address: coBody.address ?? '',
+            contact: coBody.contact ?? '',
+          },
+          verificationStatus: 'pending',
         });
       }
 
@@ -66,6 +89,11 @@ export const authRoutes = new Elysia({ prefix: '/api/v1/auth' })
         password: t.String({ minLength: 6 }),
         name: t.String(),
         role: t.Union([t.Literal('jobseeker'), t.Literal('company')]),
+        companyName: t.Optional(t.String()),
+        businessRegistration: t.Optional(t.String()),
+        website: t.Optional(t.String()),
+        address: t.Optional(t.String()),
+        contact: t.Optional(t.String()),
       }),
     },
   )

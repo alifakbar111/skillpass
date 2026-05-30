@@ -4,9 +4,9 @@ import { Navbar } from './Navbar';
 export function RootLayout() {
   return (
     <div className="min-h-screen flex flex-col">
-      <a href="#main-content" className="skip-link">
+      {/* <a href="#main-content" className="skip-link">
         Skip to content
-      </a>
+      </a> */}
       <nav aria-label="Main navigation">
         <Navbar />
       </nav>

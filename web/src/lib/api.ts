@@ -78,8 +78,13 @@ export async function register(body: {
   email: string;
   username: string;
   password: string;
-  name: string;
+  name?: string;
   role: 'jobseeker' | 'company';
+  companyName?: string;
+  businessRegistration?: string;
+  website?: string;
+  address?: string;
+  contact?: string;
 }): Promise<LoginResponse> {
   const data = await api<LoginResponse>('/auth/register', {
     method: 'POST',

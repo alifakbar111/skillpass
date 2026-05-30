@@ -54,7 +54,7 @@ export function Navbar() {
             <div className="dropdown dropdown-end" ref={dropdownRef}>
               <button
                 type="button"
-                className="btn btn-ghost btn-circle avatar placeholder"
+                className="btn btn-ghost btn-circle avatar avatar-placeholder"
                 onClick={toggleDropdown}
                 aria-haspopup="true"
                 aria-expanded="false"
