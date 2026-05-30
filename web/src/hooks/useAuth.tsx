@@ -17,8 +17,13 @@ interface AuthContextType {
     email: string;
     username: string;
     password: string;
-    name: string;
+    name?: string;
     role: 'jobseeker' | 'company';
+    companyName?: string;
+    businessRegistration?: string;
+    website?: string;
+    address?: string;
+    contact?: string;
   }) => Promise<void>;
   logout: () => Promise<void>;
 }
@@ -51,8 +56,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       email: string;
       username: string;
       password: string;
-      name: string;
+      name?: string;
       role: 'jobseeker' | 'company';
+      companyName?: string;
+      businessRegistration?: string;
+      website?: string;
+      address?: string;
+      contact?: string;
     }) => {
       const res = await apiRegister(data);
       setUser(res.user);
