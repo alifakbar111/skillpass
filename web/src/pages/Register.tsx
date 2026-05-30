@@ -1,16 +1,11 @@
+import { zodResolver } from '@hookform/resolvers/zod';
 import { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { Link, useNavigate } from 'react-router-dom';
+import { FormInput, FormTextarea } from '../components/ui/FormField';
 import { LoadingSpinner } from '../components/ui/LoadingFallback';
 import { useAuth } from '../hooks/useAuth';
-
-type RegisterForm = {
-  email: string;
-  username: string;
-  password: string;
-  name: string;
-  role: 'jobseeker' | 'company';
-};
+import { type RegisterForm, registerSchema } from '../lib/schemas';
 
 export function Register() {
   const { register: authRegister } = useAuth();
@@ -22,7 +17,19 @@ export function Register() {
     setValue,
     formState: { errors },
   } = useForm<RegisterForm>({
-    defaultValues: { email: '', username: '', password: '', name: '', role: 'jobseeker' },
+    resolver: zodResolver(registerSchema),
+    defaultValues: {
+      email: '',
+      username: '',
+      password: '',
+      name: '',
+      role: 'jobseeker',
+      companyName: '',
+      businessRegistration: '',
+      website: '',
+      address: '',
+      contact: '',
+    },
   });
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
@@ -71,75 +78,71 @@ export function Register() {
             <fieldset className="fieldset">
               <legend className="fieldset-legend">Account Details</legend>
               <div className="space-y-4">
-                <label className="form-control w-full">
-                  <div className="label-text mb-1">Full Name</div>
-                  <input
-                    className="input input-bordered w-full"
-                    autoComplete="name"
-                    {...register('name', { required: 'Name is required' })}
-                    aria-describedby={errors.name ? 'register-name-error' : undefined}
-                  />
-                  {errors.name && (
-                    <span className="text-error text-xs mt-1" id="register-name-error" role="alert">
-                      {errors.name.message}
-                    </span>
-                  )}
-                </label>
-                <label className="form-control w-full">
-                  <div className="label-text mb-1">Username</div>
-                  <input
-                    className="input input-bordered w-full"
-                    autoComplete="username"
-                    {...register('username', {
-                      required: 'Username is required',
-                      minLength: { value: 3, message: 'At least 3 characters' },
-                    })}
-                    aria-describedby={errors.username ? 'register-username-error' : undefined}
-                  />
-                  {errors.username && (
-                    <span className="text-error text-xs mt-1" id="register-username-error" role="alert">
-                      {errors.username.message}
-                    </span>
-                  )}
-                </label>
-                <label className="form-control w-full">
-                  <div className="label-text mb-1">Email</div>
-                  <input
-                    type="email"
-                    className="input input-bordered w-full"
-                    autoComplete="email"
-                    {...register('email', {
-                      required: 'Email is required',
-                      pattern: { value: /^\S+@\S+$/, message: 'Invalid email' },
-                    })}
-                    aria-describedby={errors.email ? 'register-email-error' : undefined}
-                  />
-                  {errors.email && (
-                    <span className="text-error text-xs mt-1" id="register-email-error" role="alert">
-                      {errors.email.message}
-                    </span>
-                  )}
-                </label>
-                <label className="form-control w-full">
-                  <div className="label-text mb-1">Password</div>
-                  <input
-                    type="password"
-                    className="input input-bordered w-full"
-                    autoComplete="new-password"
-                    {...register('password', {
-                      required: 'Password is required',
-                      minLength: { value: 6, message: 'At least 6 characters' },
-                    })}
-                    aria-describedby={errors.password ? 'register-password-error' : undefined}
-                  />
-                  {errors.password && (
-                    <span className="text-error text-xs mt-1" id="register-password-error" role="alert">
-                      {errors.password.message}
-                    </span>
-                  )}
-                </label>
+                <FormInput
+                  label={role === 'company' ? 'Company Name' : 'Full Name'}
+                  registration={role === 'company' ? register('companyName') : register('name')}
+                  error={errors.companyName || errors.name}
+                  autoComplete={role === 'company' ? 'organization' : 'name'}
+                />
+                <FormInput
+                  label="Username"
+                  registration={register('username')}
+                  error={errors.username}
+                  autoComplete="username"
+                />
+                <FormInput
+                  label="Email"
+                  registration={register('email')}
+                  error={errors.email}
+                  type="email"
+                  autoComplete="email"
+                />
+                <FormInput
+                  label="Password"
+                  registration={register('password')}
+                  error={errors.password}
+                  type="password"
+                  autoComplete="new-password"
+                />
               </div>
             </fieldset>
+            {role === 'company' && (
+              <>
+                <fieldset className="fieldset">
+                  <legend className="fieldset-legend">Company Verification</legend>
+                  <div className="space-y-4">
+                    <FormInput
+                      label="Business Registration Number"
+                      registration={register('businessRegistration')}
+                      error={errors.businessRegistration}
+                    />
+                    <FormInput
+                      label="Company Website"
+                      registration={register('website')}
+                      error={errors.website}
+                      type="url"
+                      placeholder="https://example.com"
+                      autoComplete="url"
+                    />
+                    <FormTextarea
+                      label="Office Address"
+                      registration={register('address')}
+                      error={errors.address}
+                      rows={3}
+                    />
+                    <FormInput
+                      label="Contact Person & Title"
+                      registration={register('contact')}
+                      error={errors.contact}
+                    />
+                  </div>
+                </fieldset>
+                <div className="alert alert-soft text-sm" role="note">
+                  <span className="icon-[tabler--info-circle] size-5" aria-hidden="true" />
+                  <span>Verification is required before you can post jobs. We review submissions within 48 hours.</span>
+                </div>
+              </>
+            )}
             {error && (
               <p className="text-error text-sm" role="alert">
                 {error}

@@ -1,25 +1,31 @@
-import { type FormEvent, useState } from 'react';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { useState } from 'react';
+import { useForm } from 'react-hook-form';
 import { Link, useNavigate } from 'react-router-dom';
+import { FormInput } from '../components/ui/FormField';
 import { LoadingSpinner } from '../components/ui/LoadingFallback';
 import { useAuth } from '../hooks/useAuth';
+import { type LoginForm, loginSchema } from '../lib/schemas';
 
 export function Login() {
   const { login } = useAuth();
   const navigate = useNavigate();
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [error, setError] = useState('');
+  const {
+    register,
+    handleSubmit,
+    formState: { errors },
+  } = useForm<LoginForm>({ resolver: zodResolver(loginSchema) });
+  const [serverError, setServerError] = useState('');
   const [loading, setLoading] = useState(false);
 
-  const handleSubmit = async (e: FormEvent) => {
-    e.preventDefault();
-    setError('');
+  const onSubmit = async (data: LoginForm) => {
+    setServerError('');
     setLoading(true);
     try {
-      await login(email, password);
+      await login(data.email, data.password);
       navigate('/');
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Login failed');
+      setServerError(err instanceof Error ? err.message : 'Login failed');
     } finally {
       setLoading(false);
     }
@@ -30,39 +36,31 @@ export function Login() {
       <div className="hero-content w-full max-w-sm">
         <div className="card bg-base-200 w-full p-6">
           <h1 className="text-2xl font-bold mb-6 text-center">Sign In</h1>
-          <form onSubmit={handleSubmit} className="space-y-4">
-            <label className="form-control w-full">
-              <span className="label-text">Email</span>
-              <input
-                type="email"
-                className="input input-bordered w-full"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                required
-                autoComplete="email"
-              />
-            </label>
-            <label className="form-control w-full">
-              <span className="label-text">Password</span>
-              <input
-                type="password"
-                className="input input-bordered w-full"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                required
-                autoComplete="current-password"
-              />
-            </label>
-            {error && (
+          <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+            <FormInput
+              label="Email"
+              registration={register('email')}
+              error={errors.email}
+              type="email"
+              autoComplete="email"
+            />
+            <FormInput
+              label="Password"
+              registration={register('password')}
+              error={errors.password}
+              type="password"
+              autoComplete="current-password"
+            />
+            {serverError && (
               <p className="text-error text-sm" id="login-error" role="alert">
-                {error}
+                {serverError}
               </p>
             )}
             <button
               type="submit"
               className="btn btn-primary w-full"
               disabled={loading}
-              aria-describedby={error ? 'login-error' : undefined}
+              aria-describedby={serverError ? 'login-error' : undefined}
             >
               {loading ? <LoadingSpinner /> : 'Sign In'}
             </button>

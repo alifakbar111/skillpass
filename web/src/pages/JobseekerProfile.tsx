@@ -1,8 +1,12 @@
+import { zodResolver } from '@hookform/resolvers/zod';
 import { Plus, Trash2 } from 'lucide-react';
-import { type FormEvent, useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
+import { useForm } from 'react-hook-form';
+import { FormInput, FormSelect, FormTextarea } from '../components/ui/FormField';
 import { LoadingFallback, LoadingSpinner } from '../components/ui/LoadingFallback';
 import { useAuth } from '../hooks/useAuth';
 import { api } from '../lib/api';
+import { type ExperienceForm, experienceSchema, type ProfileForm, profileSchema } from '../lib/schemas';
 
 interface Experience {
   id: string;
@@ -27,66 +31,83 @@ interface Profile {
   experiences: Experience[];
 }
 
+const EXPERIENCE_TYPES = [
+  { value: 'employment', label: 'Employment' },
+  { value: 'gig', label: 'Gig' },
+  { value: 'education', label: 'Education' },
+  { value: 'certification', label: 'Certification' },
+  { value: 'project', label: 'Project' },
+  { value: 'volunteering', label: 'Volunteering' },
+];
+
 export function JobseekerProfile() {
   const { user } = useAuth();
   const [profile, setProfile] = useState<Profile | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  const [form, setForm] = useState({ headline: '', about: '', yearsOfExperience: 0 });
   const [showExpForm, setShowExpForm] = useState(false);
-  const [expForm, setExpForm] = useState({
-    type: 'employment',
-    title: '',
-    organization: '',
-    startDate: '',
-    endDate: '',
-    isCurrent: false,
-    description: '',
-    industry: '',
-    skills: '',
+
+  const profileForm = useForm<ProfileForm>({
+    resolver: zodResolver(profileSchema),
+    defaultValues: { headline: '', about: '', yearsOfExperience: undefined },
+  });
+
+  const expForm = useForm<ExperienceForm>({
+    resolver: zodResolver(experienceSchema),
+    defaultValues: {
+      type: 'employment',
+      title: '',
+      organization: '',
+      startDate: '',
+      endDate: '',
+      isCurrent: false,
+      description: '',
+      industry: '',
+      skills: '',
+    },
   });
 
   useEffect(() => {
     api<Profile>('/profiles/me')
       .then((data) => {
         setProfile(data);
-        setForm({
+        profileForm.reset({
           headline: data.headline || '',
           about: data.about || '',
-          yearsOfExperience: data.yearsOfExperience || 0,
+          yearsOfExperience: data.yearsOfExperience || undefined,
         });
       })
       .finally(() => setLoading(false));
-  }, []);
+  }, [profileForm]);
 
-  const saveProfile = async (e: FormEvent) => {
-    e.preventDefault();
+  const saveProfile = async (data: ProfileForm) => {
     setSaving(true);
     const updated = await api<Profile>('/profiles/me', {
       method: 'PUT',
-      body: JSON.stringify(form),
+      body: JSON.stringify(data),
     });
     setProfile((prev) => (prev ? { ...prev, ...updated } : null));
     setSaving(false);
   };
 
-  const addExperience = async (e: FormEvent) => {
-    e.preventDefault();
-    const skills = expForm.skills
-      .split(',')
-      .map((s) => s.trim())
-      .filter(Boolean);
+  const addExperience = async (data: ExperienceForm) => {
+    const skills = data.skills
+      ? data.skills
+          .split(',')
+          .map((s) => s.trim())
+          .filter(Boolean)
+      : [];
     const added = await api<Experience>('/profiles/me/experience', {
       method: 'POST',
       body: JSON.stringify({
-        ...expForm,
+        ...data,
         skillsUsed: skills,
-        endDate: expForm.isCurrent ? undefined : expForm.endDate || undefined,
+        endDate: data.isCurrent ? undefined : data.endDate || undefined,
       }),
     });
     setProfile((prev) => (prev ? { ...prev, experiences: [...prev.experiences, added] } : null));
     setShowExpForm(false);
-    setExpForm({
+    expForm.reset({
       type: 'employment',
       title: '',
       organization: '',
@@ -111,51 +132,32 @@ export function JobseekerProfile() {
     <div className="max-w-2xl mx-auto p-4 space-y-6">
       <h1 className="text-2xl font-bold">My Profile</h1>
 
-      {/* Profile form */}
-      <form onSubmit={saveProfile} className="card bg-base-200 p-6 space-y-4">
+      <form onSubmit={profileForm.handleSubmit(saveProfile)} className="card bg-base-200 p-6 space-y-4">
         <h2 className="font-semibold">Profile Details</h2>
-        <div className="form-control">
-          <label htmlFor="headline" className="label-text mb-1">
-            Headline
-          </label>
-          <input
-            id="headline"
-            className="input input-bordered"
-            value={form.headline}
-            onChange={(e) => setForm({ ...form, headline: e.target.value })}
-            placeholder="e.g. Senior Full-Stack Developer"
-          />
-        </div>
-        <div className="form-control">
-          <label htmlFor="about" className="label-text mb-1">
-            About
-          </label>
-          <textarea
-            id="about"
-            className="textarea textarea-bordered"
-            rows={4}
-            value={form.about}
-            onChange={(e) => setForm({ ...form, about: e.target.value })}
-          />
-        </div>
-        <div className="form-control">
-          <label htmlFor="yearsOfExperience" className="label-text mb-1">
-            Years of Experience
-          </label>
-          <input
-            id="yearsOfExperience"
-            type="number"
-            className="input input-bordered w-32"
-            value={form.yearsOfExperience}
-            onChange={(e) => setForm({ ...form, yearsOfExperience: Number(e.target.value) })}
-          />
-        </div>
+        <FormInput
+          label="Headline"
+          registration={profileForm.register('headline')}
+          error={profileForm.formState.errors.headline}
+          placeholder="e.g. Senior Full-Stack Developer"
+        />
+        <FormTextarea
+          label="About"
+          registration={profileForm.register('about')}
+          error={profileForm.formState.errors.about}
+          rows={4}
+        />
+        <FormInput
+          label="Years of Experience"
+          registration={profileForm.register('yearsOfExperience', { valueAsNumber: true })}
+          error={profileForm.formState.errors.yearsOfExperience}
+          type="number"
+          min={0}
+        />
         <button type="submit" className="btn btn-primary" disabled={saving}>
           {saving ? <LoadingSpinner size="sm" /> : 'Save Profile'}
         </button>
       </form>
 
-      {/* Experience list */}
       <div className="card bg-base-200 p-4">
         <div className="flex justify-between items-center mb-3">
           <h2 className="font-semibold">Experience</h2>
@@ -165,111 +167,50 @@ export function JobseekerProfile() {
         </div>
 
         {showExpForm && (
-          <form onSubmit={addExperience} className="space-y-3 mb-4 p-3 bg-base-100 rounded-box">
-            <div className="form-control">
-              <label htmlFor="exp-type" className="label-text mb-1">
-                Type
-              </label>
-              <select
-                id="exp-type"
-                className="select select-bordered"
-                value={expForm.type}
-                onChange={(e) => setExpForm({ ...expForm, type: e.target.value })}
-              >
-                <option value="employment">Employment</option>
-                <option value="gig">Gig</option>
-                <option value="education">Education</option>
-                <option value="certification">Certification</option>
-                <option value="project">Project</option>
-                <option value="volunteering">Volunteering</option>
-              </select>
-            </div>
-            <div className="form-control">
-              <label htmlFor="exp-title" className="label-text mb-1">
-                Title
-              </label>
-              <input
-                id="exp-title"
-                className="input input-bordered"
-                value={expForm.title}
-                onChange={(e) => setExpForm({ ...expForm, title: e.target.value })}
-                required
-              />
-            </div>
-            <div className="form-control">
-              <label htmlFor="exp-org" className="label-text mb-1">
-                Organization
-              </label>
-              <input
-                id="exp-org"
-                className="input input-bordered"
-                value={expForm.organization}
-                onChange={(e) => setExpForm({ ...expForm, organization: e.target.value })}
-              />
-            </div>
+          <form onSubmit={expForm.handleSubmit(addExperience)} className="space-y-3 mb-4 p-3 bg-base-100 rounded-box">
+            <FormSelect
+              label="Type"
+              registration={expForm.register('type')}
+              error={expForm.formState.errors.type}
+              options={EXPERIENCE_TYPES}
+            />
+            <FormInput label="Title" registration={expForm.register('title')} error={expForm.formState.errors.title} />
+            <FormInput
+              label="Organization"
+              registration={expForm.register('organization')}
+              error={expForm.formState.errors.organization}
+            />
             <div className="grid grid-cols-2 gap-2">
-              <div className="form-control">
-                <label htmlFor="exp-start" className="label-text mb-1">
-                  Start Date
-                </label>
-                <input
-                  id="exp-start"
-                  type="text"
-                  className="input input-bordered"
-                  placeholder="2020-01"
-                  value={expForm.startDate}
-                  onChange={(e) => setExpForm({ ...expForm, startDate: e.target.value })}
-                  required
-                />
-              </div>
-              <div className="form-control">
-                <label htmlFor="exp-end" className="label-text mb-1">
-                  End Date
-                </label>
-                <input
-                  id="exp-end"
-                  type="text"
-                  className="input input-bordered"
-                  placeholder="2023-12"
-                  value={expForm.endDate}
-                  onChange={(e) => setExpForm({ ...expForm, endDate: e.target.value })}
-                  disabled={expForm.isCurrent}
-                />
-              </div>
+              <FormInput
+                label="Start Date"
+                registration={expForm.register('startDate')}
+                error={expForm.formState.errors.startDate}
+                placeholder="2020-01"
+              />
+              <FormInput
+                label="End Date"
+                registration={expForm.register('endDate')}
+                error={expForm.formState.errors.endDate}
+                placeholder="2023-12"
+                disabled={expForm.watch('isCurrent')}
+              />
             </div>
             <label className="flex items-center gap-2 cursor-pointer">
-              <input
-                type="checkbox"
-                className="checkbox checkbox-sm"
-                checked={expForm.isCurrent}
-                onChange={(e) => setExpForm({ ...expForm, isCurrent: e.target.checked })}
-              />
+              <input type="checkbox" className="checkbox checkbox-sm" {...expForm.register('isCurrent')} />
               <span className="label-text">I currently work here</span>
             </label>
-            <div className="form-control">
-              <label htmlFor="exp-desc" className="label-text mb-1">
-                Description
-              </label>
-              <textarea
-                id="exp-desc"
-                className="textarea textarea-bordered"
-                rows={3}
-                value={expForm.description}
-                onChange={(e) => setExpForm({ ...expForm, description: e.target.value })}
-              />
-            </div>
-            <div className="form-control">
-              <label htmlFor="exp-skills" className="label-text mb-1">
-                Skills (comma separated)
-              </label>
-              <input
-                id="exp-skills"
-                className="input input-bordered"
-                value={expForm.skills}
-                onChange={(e) => setExpForm({ ...expForm, skills: e.target.value })}
-                placeholder="React, TypeScript, Node.js"
-              />
-            </div>
+            <FormTextarea
+              label="Description"
+              registration={expForm.register('description')}
+              error={expForm.formState.errors.description}
+              rows={3}
+            />
+            <FormInput
+              label="Skills (comma separated)"
+              registration={expForm.register('skills')}
+              error={expForm.formState.errors.skills}
+              placeholder="React, TypeScript, Node.js"
+            />
             <div className="flex gap-2">
               <button type="submit" className="btn btn-primary btn-sm">
                 Add Experience

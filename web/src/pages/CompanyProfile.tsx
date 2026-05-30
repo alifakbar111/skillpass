@@ -1,20 +1,32 @@
-import { type FormEvent, useEffect, useState } from 'react';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { useEffect, useState } from 'react';
+import { useForm } from 'react-hook-form';
+import { FormInput, FormSelect, FormTextarea } from '../components/ui/FormField';
 import { LoadingFallback, LoadingSpinner } from '../components/ui/LoadingFallback';
 import { useAuth } from '../hooks/useAuth';
 import { api } from '../lib/api';
+import { type CompanyProfileForm, companyProfileSchema } from '../lib/schemas';
 
 export function CompanyProfile() {
   const { user } = useAuth();
-  const [form, setForm] = useState({ companyName: '', website: '', industry: '', description: '' });
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [industries, setIndustries] = useState<Array<{ id: string; name: string }>>([]);
+
+  const {
+    register,
+    handleSubmit,
+    reset,
+    formState: { errors },
+  } = useForm<CompanyProfileForm>({
+    resolver: zodResolver(companyProfileSchema),
+  });
 
   useEffect(() => {
     api<Array<{ id: string; name: string }>>('/industries').then(setIndustries);
     api<{ companyName: string; website?: string; industry: string; description?: string }>('/company/profile')
       .then((data) =>
-        setForm({
+        reset({
           companyName: data.companyName,
           website: data.website || '',
           industry: data.industry,
@@ -22,12 +34,11 @@ export function CompanyProfile() {
         }),
       )
       .finally(() => setLoading(false));
-  }, []);
+  }, [reset]);
 
-  const handleSubmit = async (e: FormEvent) => {
-    e.preventDefault();
+  const onSubmit = async (data: CompanyProfileForm) => {
     setSaving(true);
-    await api('/company/profile', { method: 'PUT', body: JSON.stringify(form) });
+    await api('/company/profile', { method: 'PUT', body: JSON.stringify(data) });
     setSaving(false);
   };
 
@@ -37,46 +48,21 @@ export function CompanyProfile() {
   return (
     <div className="max-w-lg mx-auto p-4">
       <h1 className="text-2xl font-bold mb-6">Company Profile</h1>
-      <form onSubmit={handleSubmit} className="card bg-base-200 p-4 space-y-4">
-        <label className="form-control">
-          <span className="label-text">Company Name</span>
-          <input
-            className="input input-bordered"
-            value={form.companyName}
-            onChange={(e) => setForm({ ...form, companyName: e.target.value })}
-            required
-          />
-        </label>
-        <label className="form-control">
-          <span className="label-text">Website</span>
-          <input
-            className="input input-bordered"
-            value={form.website}
-            onChange={(e) => setForm({ ...form, website: e.target.value })}
-          />
-        </label>
-        <label className="form-control">
-          <span className="label-text">Industry</span>
-          <select
-            className="select select-bordered"
-            value={form.industry}
-            onChange={(e) => setForm({ ...form, industry: e.target.value })}
-          >
-            {industries.map((ind) => (
-              <option key={ind.id} value={ind.name}>
-                {ind.name}
-              </option>
-            ))}
-          </select>
-        </label>
-        <label className="form-control">
-          <span className="label-text">Description</span>
-          <textarea
-            className="textarea textarea-bordered h-24"
-            value={form.description}
-            onChange={(e) => setForm({ ...form, description: e.target.value })}
-          />
-        </label>
+      <form onSubmit={handleSubmit(onSubmit)} className="card bg-base-200 p-4 space-y-4">
+        <FormInput label="Company Name" registration={register('companyName')} error={errors.companyName} />
+        <FormInput
+          label="Website"
+          registration={register('website')}
+          error={errors.website}
+          placeholder="https://example.com"
+        />
+        <FormSelect
+          label="Industry"
+          registration={register('industry')}
+          error={errors.industry}
+          options={industries.map((ind) => ({ value: ind.name, label: ind.name }))}
+        />
+        <FormTextarea label="Description" registration={register('description')} error={errors.description} rows={4} />
         <button type="submit" className="btn btn-primary" disabled={saving}>
           {saving ? <LoadingSpinner /> : 'Save'}
         </button>

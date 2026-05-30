@@ -1,8 +1,12 @@
+import { zodResolver } from '@hookform/resolvers/zod';
 import { Pencil, Plus, X } from 'lucide-react';
-import { type FormEvent, useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
+import { useForm } from 'react-hook-form';
 import { Link } from 'react-router-dom';
+import { FormInput, FormSelect, FormTextarea } from '../components/ui/FormField';
 import { LoadingSpinner } from '../components/ui/LoadingFallback';
 import { api } from '../lib/api';
+import { type JobForm, jobSchema } from '../lib/schemas';
 
 interface Job {
   id: string;
@@ -14,45 +18,65 @@ interface Job {
   createdAt: string;
 }
 
+const EXPERIENCE_LEVELS = [
+  { value: 'entry', label: 'Entry' },
+  { value: 'mid', label: 'Mid' },
+  { value: 'senior', label: 'Senior' },
+  { value: 'lead', label: 'Lead' },
+];
+
 export function CompanyJobs() {
   const [jobs, setJobs] = useState<Job[]>([]);
   const [showForm, setShowForm] = useState(false);
-  const [form, setForm] = useState({
-    title: '',
-    description: '',
-    industry: 'Technology',
-    tags: '',
-    requiredSkills: '',
-    experienceLevel: 'mid',
-    location: '',
-    salaryRange: '',
-  });
   const [industries, setIndustries] = useState<Array<{ id: string; name: string }>>([]);
   const [saving, setSaving] = useState(false);
+
+  const {
+    register,
+    handleSubmit,
+    reset,
+    formState: { errors },
+  } = useForm<JobForm>({
+    resolver: zodResolver(jobSchema),
+    defaultValues: {
+      title: '',
+      description: '',
+      industry: 'Technology',
+      tags: '',
+      requiredSkills: '',
+      experienceLevel: 'mid',
+      location: '',
+      salaryRange: '',
+    },
+  });
 
   useEffect(() => {
     api<Array<{ id: string; name: string }>>('/industries').then(setIndustries);
     api<Job[]>('/jobs/me').then(setJobs);
   }, []);
 
-  const createJob = async (e: FormEvent) => {
-    e.preventDefault();
+  const createJob = async (data: JobForm) => {
     setSaving(true);
-    const tags = form.tags
-      .split(',')
-      .map((t) => t.trim())
-      .filter(Boolean);
-    const requiredSkills = form.requiredSkills
-      .split(',')
-      .map((s) => s.trim())
-      .filter(Boolean);
+    const tags = data.tags
+      ? data.tags
+          .split(',')
+          .map((t) => t.trim())
+          .filter(Boolean)
+      : [];
+    const requiredSkills = data.requiredSkills
+      ? data.requiredSkills
+          .split(',')
+          .map((s) => s.trim())
+          .filter(Boolean)
+      : [];
     await api('/jobs', {
       method: 'POST',
-      body: JSON.stringify({ ...form, tags, requiredSkills }),
+      body: JSON.stringify({ ...data, tags, requiredSkills }),
     });
     const updated = await api<Job[]>('/jobs/me');
     setJobs(updated);
     setShowForm(false);
+    reset();
     setSaving(false);
   };
 
@@ -71,68 +95,51 @@ export function CompanyJobs() {
       </div>
 
       {showForm && (
-        <form onSubmit={createJob} className="card bg-base-200 p-4 space-y-3">
-          <input
-            className="input input-bordered"
-            placeholder="Job Title"
-            value={form.title}
-            onChange={(e) => setForm({ ...form, title: e.target.value })}
-            required
-          />
-          <textarea
-            className="textarea textarea-bordered h-24"
+        <form onSubmit={handleSubmit(createJob)} className="card bg-base-200 p-4 space-y-3">
+          <FormInput label="Job Title" registration={register('title')} error={errors.title} placeholder="Job Title" />
+          <FormTextarea
+            label="Job Description"
+            registration={register('description')}
+            error={errors.description}
             placeholder="Job Description"
-            value={form.description}
-            onChange={(e) => setForm({ ...form, description: e.target.value })}
-            required
+            rows={4}
           />
-          <select
-            className="select select-bordered"
-            value={form.industry}
-            onChange={(e) => setForm({ ...form, industry: e.target.value })}
-            aria-label="Industry"
-          >
-            {industries.map((ind) => (
-              <option key={ind.id} value={ind.name}>
-                {ind.name}
-              </option>
-            ))}
-          </select>
-          <select
-            className="select select-bordered"
-            value={form.experienceLevel}
-            onChange={(e) => setForm({ ...form, experienceLevel: e.target.value })}
-            aria-label="Experience level"
-          >
-            <option value="entry">Entry</option>
-            <option value="mid">Mid</option>
-            <option value="senior">Senior</option>
-            <option value="lead">Lead</option>
-          </select>
-          <input
-            className="input input-bordered"
-            placeholder="Tags (comma-separated)"
-            value={form.tags}
-            onChange={(e) => setForm({ ...form, tags: e.target.value })}
+          <FormSelect
+            label="Industry"
+            registration={register('industry')}
+            error={errors.industry}
+            options={industries.map((ind) => ({ value: ind.name, label: ind.name }))}
           />
-          <input
-            className="input input-bordered"
-            placeholder="Required Skills (comma-separated)"
-            value={form.requiredSkills}
-            onChange={(e) => setForm({ ...form, requiredSkills: e.target.value })}
+          <FormSelect
+            label="Experience Level"
+            registration={register('experienceLevel')}
+            error={errors.experienceLevel}
+            options={EXPERIENCE_LEVELS}
+          />
+          <FormInput
+            label="Tags (comma-separated)"
+            registration={register('tags')}
+            error={errors.tags}
+            placeholder="e.g. remote, full-time"
+          />
+          <FormInput
+            label="Required Skills (comma-separated)"
+            registration={register('requiredSkills')}
+            error={errors.requiredSkills}
+            placeholder="e.g. React, TypeScript"
           />
           <div className="flex gap-2">
-            <input
-              className="input input-bordered flex-1"
+            <FormInput
+              label="Location"
+              registration={register('location')}
+              error={errors.location}
               placeholder="Location"
-              value={form.location}
-              onChange={(e) => setForm({ ...form, location: e.target.value })}
             />
-            <input
-              className="input input-bordered flex-1"
-              placeholder="Salary Range"
-              value={form.salaryRange}
-              onChange={(e) => setForm({ ...form, salaryRange: e.target.value })}
+            <FormInput
+              label="Salary Range"
+              registration={register('salaryRange')}
+              error={errors.salaryRange}
+              placeholder="e.g. $80k-$120k"
             />
           </div>
           <div className="flex gap-2">
