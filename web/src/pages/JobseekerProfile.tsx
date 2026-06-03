@@ -1,10 +1,9 @@
 import { zodResolver } from '@hookform/resolvers/zod';
-import { Plus, Trash2 } from 'lucide-react';
+import { Plus, Trash2, X } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { FormInput, FormSelect, FormTextarea } from '../components/ui/FormField';
 import { LoadingFallback, LoadingSpinner } from '../components/ui/LoadingFallback';
-import { useAuth } from '../hooks/useAuth';
 import { api } from '../lib/api';
 import { type ExperienceForm, experienceSchema, type ProfileForm, profileSchema } from '../lib/schemas';
 
@@ -41,11 +40,11 @@ const EXPERIENCE_TYPES = [
 ];
 
 export function JobseekerProfile() {
-  const { user } = useAuth();
   const [profile, setProfile] = useState<Profile | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [showExpForm, setShowExpForm] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   const profileForm = useForm<ProfileForm>({
     resolver: zodResolver(profileSchema),
@@ -77,60 +76,85 @@ export function JobseekerProfile() {
           yearsOfExperience: data.yearsOfExperience || undefined,
         });
       })
+      .catch((err) => setError(err instanceof Error ? err.message : 'Failed to load profile'))
       .finally(() => setLoading(false));
   }, [profileForm]);
 
   const saveProfile = async (data: ProfileForm) => {
     setSaving(true);
-    const updated = await api<Profile>('/profiles/me', {
-      method: 'PUT',
-      body: JSON.stringify(data),
-    });
-    setProfile((prev) => (prev ? { ...prev, ...updated } : null));
-    setSaving(false);
+    setError(null);
+    try {
+      const updated = await api<Profile>('/profiles/me', {
+        method: 'PUT',
+        body: JSON.stringify(data),
+      });
+      setProfile((prev) => (prev ? { ...prev, ...updated } : null));
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to save profile');
+    } finally {
+      setSaving(false);
+    }
   };
 
   const addExperience = async (data: ExperienceForm) => {
+    setError(null);
     const skills = data.skills
       ? data.skills
           .split(',')
           .map((s) => s.trim())
           .filter(Boolean)
       : [];
-    const added = await api<Experience>('/profiles/me/experience', {
-      method: 'POST',
-      body: JSON.stringify({
-        ...data,
-        skillsUsed: skills,
-        endDate: data.isCurrent ? undefined : data.endDate || undefined,
-      }),
-    });
-    setProfile((prev) => (prev ? { ...prev, experiences: [...prev.experiences, added] } : null));
-    setShowExpForm(false);
-    expForm.reset({
-      type: 'employment',
-      title: '',
-      organization: '',
-      startDate: '',
-      endDate: '',
-      isCurrent: false,
-      description: '',
-      industry: '',
-      skills: '',
-    });
+    try {
+      const added = await api<Experience>('/profiles/me/experience', {
+        method: 'POST',
+        body: JSON.stringify({
+          ...data,
+          skillsUsed: skills,
+          endDate: data.isCurrent ? undefined : data.endDate || undefined,
+        }),
+      });
+      setProfile((prev) => (prev ? { ...prev, experiences: [...prev.experiences, added] } : null));
+      setShowExpForm(false);
+      expForm.reset({
+        type: 'employment',
+        title: '',
+        organization: '',
+        startDate: '',
+        endDate: '',
+        isCurrent: false,
+        description: '',
+        industry: '',
+        skills: '',
+      });
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to add experience');
+    }
   };
 
   const deleteExperience = async (id: string) => {
-    await api(`/profiles/me/experience/${id}`, { method: 'DELETE' });
-    setProfile((prev) => (prev ? { ...prev, experiences: prev.experiences.filter((e) => e.id !== id) } : null));
+    setError(null);
+    try {
+      await api(`/profiles/me/experience/${id}`, { method: 'DELETE' });
+      setProfile((prev) => (prev ? { ...prev, experiences: prev.experiences.filter((e) => e.id !== id) } : null));
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to delete experience');
+    }
   };
 
   if (loading) return <LoadingFallback text="Loading profile" />;
-  if (!user || user.role !== 'jobseeker') return <div className="text-center p-8 text-error">Access denied</div>;
 
   return (
     <div className="max-w-2xl mx-auto p-4 space-y-6">
       <h1 className="text-2xl font-bold">My Profile</h1>
+
+      {error && (
+        <div className="alert alert-error">
+          <span>{error}</span>
+          <button type="button" title="close" className="btn btn-ghost btn-xs" onClick={() => setError(null)}>
+            <X size={14} />
+          </button>
+        </div>
+      )}
 
       <form onSubmit={profileForm.handleSubmit(saveProfile)} className="card bg-base-200 p-6 space-y-4">
         <h2 className="font-semibold">Profile Details</h2>

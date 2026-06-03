@@ -21,11 +21,17 @@ interface Job {
 export function JobDetail() {
   const { id } = useParams();
   const [job, setJob] = useState<Job | null>(null);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    if (id) api<Job>(`/jobs/${id}`).then(setJob);
+    if (id) {
+      api<Job>(`/jobs/${id}`)
+        .then(setJob)
+        .catch((err) => setError(err instanceof Error ? err.message : 'Failed to load job'));
+    }
   }, [id]);
 
+  if (error) return <p className="text-center p-8 text-error">{error}</p>;
   if (!job) return <LoadingFallback text="Loading job details" />;
 
   return (

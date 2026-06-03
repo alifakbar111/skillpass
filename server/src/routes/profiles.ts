@@ -1,12 +1,11 @@
 import { jwt } from '@elysiajs/jwt';
 import { and, eq } from 'drizzle-orm';
 import { Elysia, status, t } from 'elysia';
+import { config } from '../config';
 import { db, schema } from '../db';
 
-const JWT_SECRET = process.env.JWT_SECRET || 'skillpass-dev-secret-change-in-prod';
-
 export const profileRoutes = new Elysia({ prefix: '/api/v1/profiles' })
-  .use(jwt({ secret: JWT_SECRET, name: 'jwt' }))
+  .use(jwt({ secret: config.jwtSecret, name: 'jwt' }))
   .derive(async ({ headers, jwt: j }) => {
     const auth = headers.authorization;
     if (!auth?.startsWith('Bearer ')) return status(401, 'Unauthorized');
@@ -21,7 +20,10 @@ export const profileRoutes = new Elysia({ prefix: '/api/v1/profiles' })
       .where(eq(schema.jobseekerProfiles.userId, userId))
       .limit(1);
 
-    if (profile.length === 0) { set.status = 404; return { error: 'Profile not found' }; }
+    if (profile.length === 0) {
+      set.status = 404;
+      return { error: 'Profile not found' };
+    }
 
     const [user] = await db
       .select({
@@ -57,7 +59,10 @@ export const profileRoutes = new Elysia({ prefix: '/api/v1/profiles' })
         .where(eq(schema.jobseekerProfiles.userId, userId))
         .returning();
 
-      if (!profile) { set.status = 404; return { error: 'Profile not found' }; }
+      if (!profile) {
+        set.status = 404;
+        return { error: 'Profile not found' };
+      }
       return profile;
     },
     {
@@ -78,7 +83,10 @@ export const profileRoutes = new Elysia({ prefix: '/api/v1/profiles' })
         .where(eq(schema.jobseekerProfiles.userId, userId))
         .limit(1);
 
-      if (!profile) { set.status = 404; return { error: 'Profile not found' }; }
+      if (!profile) {
+        set.status = 404;
+        return { error: 'Profile not found' };
+      }
 
       const [exp] = await db
         .insert(schema.jobExperiences)
@@ -120,7 +128,10 @@ export const profileRoutes = new Elysia({ prefix: '/api/v1/profiles' })
         .from(schema.jobseekerProfiles)
         .where(eq(schema.jobseekerProfiles.userId, userId))
         .limit(1);
-      if (!profile) { set.status = 404; return { error: 'Profile not found' }; }
+      if (!profile) {
+        set.status = 404;
+        return { error: 'Profile not found' };
+      }
 
       const [updated] = await db
         .update(schema.jobExperiences)
@@ -128,7 +139,10 @@ export const profileRoutes = new Elysia({ prefix: '/api/v1/profiles' })
         .where(and(eq(schema.jobExperiences.id, params.id), eq(schema.jobExperiences.profileId, profile.id)))
         .returning();
 
-      if (!updated) { set.status = 404; return { error: 'Experience not found' }; }
+      if (!updated) {
+        set.status = 404;
+        return { error: 'Experience not found' };
+      }
       return updated;
     },
     {
@@ -161,13 +175,19 @@ export const profileRoutes = new Elysia({ prefix: '/api/v1/profiles' })
       .from(schema.jobseekerProfiles)
       .where(eq(schema.jobseekerProfiles.userId, userId))
       .limit(1);
-    if (!profile) { set.status = 404; return { error: 'Profile not found' }; }
+    if (!profile) {
+      set.status = 404;
+      return { error: 'Profile not found' };
+    }
 
     const [deleted] = await db
       .delete(schema.jobExperiences)
       .where(and(eq(schema.jobExperiences.id, params.id), eq(schema.jobExperiences.profileId, profile.id)))
       .returning();
 
-    if (!deleted) { set.status = 404; return { error: 'Experience not found' }; }
+    if (!deleted) {
+      set.status = 404;
+      return { error: 'Experience not found' };
+    }
     return { message: 'Deleted' };
   });

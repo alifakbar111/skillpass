@@ -1,12 +1,11 @@
 import { jwt } from '@elysiajs/jwt';
 import { eq } from 'drizzle-orm';
 import { Elysia, status, t } from 'elysia';
+import { config } from '../config';
 import { db, schema } from '../db';
 
-const JWT_SECRET = process.env.JWT_SECRET || 'skillpass-dev-secret-change-in-prod';
-
 export const companyRoutes = new Elysia({ prefix: '/api/v1/company' })
-  .use(jwt({ secret: JWT_SECRET, name: 'jwt' }))
+  .use(jwt({ secret: config.jwtSecret, name: 'jwt' }))
   .derive(async ({ headers, jwt: j }) => {
     const auth = headers.authorization;
     if (!auth?.startsWith('Bearer ')) return status(401, 'Unauthorized');
@@ -18,7 +17,10 @@ export const companyRoutes = new Elysia({ prefix: '/api/v1/company' })
   .get('/profile', async ({ userId, set }) => {
     const [company] = await db.select().from(schema.companies).where(eq(schema.companies.userId, userId)).limit(1);
 
-    if (!company) { set.status = 404; return { error: 'Company not found' }; }
+    if (!company) {
+      set.status = 404;
+      return { error: 'Company not found' };
+    }
     return company;
   })
   .put(
@@ -53,7 +55,10 @@ export const companyRoutes = new Elysia({ prefix: '/api/v1/company' })
         .where(eq(schema.companies.userId, userId))
         .returning();
 
-      if (!company) { set.status = 404; return { error: 'Company not found' }; }
+      if (!company) {
+        set.status = 404;
+        return { error: 'Company not found' };
+      }
       return { message: 'Verification submitted', status: 'pending' };
     },
     {

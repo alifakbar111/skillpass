@@ -1,4 +1,4 @@
-import { ExternalLink } from 'lucide-react';
+import { ExternalLink, X } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { LoadingFallback } from '../components/ui/LoadingFallback';
@@ -26,12 +26,28 @@ interface PassportData {
 export function JobseekerPassport() {
   const { user } = useAuth();
   const [data, setData] = useState<PassportData | null>(null);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     if (user) {
-      api<PassportData>(`/profiles/${user.username}`).then(setData);
+      api<PassportData>(`/profiles/${user.username}`)
+        .then(setData)
+        .catch((err) => setError(err instanceof Error ? err.message : 'Failed to load passport'));
     }
   }, [user]);
+
+  if (error) {
+    return (
+      <div className="max-w-2xl mx-auto p-4">
+        <div className="alert alert-error">
+          <span>{error}</span>
+          <button type="button" title="close" className="btn btn-ghost btn-xs" onClick={() => setError(null)}>
+            <X size={14} />
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   if (!data) return <LoadingFallback text="Loading passport" />;
 

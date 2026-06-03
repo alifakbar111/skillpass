@@ -21,20 +21,29 @@ export function CompanySearch() {
   const [skills, setSkills] = useState('');
   const [industries, setIndustries] = useState<Array<{ id: string; name: string }>>([]);
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    api<Array<{ id: string; name: string }>>('/industries').then(setIndustries);
+    api<Array<{ id: string; name: string }>>('/industries')
+      .then(setIndustries)
+      .catch(() => {});
   }, []);
 
   const search = async () => {
     setLoading(true);
-    const params = new URLSearchParams();
-    if (query) params.set('q', query);
-    if (industry) params.set('industry', industry);
-    if (skills) params.set('skills', skills);
-    const data = await api<Candidate[]>(`/search/candidates?${params}`);
-    setCandidates(data);
-    setLoading(false);
+    setError(null);
+    try {
+      const params = new URLSearchParams();
+      if (query) params.set('q', query);
+      if (industry) params.set('industry', industry);
+      if (skills) params.set('skills', skills);
+      const data = await api<Candidate[]>(`/search/candidates?${params}`);
+      setCandidates(data);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Search failed');
+    } finally {
+      setLoading(false);
+    }
   };
 
   // biome-ignore lint/correctness/useExhaustiveDependencies: search intentionally not in deps to avoid auto-rerun on input change
@@ -79,6 +88,8 @@ export function CompanySearch() {
           </button>
         </div>
       </search>
+
+      {error && <div className="alert alert-error">{error}</div>}
 
       <div className="space-y-2">
         {candidates.map((c) => (

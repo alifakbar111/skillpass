@@ -1,7 +1,9 @@
 import { lazy, Suspense } from 'react';
 import { createBrowserRouter, RouterProvider } from 'react-router-dom';
 import { RootLayout } from './components/layout/RootLayout';
+import { ErrorBoundary } from './components/ui/ErrorBoundary';
 import { LoadingFallback } from './components/ui/LoadingFallback';
+import { ProtectedRoute } from './components/ui/ProtectedRoute';
 import { AuthProvider } from './hooks/useAuth';
 
 // Eager — critical path (always needed)
@@ -27,6 +29,16 @@ const AdminVerifications = lazy(() =>
   import('./pages/AdminVerifications').then((m) => ({ default: m.AdminVerifications })),
 );
 
+function Protect({
+  requiredRole,
+  children,
+}: {
+  requiredRole: 'jobseeker' | 'company' | 'admin';
+  children: React.ReactNode;
+}) {
+  return <ProtectedRoute requiredRole={requiredRole}>{children}</ProtectedRoute>;
+}
+
 const router = createBrowserRouter([
   {
     element: <RootLayout />,
@@ -38,7 +50,9 @@ const router = createBrowserRouter([
         path: '/jobseeker/profile',
         element: (
           <Suspense fallback={<LoadingFallback />}>
-            <JobseekerProfile />
+            <Protect requiredRole="jobseeker">
+              <JobseekerProfile />
+            </Protect>
           </Suspense>
         ),
       },
@@ -46,7 +60,9 @@ const router = createBrowserRouter([
         path: '/jobseeker/passport',
         element: (
           <Suspense fallback={<LoadingFallback />}>
-            <JobseekerPassport />
+            <Protect requiredRole="jobseeker">
+              <JobseekerPassport />
+            </Protect>
           </Suspense>
         ),
       },
@@ -54,7 +70,9 @@ const router = createBrowserRouter([
         path: '/company/profile',
         element: (
           <Suspense fallback={<LoadingFallback />}>
-            <CompanyProfile />
+            <Protect requiredRole="company">
+              <CompanyProfile />
+            </Protect>
           </Suspense>
         ),
       },
@@ -62,7 +80,9 @@ const router = createBrowserRouter([
         path: '/company/verification',
         element: (
           <Suspense fallback={<LoadingFallback />}>
-            <CompanyVerification />
+            <Protect requiredRole="company">
+              <CompanyVerification />
+            </Protect>
           </Suspense>
         ),
       },
@@ -70,7 +90,9 @@ const router = createBrowserRouter([
         path: '/company/search',
         element: (
           <Suspense fallback={<LoadingFallback />}>
-            <CompanySearch />
+            <Protect requiredRole="company">
+              <CompanySearch />
+            </Protect>
           </Suspense>
         ),
       },
@@ -78,7 +100,9 @@ const router = createBrowserRouter([
         path: '/company/jobs',
         element: (
           <Suspense fallback={<LoadingFallback />}>
-            <CompanyJobs />
+            <Protect requiredRole="company">
+              <CompanyJobs />
+            </Protect>
           </Suspense>
         ),
       },
@@ -110,7 +134,9 @@ const router = createBrowserRouter([
         path: '/admin/verifications',
         element: (
           <Suspense fallback={<LoadingFallback />}>
-            <AdminVerifications />
+            <Protect requiredRole="admin">
+              <AdminVerifications />
+            </Protect>
           </Suspense>
         ),
       },
@@ -121,7 +147,9 @@ const router = createBrowserRouter([
 export function App() {
   return (
     <AuthProvider>
-      <RouterProvider router={router} />
+      <ErrorBoundary>
+        <RouterProvider router={router} />
+      </ErrorBoundary>
     </AuthProvider>
   );
 }

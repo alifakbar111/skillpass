@@ -16,23 +16,56 @@ export function clearTokens() {
   localStorage.removeItem('refreshToken');
 }
 
+export function isAuthError(err: unknown): boolean {
+  if (!(err instanceof Error)) return false;
+  return err.message.includes('401') || err.message.includes('Unauthorized') || err.message.includes('Session expired');
+}
+
+async function fetchJson(url: string, options?: RequestInit): Promise<{ ok: boolean; status: number; body: string }> {
+  const res = await fetch(url, options);
+  const body = await res.text().catch(() => '');
+  return { ok: res.ok, status: res.status, body };
+}
+
+function parseJson<T>(body: string): T {
+  return JSON.parse(body) as T;
+}
+
 async function refreshAccessToken(): Promise<string | null> {
   const refreshToken = localStorage.getItem('refreshToken');
   if (!refreshToken) return null;
 
-  const res = await fetch(`${BASE_URL}/auth/refresh`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ refreshToken }),
-  });
+  try {
+    const res = await fetchJson(`${BASE_URL}/auth/refresh`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ refreshToken }),
+    });
 
-  if (!res.ok) {
+    if (!res.ok) {
+      clearTokens();
+      return null;
+    }
+
+    let data: { accessToken?: string };
+    try {
+      data = parseJson<{ accessToken?: string }>(res.body);
+    } catch {
+      clearTokens();
+      return null;
+    }
+
+    if (!data.accessToken || typeof data.accessToken !== 'string') {
+      clearTokens();
+      return null;
+    }
+
+    setTokens(data.accessToken);
+    return data.accessToken;
+  } catch {
     clearTokens();
     return null;
   }
-  const data = await res.json();
-  setTokens(data.accessToken);
-  return data.accessToken;
 }
 
 export async function api<T = unknown>(path: string, options: RequestInit = {}): Promise<T> {
@@ -41,22 +74,28 @@ export async function api<T = unknown>(path: string, options: RequestInit = {}):
   headers.set('Content-Type', 'application/json');
   if (accessToken) headers.set('Authorization', `Bearer ${accessToken}`);
 
-  let res = await fetch(`${BASE_URL}${path}`, { ...options, headers });
+  try {
+    let res = await fetchJson(`${BASE_URL}${path}`, { ...options, headers });
 
-  if (res.status === 401) {
-    const newToken = await refreshAccessToken();
-    if (newToken) {
-      headers.set('Authorization', `Bearer ${newToken}`);
-      res = await fetch(`${BASE_URL}${path}`, { ...options, headers });
+    if (res.status === 401) {
+      const newToken = await refreshAccessToken();
+      if (newToken) {
+        headers.set('Authorization', `Bearer ${newToken}`);
+        res = await fetchJson(`${BASE_URL}${path}`, { ...options, headers });
+      }
     }
-  }
 
-  if (!res.ok) {
-    const err = await res.text();
-    throw new Error(err || `HTTP ${res.status}`);
-  }
+    if (!res.ok) {
+      throw new Error(res.body || `HTTP ${res.status}`);
+    }
 
-  return res.json();
+    return parseJson<T>(res.body);
+  } catch (err) {
+    if (err instanceof TypeError && err.message === 'Failed to fetch') {
+      throw new Error('Network error — please check your connection');
+    }
+    throw err;
+  }
 }
 
 export interface LoginResponse {

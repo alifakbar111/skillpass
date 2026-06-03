@@ -4,15 +4,15 @@ import { LoadingFallback } from './LoadingFallback';
 
 interface Props {
   children: React.ReactNode;
-  role?: 'jobseeker' | 'company';
+  requiredRole?: 'jobseeker' | 'company' | 'admin';
 }
 
-export function ProtectedRoute({ children, role }: Props) {
+export function ProtectedRoute({ children, requiredRole }: Props) {
   const { user, loading } = useAuth();
 
   if (loading) return <LoadingFallback />;
   if (!user) return <Navigate to="/auth/login" replace />;
-  if (role && user.role !== role) return <Navigate to="/" replace />;
+  if (requiredRole && user.role !== requiredRole) return <Navigate to="/" replace />;
 
   return <>{children}</>;
 }

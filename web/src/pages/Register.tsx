@@ -42,7 +42,7 @@ export function Register() {
       await authRegister(data);
       navigate('/');
     } catch (err) {
-      console.error('error', error)
+      console.error('registration error', err);
       setError(err instanceof Error ? err.message : 'Registration failed');
     } finally {
       setLoading(false);

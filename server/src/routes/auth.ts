@@ -1,13 +1,12 @@
 import { jwt } from '@elysiajs/jwt';
 import { eq } from 'drizzle-orm';
 import { Elysia, t } from 'elysia';
+import { config } from '../config';
 import { db, schema } from '../db';
 import { hashPassword, verifyPassword } from '../lib/password';
 
-const JWT_SECRET = process.env.JWT_SECRET || 'skillpass-dev-secret-change-in-prod';
-
 export const authRoutes = new Elysia({ prefix: '/api/v1/auth' })
-  .use(jwt({ secret: JWT_SECRET, name: 'jwt' }))
+  .use(jwt({ secret: config.jwtSecret, name: 'jwt' }))
   .post(
     '/register',
     async ({ body, jwt: j, set }) => {
@@ -69,7 +68,11 @@ export const authRoutes = new Elysia({ prefix: '/api/v1/auth' })
       }
 
       const accessToken = await j.sign({ userId: user[0].id, role: user[0].role });
-      const refreshToken = await j.sign({ userId: user[0].id, type: 'refresh', exp: Math.floor(Date.now() / 1000) + 7 * 24 * 60 * 60 });
+      const refreshToken = await j.sign({
+        userId: user[0].id,
+        type: 'refresh',
+        exp: Math.floor(Date.now() / 1000) + 7 * 24 * 60 * 60,
+      });
 
       return {
         accessToken,
@@ -115,7 +118,11 @@ export const authRoutes = new Elysia({ prefix: '/api/v1/auth' })
       }
 
       const accessToken = await j.sign({ userId: users[0].id, role: users[0].role });
-      const refreshToken = await j.sign({ userId: users[0].id, type: 'refresh', exp: Math.floor(Date.now() / 1000) + 7 * 24 * 60 * 60 });
+      const refreshToken = await j.sign({
+        userId: users[0].id,
+        type: 'refresh',
+        exp: Math.floor(Date.now() / 1000) + 7 * 24 * 60 * 60,
+      });
 
       return {
         accessToken,

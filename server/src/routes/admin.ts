@@ -1,12 +1,11 @@
 import { jwt } from '@elysiajs/jwt';
 import { eq } from 'drizzle-orm';
 import { Elysia, status, t } from 'elysia';
+import { config } from '../config';
 import { db, schema } from '../db';
 
-const JWT_SECRET = process.env.JWT_SECRET || 'skillpass-dev-secret-change-in-prod';
-
 export const adminRoutes = new Elysia({ prefix: '/api/v1/admin' })
-  .use(jwt({ secret: JWT_SECRET, name: 'jwt' }))
+  .use(jwt({ secret: config.jwtSecret, name: 'jwt' }))
   .derive(async ({ headers, jwt: j }) => {
     const auth = headers.authorization;
     if (!auth?.startsWith('Bearer ')) return status(401, 'Unauthorized');
@@ -23,7 +22,10 @@ export const adminRoutes = new Elysia({ prefix: '/api/v1/admin' })
     async ({ params, body, set }) => {
       const [company] = await db.select().from(schema.companies).where(eq(schema.companies.id, params.id)).limit(1);
 
-      if (!company) { set.status = 404; return { error: 'Company not found' }; }
+      if (!company) {
+        set.status = 404;
+        return { error: 'Company not found' };
+      }
 
       if (body.action === 'approve') {
         const [updated] = await db

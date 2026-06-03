@@ -1,12 +1,11 @@
 import { jwt } from '@elysiajs/jwt';
 import { eq } from 'drizzle-orm';
 import { Elysia, status } from 'elysia';
+import { config } from '../config';
 import { db, schema } from '../db';
 
-const JWT_SECRET = process.env.JWT_SECRET || 'skillpass-dev-secret-change-in-prod';
-
 export const searchRoutes = new Elysia({ prefix: '/api/v1/search' })
-  .use(jwt({ secret: JWT_SECRET, name: 'jwt' }))
+  .use(jwt({ secret: config.jwtSecret, name: 'jwt' }))
   .derive(async ({ headers, jwt: j }) => {
     const auth = headers.authorization;
     if (!auth?.startsWith('Bearer ')) return status(401, 'Unauthorized');

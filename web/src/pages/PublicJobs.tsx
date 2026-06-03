@@ -18,11 +18,17 @@ export function PublicJobs() {
   const [jobs, setJobs] = useState<Job[]>([]);
   const [industry, setIndustry] = useState('');
   const [industries, setIndustries] = useState<Array<{ id: string; name: string }>>([]);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    api<Array<{ id: string; name: string }>>('/industries').then(setIndustries);
+    setError(null);
+    api<Array<{ id: string; name: string }>>('/industries')
+      .then(setIndustries)
+      .catch(() => {});
     const params = industry ? `?industry=${industry}` : '';
-    api<Job[]>(`/jobs${params}`).then(setJobs);
+    api<Job[]>(`/jobs${params}`)
+      .then(setJobs)
+      .catch((err) => setError(err instanceof Error ? err.message : 'Failed to load jobs'));
   }, [industry]);
 
   return (
@@ -41,6 +47,8 @@ export function PublicJobs() {
           </option>
         ))}
       </select>
+
+      {error && <div className="alert alert-error">{error}</div>}
 
       <div className="space-y-2">
         {jobs.map((job) => (

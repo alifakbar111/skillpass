@@ -1,16 +1,16 @@
 import { zodResolver } from '@hookform/resolvers/zod';
+import { X } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { FormInput, FormTextarea } from '../components/ui/FormField';
 import { LoadingSpinner } from '../components/ui/LoadingFallback';
-import { useAuth } from '../hooks/useAuth';
 import { api } from '../lib/api';
 import { type VerificationForm, verificationSchema } from '../lib/schemas';
 
 export function CompanyVerification() {
-  const { user } = useAuth();
   const [status, setStatus] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   const {
     register,
@@ -21,19 +21,36 @@ export function CompanyVerification() {
   });
 
   useEffect(() => {
-    api<{ verificationStatus: string }>('/company/verification-status').then((data) =>
-      setStatus(data.verificationStatus),
-    );
+    api<{ verificationStatus: string }>('/company/verification-status')
+      .then((data) => setStatus(data.verificationStatus))
+      .catch((err) => setError(err instanceof Error ? err.message : 'Failed to load verification status'));
   }, []);
 
   const onSubmit = async (data: VerificationForm) => {
     setSubmitting(true);
-    await api('/company/verification', { method: 'POST', body: JSON.stringify(data) });
-    setStatus('pending');
-    setSubmitting(false);
+    setError(null);
+    try {
+      await api('/company/verification', { method: 'POST', body: JSON.stringify(data) });
+      setStatus('pending');
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Submission failed');
+    } finally {
+      setSubmitting(false);
+    }
   };
 
-  if (!user || user.role !== 'company') return <div className="text-center p-8 text-error">Access denied</div>;
+  if (error) {
+    return (
+      <div className="max-w-lg mx-auto p-4">
+        <div className="alert alert-error">
+          <span>{error}</span>
+          <button type="button" title="close" className="btn btn-ghost btn-xs" onClick={() => setError(null)}>
+            <X size={14} />
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   if (status === 'verified')
     return (

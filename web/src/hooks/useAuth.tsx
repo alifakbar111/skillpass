@@ -1,5 +1,12 @@
 import { createContext, type ReactNode, useCallback, useContext, useEffect, useState } from 'react';
-import { api, login as apiLogin, logout as apiLogout, register as apiRegister, clearTokens } from '../lib/api';
+import {
+  api,
+  login as apiLogin,
+  logout as apiLogout,
+  register as apiRegister,
+  clearTokens,
+  isAuthError,
+} from '../lib/api';
 
 interface User {
   id: string;
@@ -39,7 +46,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (accessToken) {
       api<User>('/profiles/me')
         .then((u) => setUser(u))
-        .catch(() => clearTokens())
+        .catch((err) => {
+          if (isAuthError(err)) clearTokens();
+        })
         .finally(() => setLoading(false));
     } else {
       setLoading(false);
