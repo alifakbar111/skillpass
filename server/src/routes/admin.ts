@@ -12,6 +12,7 @@ export const adminRoutes = new Elysia({ prefix: '/api/v1/admin' })
     if (!auth?.startsWith('Bearer ')) return status(401, 'Unauthorized');
     const payload = await j.verify(auth.slice(7));
     if (!payload) return status(401, 'Unauthorized');
+    if (payload.role !== 'admin') return status(403, 'Forbidden: admin role required');
     return { userId: payload.userId as string };
   })
   .get('/verifications/pending', async () => {
@@ -19,10 +20,10 @@ export const adminRoutes = new Elysia({ prefix: '/api/v1/admin' })
   })
   .post(
     '/verifications/:id',
-    async ({ params, body, error }) => {
+    async ({ params, body, set }) => {
       const [company] = await db.select().from(schema.companies).where(eq(schema.companies.id, params.id)).limit(1);
 
-      if (!company) return error(404, 'Company not found');
+      if (!company) { set.status = 404; return { error: 'Company not found' }; }
 
       if (body.action === 'approve') {
         const [updated] = await db
@@ -44,7 +45,8 @@ export const adminRoutes = new Elysia({ prefix: '/api/v1/admin' })
         return updated;
       }
 
-      return error(400, 'Invalid action');
+      set.status = 400;
+      return { error: 'Invalid action' };
     },
     {
       body: t.Object({

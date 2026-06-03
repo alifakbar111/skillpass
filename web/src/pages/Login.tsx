@@ -22,8 +22,12 @@ export function Login() {
     setServerError('');
     setLoading(true);
     try {
-      await login(data.email, data.password);
-      navigate('/');
+      const user = await login(data.email, data.password);
+      if (user.role === 'admin') {
+        navigate('/admin/verifications');
+      } else {
+        navigate('/');
+      }
     } catch (err) {
       setServerError(err instanceof Error ? err.message : 'Login failed');
     } finally {

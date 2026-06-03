@@ -6,13 +6,13 @@ interface User {
   email: string;
   username: string;
   name: string;
-  role: 'jobseeker' | 'company';
+  role: 'jobseeker' | 'company' | 'admin';
 }
 
 interface AuthContextType {
   user: User | null;
   loading: boolean;
-  login: (email: string, password: string) => Promise<void>;
+  login: (email: string, password: string) => Promise<User>;
   register: (data: {
     email: string;
     username: string;
@@ -49,6 +49,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const login = useCallback(async (email: string, password: string) => {
     const data = await apiLogin(email, password);
     setUser(data.user);
+    return data.user;
   }, []);
 
   const register = useCallback(

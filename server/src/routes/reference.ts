@@ -7,9 +7,9 @@ export const referenceRoutes = new Elysia({ prefix: '/api/v1' })
     return db.select().from(schema.industryCategories).orderBy(schema.industryCategories.name);
   })
   .get('/tags', async ({ query }) => {
-    let queryBuilder = db.select().from(schema.tags);
+    const queryBuilder = db.select().from(schema.tags);
     if (query.industry) {
-      queryBuilder = queryBuilder.where(eq(schema.tags.industryCategoryId, query.industry as string));
+      return queryBuilder.where(eq(schema.tags.industryCategoryId, query.industry as string));
     }
     return queryBuilder;
   });

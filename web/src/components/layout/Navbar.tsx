@@ -33,7 +33,7 @@ export function Navbar() {
           SkillPass
         </Link>
       </div>
-      <div className="flex-none gap-2">
+      <div className="flex flex-wrap gap-2">
         {user ? (
           <>
             {user.role === 'jobseeker' && (
@@ -50,6 +50,11 @@ export function Navbar() {
                   Jobs
                 </Link>
               </>
+            )}
+            {user.role === 'admin' && (
+              <Link to="/admin/verifications" className="btn btn-ghost btn-sm">
+                Verifications
+              </Link>
             )}
             <div className="dropdown dropdown-end" ref={dropdownRef}>
               <button
@@ -90,14 +95,14 @@ export function Navbar() {
             </div>
           </>
         ) : (
-          <>
+          <div className="flex space-x-4">
             <Link to="/auth/login" className="btn btn-ghost btn-sm">
               Login
             </Link>
             <Link to="/auth/register" className="btn btn-primary btn-sm">
               Register
             </Link>
-          </>
+          </div>
         )}
         <ThemeToggle />
       </div>

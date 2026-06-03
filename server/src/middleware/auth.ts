@@ -1,10 +1,11 @@
 import { Elysia } from 'elysia';
 
 export const authMiddleware = new Elysia().guard({
-  beforeHandle({ headers, error }) {
+  beforeHandle({ headers, set }) {
     const auth = headers.authorization;
     if (!auth?.startsWith('Bearer ')) {
-      return error(401, 'Unauthorized');
+      set.status = 401;
+      return { error: 'Unauthorized' };
     }
   },
 });

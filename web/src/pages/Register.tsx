@@ -42,6 +42,7 @@ export function Register() {
       await authRegister(data);
       navigate('/');
     } catch (err) {
+      console.error('error', error)
       setError(err instanceof Error ? err.message : 'Registration failed');
     } finally {
       setLoading(false);

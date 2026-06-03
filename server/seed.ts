@@ -1,3 +1,4 @@
+import { eq } from 'drizzle-orm';
 import { db, schema } from './src/db/index';
 
 async function seed() {
@@ -23,6 +24,25 @@ async function seed() {
   }
 
   console.log(`✅ Seeded ${industries.length} industry categories`);
+
+  // Seed admin user
+  const adminEmail = 'admin-skillpass@yopmail.com';
+  const existingAdmin = await db.select().from(schema.users).where(eq(schema.users.email, adminEmail)).limit(1);
+
+  if (existingAdmin.length === 0) {
+    const passwordHash = await Bun.password.hash('admin123!!');
+    await db.insert(schema.users).values({
+      email: adminEmail,
+      username: 'admin',
+      passwordHash,
+      name: 'Admin',
+      role: 'admin',
+    });
+    console.log('✅ Seeded admin user (admin-skillpass@yopmail.com / admin123!!)');
+  } else {
+    console.log('ℹ️  Admin user already exists, skipping');
+  }
+
   process.exit(0);
 }
 

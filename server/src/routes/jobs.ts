@@ -1,5 +1,5 @@
 import { jwt } from '@elysiajs/jwt';
-import { and, eq } from 'drizzle-orm';
+import { and, eq, sql } from 'drizzle-orm';
 import { Elysia, status, t } from 'elysia';
 import { db, schema } from '../db';
 
@@ -15,11 +15,18 @@ jobRoutes.get('/', async ({ query }) => {
     conditions = and(conditions, eq(schema.jobPostings.industry, query.industry as string));
   }
   if (query.experience_level) {
-    conditions = and(conditions, eq(schema.jobPostings.experienceLevel, query.experience_level as string));
+    conditions = and(conditions, eq(schema.jobPostings.experienceLevel, sql`${query.experience_level}::experience_level`));
   }
 
   const jobs = await db.select().from(schema.jobPostings).where(conditions).orderBy(schema.jobPostings.createdAt);
   return jobs;
+});
+
+// Public single job
+jobRoutes.get('/:id', async ({ params: { id }, set }) => {
+  const [job] = await db.select().from(schema.jobPostings).where(eq(schema.jobPostings.id, id)).limit(1);
+  if (!job) { set.status = 404; return { error: 'Job not found' }; }
+  return job;
 });
 
 // Company routes — require auth + company role
@@ -47,11 +54,17 @@ const _companyJobs = jobRoutes.group('/me', (app) =>
 
 jobRoutes.post(
   '/',
-  async ({ headers, body, jwt: j, error }) => {
+  async ({ headers, body, jwt: j, set }) => {
     const auth = headers.authorization;
-    if (!auth?.startsWith('Bearer ')) return error(401, 'Unauthorized');
+    if (!auth?.startsWith('Bearer ')) {
+      set.status = 401;
+      return 'Unauthorized';
+    }
     const payload = await j.verify(auth.slice(7));
-    if (!payload || payload.role !== 'company') return error(403, 'Forbidden');
+    if (!payload || payload.role !== 'company') {
+      set.status = 401;
+      return 'Unauthorized';
+    }
 
     const [company] = await db
       .select()
@@ -59,8 +72,14 @@ jobRoutes.post(
       .where(eq(schema.companies.userId, payload.userId as string))
       .limit(1);
 
-    if (!company) return error(404, 'Company not found');
-    if (company.verificationStatus !== 'verified') return error(403, 'Company not verified');
+    if (!company) {
+      set.status = 404;
+      return 'Company not found';
+    }
+    if (company.verificationStatus !== 'verified') {
+      set.status = 403;
+      return 'Company not verified';
+    }
 
     const [job] = await db
       .insert(schema.jobPostings)
@@ -90,18 +109,27 @@ jobRoutes.post(
 
 jobRoutes.put(
   '/:id',
-  async ({ headers, params, body, jwt: j, error }) => {
+  async ({ headers, params, body, jwt: j, set }) => {
     const auth = headers.authorization;
-    if (!auth?.startsWith('Bearer ')) return error(401, 'Unauthorized');
+    if (!auth?.startsWith('Bearer ')) {
+      set.status = 401;
+      return 'Unauthorized';
+    }
     const payload = await j.verify(auth.slice(7));
-    if (!payload || payload.role !== 'company') return error(403, 'Forbidden');
+    if (!payload || payload.role !== 'company') {
+      set.status = 401;
+      return 'Unauthorized';
+    }
 
     const [company] = await db
       .select()
       .from(schema.companies)
       .where(eq(schema.companies.userId, payload.userId as string))
       .limit(1);
-    if (!company) return error(404, 'Company not found');
+    if (!company) {
+      set.status = 404;
+      return 'Company not found';
+    }
 
     const [job] = await db
       .update(schema.jobPostings)
@@ -109,7 +137,10 @@ jobRoutes.put(
       .where(and(eq(schema.jobPostings.id, params.id), eq(schema.jobPostings.companyId, company.id)))
       .returning();
 
-    if (!job) return error(404, 'Job not found');
+    if (!job) {
+      set.status = 404;
+      return 'Job not found';
+    }
     return job;
   },
   {
@@ -131,31 +162,36 @@ jobRoutes.put(
   },
 );
 
-jobRoutes.delete('/:id', async ({ headers, params, jwt: j, error }) => {
+jobRoutes.delete('/:id', async ({ headers, params, jwt: j, set }) => {
   const auth = headers.authorization;
-  if (!auth?.startsWith('Bearer ')) return error(401, 'Unauthorized');
+  if (!auth?.startsWith('Bearer ')) {
+    set.status = 401;
+    return 'Unauthorized';
+  }
   const payload = await j.verify(auth.slice(7));
-  if (!payload || payload.role !== 'company') return error(403, 'Forbidden');
+  if (!payload || payload.role !== 'company') {
+    set.status = 401;
+    return 'Unauthorized';
+  }
 
   const [company] = await db
     .select()
     .from(schema.companies)
     .where(eq(schema.companies.userId, payload.userId as string))
     .limit(1);
-  if (!company) return error(404, 'Company not found');
+  if (!company) {
+    set.status = 404;
+    return 'Company not found';
+  }
 
   const [deleted] = await db
     .delete(schema.jobPostings)
     .where(and(eq(schema.jobPostings.id, params.id), eq(schema.jobPostings.companyId, company.id)))
     .returning();
 
-  if (!deleted) return error(404, 'Job not found');
+  if (!deleted) {
+    set.status = 404;
+    return 'Job not found';
+  }
   return { message: 'Deleted' };
-});
-
-// Public single job
-jobRoutes.get('/:id', async ({ params: { id }, error }) => {
-  const [job] = await db.select().from(schema.jobPostings).where(eq(schema.jobPostings.id, id)).limit(1);
-  if (!job) return error(404, 'Job not found');
-  return job;
 });

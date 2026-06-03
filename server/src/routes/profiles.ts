@@ -14,14 +14,14 @@ export const profileRoutes = new Elysia({ prefix: '/api/v1/profiles' })
     if (!payload) return status(401, 'Unauthorized');
     return { userId: payload.userId as string, role: payload.role as string };
   })
-  .get('/me', async ({ userId, error }) => {
+  .get('/me', async ({ userId, set }) => {
     const profile = await db
       .select()
       .from(schema.jobseekerProfiles)
       .where(eq(schema.jobseekerProfiles.userId, userId))
       .limit(1);
 
-    if (profile.length === 0) return error(404, 'Profile not found');
+    if (profile.length === 0) { set.status = 404; return { error: 'Profile not found' }; }
 
     const [user] = await db
       .select({
@@ -45,7 +45,7 @@ export const profileRoutes = new Elysia({ prefix: '/api/v1/profiles' })
   })
   .put(
     '/me',
-    async ({ userId, body, error }) => {
+    async ({ userId, body, set }) => {
       const [profile] = await db
         .update(schema.jobseekerProfiles)
         .set({
@@ -57,7 +57,7 @@ export const profileRoutes = new Elysia({ prefix: '/api/v1/profiles' })
         .where(eq(schema.jobseekerProfiles.userId, userId))
         .returning();
 
-      if (!profile) return error(404, 'Profile not found');
+      if (!profile) { set.status = 404; return { error: 'Profile not found' }; }
       return profile;
     },
     {
@@ -71,14 +71,14 @@ export const profileRoutes = new Elysia({ prefix: '/api/v1/profiles' })
   )
   .post(
     '/me/experience',
-    async ({ userId, body, error }) => {
+    async ({ userId, body, set }) => {
       const [profile] = await db
         .select()
         .from(schema.jobseekerProfiles)
         .where(eq(schema.jobseekerProfiles.userId, userId))
         .limit(1);
 
-      if (!profile) return error(404, 'Profile not found');
+      if (!profile) { set.status = 404; return { error: 'Profile not found' }; }
 
       const [exp] = await db
         .insert(schema.jobExperiences)
@@ -114,13 +114,13 @@ export const profileRoutes = new Elysia({ prefix: '/api/v1/profiles' })
   )
   .put(
     '/me/experience/:id',
-    async ({ userId, params, body, error }) => {
+    async ({ userId, params, body, set }) => {
       const [profile] = await db
         .select()
         .from(schema.jobseekerProfiles)
         .where(eq(schema.jobseekerProfiles.userId, userId))
         .limit(1);
-      if (!profile) return error(404, 'Profile not found');
+      if (!profile) { set.status = 404; return { error: 'Profile not found' }; }
 
       const [updated] = await db
         .update(schema.jobExperiences)
@@ -128,7 +128,7 @@ export const profileRoutes = new Elysia({ prefix: '/api/v1/profiles' })
         .where(and(eq(schema.jobExperiences.id, params.id), eq(schema.jobExperiences.profileId, profile.id)))
         .returning();
 
-      if (!updated) return error(404, 'Experience not found');
+      if (!updated) { set.status = 404; return { error: 'Experience not found' }; }
       return updated;
     },
     {
@@ -155,19 +155,19 @@ export const profileRoutes = new Elysia({ prefix: '/api/v1/profiles' })
       ),
     },
   )
-  .delete('/me/experience/:id', async ({ userId, params, error }) => {
+  .delete('/me/experience/:id', async ({ userId, params, set }) => {
     const [profile] = await db
       .select()
       .from(schema.jobseekerProfiles)
       .where(eq(schema.jobseekerProfiles.userId, userId))
       .limit(1);
-    if (!profile) return error(404, 'Profile not found');
+    if (!profile) { set.status = 404; return { error: 'Profile not found' }; }
 
     const [deleted] = await db
       .delete(schema.jobExperiences)
       .where(and(eq(schema.jobExperiences.id, params.id), eq(schema.jobExperiences.profileId, profile.id)))
       .returning();
 
-    if (!deleted) return error(404, 'Experience not found');
+    if (!deleted) { set.status = 404; return { error: 'Experience not found' }; }
     return { message: 'Deleted' };
   });

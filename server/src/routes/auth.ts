@@ -10,13 +10,14 @@ export const authRoutes = new Elysia({ prefix: '/api/v1/auth' })
   .use(jwt({ secret: JWT_SECRET, name: 'jwt' }))
   .post(
     '/register',
-    async ({ body, jwt: j, error }) => {
+    async ({ body, jwt: j, set }) => {
       const { email, username, password, name, role } = body;
 
       const existingUser = await db.select().from(schema.users).where(eq(schema.users.email, email)).limit(1);
 
       if (existingUser.length > 0) {
-        return error(409, 'Email already registered');
+        set.status = 409;
+        return { error: 'Email already registered' };
       }
 
       const coFields = body as {
@@ -68,7 +69,7 @@ export const authRoutes = new Elysia({ prefix: '/api/v1/auth' })
       }
 
       const accessToken = await j.sign({ userId: user[0].id, role: user[0].role });
-      const refreshToken = await j.sign({ userId: user[0].id, type: 'refresh' }, { expiresIn: '7d' });
+      const refreshToken = await j.sign({ userId: user[0].id, type: 'refresh', exp: Math.floor(Date.now() / 1000) + 7 * 24 * 60 * 60 });
 
       return {
         accessToken,
@@ -99,20 +100,22 @@ export const authRoutes = new Elysia({ prefix: '/api/v1/auth' })
   )
   .post(
     '/login',
-    async ({ body, jwt: j, error }) => {
+    async ({ body, jwt: j, set }) => {
       const users = await db.select().from(schema.users).where(eq(schema.users.email, body.email)).limit(1);
 
       if (users.length === 0) {
-        return error(401, 'Invalid credentials');
+        set.status = 401;
+        return { error: 'Invalid credentials' };
       }
 
       const valid = await verifyPassword(body.password, users[0].passwordHash);
       if (!valid) {
-        return error(401, 'Invalid credentials');
+        set.status = 401;
+        return { error: 'Invalid credentials' };
       }
 
       const accessToken = await j.sign({ userId: users[0].id, role: users[0].role });
-      const refreshToken = await j.sign({ userId: users[0].id, type: 'refresh' }, { expiresIn: '7d' });
+      const refreshToken = await j.sign({ userId: users[0].id, type: 'refresh', exp: Math.floor(Date.now() / 1000) + 7 * 24 * 60 * 60 });
 
       return {
         accessToken,
@@ -135,17 +138,19 @@ export const authRoutes = new Elysia({ prefix: '/api/v1/auth' })
   )
   .post(
     '/refresh',
-    async ({ body, jwt: j, error }) => {
+    async ({ body, jwt: j, set }) => {
       try {
         const payload = await j.verify(body.refreshToken);
         if (!payload || payload.type !== 'refresh') {
-          return error(401, 'Invalid refresh token');
+          set.status = 401;
+          return { error: 'Invalid refresh token' };
         }
 
         const accessToken = await j.sign({ userId: payload.userId, role: payload.role });
         return { accessToken };
       } catch {
-        return error(401, 'Invalid refresh token');
+        set.status = 401;
+        return { error: 'Invalid refresh token' };
       }
     },
     {

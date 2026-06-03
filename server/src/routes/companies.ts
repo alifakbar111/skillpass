@@ -15,10 +15,10 @@ export const companyRoutes = new Elysia({ prefix: '/api/v1/company' })
     if (payload.role !== 'company') return status(403, 'Forbidden: company role required');
     return { userId: payload.userId as string };
   })
-  .get('/profile', async ({ userId, error }) => {
+  .get('/profile', async ({ userId, set }) => {
     const [company] = await db.select().from(schema.companies).where(eq(schema.companies.userId, userId)).limit(1);
 
-    if (!company) return error(404, 'Company not found');
+    if (!company) { set.status = 404; return { error: 'Company not found' }; }
     return company;
   })
   .put(
@@ -43,7 +43,7 @@ export const companyRoutes = new Elysia({ prefix: '/api/v1/company' })
   )
   .post(
     '/verification',
-    async ({ userId, body, error }) => {
+    async ({ userId, body, set }) => {
       const [company] = await db
         .update(schema.companies)
         .set({
@@ -53,7 +53,7 @@ export const companyRoutes = new Elysia({ prefix: '/api/v1/company' })
         .where(eq(schema.companies.userId, userId))
         .returning();
 
-      if (!company) return error(404, 'Company not found');
+      if (!company) { set.status = 404; return { error: 'Company not found' }; }
       return { message: 'Verification submitted', status: 'pending' };
     },
     {

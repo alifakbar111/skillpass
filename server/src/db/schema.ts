@@ -1,7 +1,7 @@
 import { relations } from 'drizzle-orm';
 import { boolean, integer, jsonb, pgEnum, pgTable, text, timestamp, uuid } from 'drizzle-orm/pg-core';
 
-export const roleEnum = pgEnum('role', ['jobseeker', 'company']);
+export const roleEnum = pgEnum('role', ['jobseeker', 'company', 'admin']);
 export const experienceTypeEnum = pgEnum('experience_type', [
   'employment',
   'gig',

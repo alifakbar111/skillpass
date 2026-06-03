@@ -2,9 +2,10 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { Pencil, Plus, X } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { useForm } from 'react-hook-form';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { FormInput, FormSelect, FormTextarea } from '../components/ui/FormField';
-import { LoadingSpinner } from '../components/ui/LoadingFallback';
+import { LoadingFallback, LoadingSpinner } from '../components/ui/LoadingFallback';
+import { useAuth } from '../hooks/useAuth';
 import { api } from '../lib/api';
 import { type JobForm, jobSchema } from '../lib/schemas';
 
@@ -26,10 +27,14 @@ const EXPERIENCE_LEVELS = [
 ];
 
 export function CompanyJobs() {
+  const { user, loading: authLoading } = useAuth();
+  const navigate = useNavigate();
+
   const [jobs, setJobs] = useState<Job[]>([]);
   const [showForm, setShowForm] = useState(false);
   const [industries, setIndustries] = useState<Array<{ id: string; name: string }>>([]);
   const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   const {
     register,
@@ -51,39 +56,65 @@ export function CompanyJobs() {
   });
 
   useEffect(() => {
-    api<Array<{ id: string; name: string }>>('/industries').then(setIndustries);
-    api<Job[]>('/jobs/me').then(setJobs);
-  }, []);
+    if (authLoading) return;
+    if (!user) {
+      navigate('/auth/login', { replace: true });
+      return;
+    }
+    if (user.role !== 'company') {
+      navigate('/', { replace: true });
+      return;
+    }
+    api<Array<{ id: string; name: string }>>('/industries')
+      .then(setIndustries)
+      .catch(() => {});
+    api<Job[]>('/jobs/me')
+      .then(setJobs)
+      .catch(() => {});
+  }, [user, authLoading, navigate]);
 
   const createJob = async (data: JobForm) => {
     setSaving(true);
-    const tags = data.tags
-      ? data.tags
-          .split(',')
-          .map((t) => t.trim())
-          .filter(Boolean)
-      : [];
-    const requiredSkills = data.requiredSkills
-      ? data.requiredSkills
-          .split(',')
-          .map((s) => s.trim())
-          .filter(Boolean)
-      : [];
-    await api('/jobs', {
-      method: 'POST',
-      body: JSON.stringify({ ...data, tags, requiredSkills }),
-    });
-    const updated = await api<Job[]>('/jobs/me');
-    setJobs(updated);
-    setShowForm(false);
-    reset();
-    setSaving(false);
+    setError(null);
+    try {
+      const tags = data.tags
+        ? data.tags
+            .split(',')
+            .map((t) => t.trim())
+            .filter(Boolean)
+        : [];
+      const requiredSkills = data.requiredSkills
+        ? data.requiredSkills
+            .split(',')
+            .map((s) => s.trim())
+            .filter(Boolean)
+        : [];
+      await api('/jobs', {
+        method: 'POST',
+        body: JSON.stringify({ ...data, tags, requiredSkills }),
+      });
+      const updated = await api<Job[]>('/jobs/me');
+      setJobs(updated);
+      setShowForm(false);
+      reset();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to create job');
+    } finally {
+      setSaving(false);
+    }
   };
 
   const closeJob = async (id: string) => {
-    await api(`/jobs/${id}`, { method: 'PUT', body: JSON.stringify({ status: 'closed' }) });
-    setJobs((prev) => prev.map((j) => (j.id === id ? { ...j, status: 'closed' } : j)));
+    try {
+      await api(`/jobs/${id}`, { method: 'PUT', body: JSON.stringify({ status: 'closed' }) });
+      setJobs((prev) => prev.map((j) => (j.id === id ? { ...j, status: 'closed' } : j)));
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to close job');
+    }
   };
+
+  if (authLoading) return <LoadingFallback />;
+  if (!user || user.role !== 'company') return null;
 
   return (
     <div className="max-w-3xl mx-auto p-4 space-y-4">
@@ -93,6 +124,15 @@ export function CompanyJobs() {
           <Plus size={16} aria-hidden="true" /> New Job
         </button>
       </div>
+
+      {error && (
+        <div className="alert alert-error">
+          <span>{error}</span>
+          <button type="button" title="close" className="btn btn-ghost btn-xs" onClick={() => setError(null)}>
+            <X size={14} />
+          </button>
+        </div>
+      )}
 
       {showForm && (
         <form onSubmit={handleSubmit(createJob)} className="card bg-base-200 p-4 space-y-3">

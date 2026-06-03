@@ -4,14 +4,14 @@ import { db, schema } from '../db';
 
 export const passportRoutes = new Elysia().get(
   '/api/v1/profiles/:username',
-  async ({ params: { username }, error }) => {
+  async ({ params: { username }, set }) => {
     const [profile] = await db
       .select()
       .from(schema.jobseekerProfiles)
       .where(eq(schema.jobseekerProfiles.slug, username))
       .limit(1);
 
-    if (!profile) return error(404, 'Profile not found');
+    if (!profile) { set.status = 404; return { error: 'Profile not found' }; }
 
     const [user] = await db.select().from(schema.users).where(eq(schema.users.id, profile.userId)).limit(1);
 
