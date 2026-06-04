@@ -6,3 +6,5 @@ drizzle/
 .DS_Store
 .qwen/
 docs/
+.agents/
+.kilo/
