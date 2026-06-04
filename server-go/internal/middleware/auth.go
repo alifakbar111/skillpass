@@ -1,0 +1,88 @@
+package middleware
+
+import (
+	"context"
+	"net/http"
+	"strings"
+
+	"github.com/gin-gonic/gin"
+	"github.com/golang-jwt/jwt/v5"
+	. "github.com/go-jet/jet/v2/postgres"
+	"database/sql"
+
+	"skillpass-server-go/.gen/skillpass/public/model"
+	"skillpass-server-go/internal/gen"
+)
+
+type Claims struct {
+	UserID string `json:"userId"`
+	Role   string `json:"role"`
+	jwt.RegisteredClaims
+}
+
+func AuthRequired(jwtSecret string) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		auth := c.GetHeader("Authorization")
+		if !strings.HasPrefix(auth, "Bearer ") {
+			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "Unauthorized"})
+			return
+		}
+
+		token, err := jwt.ParseWithClaims(auth[7:], &Claims{}, func(token *jwt.Token) (any, error) {
+			return []byte(jwtSecret), nil
+		})
+		if err != nil || !token.Valid {
+			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "Unauthorized"})
+			return
+		}
+
+		claims, ok := token.Claims.(*Claims)
+		if !ok {
+			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "Unauthorized"})
+			return
+		}
+
+		c.Set("userId", claims.UserID)
+		c.Set("role", claims.Role)
+		c.Next()
+	}
+}
+
+func RequireRole(role string) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		userRole, exists := c.Get("role")
+		if !exists || userRole.(string) != role {
+			c.AbortWithStatusJSON(http.StatusForbidden, gin.H{"error": "Forbidden"})
+			return
+		}
+		c.Next()
+	}
+}
+
+func RequireVerifiedCompany(db *sql.DB) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		userID, _ := c.Get("userId")
+		userIDStr := userID.(string)
+
+		stmt := SELECT(
+			gen.Companies.ID, gen.Companies.VerificationStatus,
+		).FROM(
+			gen.Companies,
+		).WHERE(
+			gen.Companies.UserID.EQ(String(userIDStr)),
+		)
+
+		var company model.Companies
+		err := stmt.QueryContext(context.Background(), db, &company)
+		if err != nil {
+			c.AbortWithStatusJSON(http.StatusNotFound, gin.H{"error": "Company not found"})
+			return
+		}
+		if company.VerificationStatus != model.VerificationStatus_Verified {
+			c.AbortWithStatusJSON(http.StatusForbidden, gin.H{"error": "Company not verified"})
+			return
+		}
+		c.Set("companyId", company.ID.String())
+		c.Next()
+	}
+}
