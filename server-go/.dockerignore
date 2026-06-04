@@ -1,0 +1,5 @@
+.env
+.env.example
+cmd/seed/
+cmd/migrate/
+*.md
