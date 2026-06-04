@@ -4,6 +4,8 @@ drizzle/
 .env
 *.log
 .DS_Store
+server-go/migrate
+server-go/seed
 .qwen/
 docs/
 .agents/
