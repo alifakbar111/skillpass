@@ -6,7 +6,14 @@ drizzle/
 .DS_Store
 server-go/migrate
 server-go/seed
+server-go/server
 .qwen/
 docs/
 .agents/
 .kilo/
+.vscode/
+
+# Auto-emitted tsc output (should not be checked in)
+web/src/**/*.js
+web/src/**/*.js.map
+!web/src/**/*.config.js

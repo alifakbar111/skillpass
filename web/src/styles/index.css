@@ -6,3 +6,21 @@
   --font-sans: "Outfit", sans-serif;
   --font-mono: "Fira Code", monospace;
 }
+
+@layer base {
+  .skip-link {
+    position: absolute;
+    top: -100px;
+    left: 0;
+    z-index: 100;
+    padding: 0.5rem 1rem;
+    background: var(--color-base-100, #fff);
+    color: var(--color-base-content, #000);
+    border: 2px solid currentColor;
+    text-decoration: none;
+    font-weight: 600;
+  }
+  .skip-link:focus {
+    top: 0;
+  }
+}
