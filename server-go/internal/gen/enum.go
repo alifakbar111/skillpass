@@ -21,4 +21,11 @@ var (
 	ExperienceLevelMid    = enum.ExperienceLevel.Mid
 	ExperienceLevelSenior = enum.ExperienceLevel.Senior
 	ExperienceLevelLead   = enum.ExperienceLevel.Lead
+
+	ExperienceTypeEmployment    = enum.ExperienceType.Employment
+	ExperienceTypeGig           = enum.ExperienceType.Gig
+	ExperienceTypeEducation     = enum.ExperienceType.Education
+	ExperienceTypeCertification = enum.ExperienceType.Certification
+	ExperienceTypeProject       = enum.ExperienceType.Project
+	ExperienceTypeVolunteering  = enum.ExperienceType.Volunteering
 )

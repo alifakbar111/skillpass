@@ -28,7 +28,7 @@ type jobPostingsTable struct {
 	Location        postgres.ColumnString
 	SalaryRange     postgres.ColumnString
 	Status          postgres.ColumnString
-	CreatedAt       postgres.ColumnTimestamp
+	CreatedAt       postgres.ColumnTimestampz
 
 	AllColumns     postgres.ColumnList
 	MutableColumns postgres.ColumnList
@@ -81,7 +81,7 @@ func newJobPostingsTableImpl(schemaName, tableName, alias string) jobPostingsTab
 		LocationColumn        = postgres.StringColumn("location")
 		SalaryRangeColumn     = postgres.StringColumn("salary_range")
 		StatusColumn          = postgres.StringColumn("status")
-		CreatedAtColumn       = postgres.TimestampColumn("created_at")
+		CreatedAtColumn       = postgres.TimestampzColumn("created_at")
 		allColumns            = postgres.ColumnList{IDColumn, CompanyIDColumn, TitleColumn, DescriptionColumn, IndustryColumn, TagsColumn, RequiredSkillsColumn, ExperienceLevelColumn, LocationColumn, SalaryRangeColumn, StatusColumn, CreatedAtColumn}
 		mutableColumns        = postgres.ColumnList{CompanyIDColumn, TitleColumn, DescriptionColumn, IndustryColumn, TagsColumn, RequiredSkillsColumn, ExperienceLevelColumn, LocationColumn, SalaryRangeColumn, StatusColumn, CreatedAtColumn}
 		defaultColumns        = postgres.ColumnList{IDColumn, StatusColumn, CreatedAtColumn}

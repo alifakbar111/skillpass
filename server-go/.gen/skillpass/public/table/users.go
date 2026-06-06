@@ -25,7 +25,7 @@ type usersTable struct {
 	Name         postgres.ColumnString
 	AvatarURL    postgres.ColumnString
 	IsVerified   postgres.ColumnBool
-	CreatedAt    postgres.ColumnTimestamp
+	CreatedAt    postgres.ColumnTimestampz
 
 	AllColumns     postgres.ColumnList
 	MutableColumns postgres.ColumnList
@@ -75,7 +75,7 @@ func newUsersTableImpl(schemaName, tableName, alias string) usersTable {
 		NameColumn         = postgres.StringColumn("name")
 		AvatarURLColumn    = postgres.StringColumn("avatar_url")
 		IsVerifiedColumn   = postgres.BoolColumn("is_verified")
-		CreatedAtColumn    = postgres.TimestampColumn("created_at")
+		CreatedAtColumn    = postgres.TimestampzColumn("created_at")
 		allColumns         = postgres.ColumnList{IDColumn, EmailColumn, UsernameColumn, PasswordHashColumn, RoleColumn, NameColumn, AvatarURLColumn, IsVerifiedColumn, CreatedAtColumn}
 		mutableColumns     = postgres.ColumnList{EmailColumn, UsernameColumn, PasswordHashColumn, RoleColumn, NameColumn, AvatarURLColumn, IsVerifiedColumn, CreatedAtColumn}
 		defaultColumns     = postgres.ColumnList{IDColumn, IsVerifiedColumn, CreatedAtColumn}

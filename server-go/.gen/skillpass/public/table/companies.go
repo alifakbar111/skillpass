@@ -25,8 +25,8 @@ type companiesTable struct {
 	Description        postgres.ColumnString
 	VerificationStatus postgres.ColumnString
 	VerificationDocs   postgres.ColumnString
-	VerifiedAt         postgres.ColumnTimestamp
-	CreatedAt          postgres.ColumnTimestamp
+	VerifiedAt         postgres.ColumnTimestampz
+	CreatedAt          postgres.ColumnTimestampz
 
 	AllColumns     postgres.ColumnList
 	MutableColumns postgres.ColumnList
@@ -76,8 +76,8 @@ func newCompaniesTableImpl(schemaName, tableName, alias string) companiesTable {
 		DescriptionColumn        = postgres.StringColumn("description")
 		VerificationStatusColumn = postgres.StringColumn("verification_status")
 		VerificationDocsColumn   = postgres.StringColumn("verification_docs")
-		VerifiedAtColumn         = postgres.TimestampColumn("verified_at")
-		CreatedAtColumn          = postgres.TimestampColumn("created_at")
+		VerifiedAtColumn         = postgres.TimestampzColumn("verified_at")
+		CreatedAtColumn          = postgres.TimestampzColumn("created_at")
 		allColumns               = postgres.ColumnList{IDColumn, UserIDColumn, CompanyNameColumn, WebsiteColumn, IndustryColumn, DescriptionColumn, VerificationStatusColumn, VerificationDocsColumn, VerifiedAtColumn, CreatedAtColumn}
 		mutableColumns           = postgres.ColumnList{UserIDColumn, CompanyNameColumn, WebsiteColumn, IndustryColumn, DescriptionColumn, VerificationStatusColumn, VerificationDocsColumn, VerifiedAtColumn, CreatedAtColumn}
 		defaultColumns           = postgres.ColumnList{IDColumn, VerificationStatusColumn, CreatedAtColumn}

@@ -15,4 +15,6 @@ type (
 	IndustryCategory  = model.IndustryCategories
 	Tag               = model.Tags
 	JobPosting        = model.JobPostings
+	RefreshToken      = model.RefreshTokens
+	AdminAudit        = model.AdminAuditLog
 )

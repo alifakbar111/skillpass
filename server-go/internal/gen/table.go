@@ -13,4 +13,6 @@ var (
 	IndustryCategories = table.IndustryCategories
 	Tags               = table.Tags
 	JobPostings        = table.JobPostings
+	RefreshTokens      = table.RefreshTokens
+	AdminAuditLog      = table.AdminAuditLog
 )
