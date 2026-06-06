@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { FormInput, FormSelect, FormTextarea } from '../components/ui/FormField';
 import { LoadingFallback, LoadingSpinner } from '../components/ui/LoadingFallback';
-import { api } from '../lib/api';
+import { ApiError, api } from '../lib/api';
 import { type ExperienceForm, experienceSchema, type ProfileForm, profileSchema } from '../lib/schemas';
 
 interface Experience {
@@ -67,8 +67,10 @@ export function JobseekerProfile() {
   });
 
   useEffect(() => {
+    let cancelled = false;
     api<Profile>('/profiles/me')
       .then((data) => {
+        if (cancelled) return;
         setProfile(data);
         profileForm.reset({
           headline: data.headline || '',
@@ -76,8 +78,17 @@ export function JobseekerProfile() {
           yearsOfExperience: data.yearsOfExperience || undefined,
         });
       })
-      .catch((err) => setError(err instanceof Error ? err.message : 'Failed to load profile'))
-      .finally(() => setLoading(false));
+      .catch((err) => {
+        if (!cancelled) {
+          setError(err instanceof ApiError ? (err.serverMessage ?? err.message) : 'Failed to load profile');
+        }
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
   }, [profileForm]);
 
   const saveProfile = async (data: ProfileForm) => {
@@ -90,7 +101,7 @@ export function JobseekerProfile() {
       });
       setProfile((prev) => (prev ? { ...prev, ...updated } : null));
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to save profile');
+      setError(err instanceof ApiError ? (err.serverMessage ?? err.message) : 'Failed to save profile');
     } finally {
       setSaving(false);
     }
@@ -127,17 +138,17 @@ export function JobseekerProfile() {
         skills: '',
       });
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to add experience');
+      setError(err instanceof ApiError ? (err.serverMessage ?? err.message) : 'Failed to add experience');
     }
   };
 
   const deleteExperience = async (id: string) => {
     setError(null);
     try {
-      await api(`/profiles/me/experience/${id}`, { method: 'DELETE' });
+      await api(`/profiles/me/experience/${encodeURIComponent(id)}`, { method: 'DELETE' });
       setProfile((prev) => (prev ? { ...prev, experiences: prev.experiences.filter((e) => e.id !== id) } : null));
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to delete experience');
+      setError(err instanceof ApiError ? (err.serverMessage ?? err.message) : 'Failed to delete experience');
     }
   };
 

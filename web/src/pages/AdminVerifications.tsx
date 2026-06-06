@@ -1,6 +1,6 @@
 import { Check, X } from 'lucide-react';
 import { useEffect, useState } from 'react';
-import { api } from '../lib/api';
+import { ApiError, api } from '../lib/api';
 
 interface Company {
   id: string;
@@ -17,22 +17,33 @@ export function AdminVerifications() {
   const [actionLoading, setActionLoading] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  const loadPending = () => {
+  useEffect(() => {
+    let cancelled = false;
     api<Company[]>('/admin/verifications/pending')
-      .then(setPending)
-      .catch((err) => setError(err instanceof Error ? err.message : 'Failed to load verifications'));
-  };
-
-  useEffect(loadPending, []);
+      .then((data) => {
+        if (!cancelled) setPending(data);
+      })
+      .catch((err) => {
+        if (!cancelled) {
+          setError(err instanceof ApiError ? (err.serverMessage ?? err.message) : 'Failed to load verifications');
+        }
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   const handleAction = async (id: string, action: 'approve' | 'reject') => {
     setActionLoading(id);
     setError(null);
     try {
-      await api(`/admin/verifications/${id}`, { method: 'POST', body: JSON.stringify({ action }) });
+      await api(`/admin/verifications/${encodeURIComponent(id)}`, {
+        method: 'POST',
+        body: JSON.stringify({ action }),
+      });
       setPending((prev) => prev.filter((c) => c.id !== id));
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Action failed');
+      setError(err instanceof ApiError ? (err.serverMessage ?? err.message) : 'Action failed');
     } finally {
       setActionLoading(null);
     }

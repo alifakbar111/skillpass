@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { LoadingSpinner } from '../components/ui/LoadingFallback';
-import { api } from '../lib/api';
+import { ApiError, api } from '../lib/api';
 
 interface Candidate {
   id: string;
@@ -24,9 +24,15 @@ export function CompanySearch() {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
+    let cancelled = false;
     api<Array<{ id: string; name: string }>>('/industries')
-      .then(setIndustries)
+      .then((data) => {
+        if (!cancelled) setIndustries(data);
+      })
       .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   const search = async () => {
@@ -40,7 +46,7 @@ export function CompanySearch() {
       const data = await api<Candidate[]>(`/search/candidates?${params}`);
       setCandidates(data);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Search failed');
+      setError(err instanceof ApiError ? (err.serverMessage ?? err.message) : 'Search failed');
     } finally {
       setLoading(false);
     }

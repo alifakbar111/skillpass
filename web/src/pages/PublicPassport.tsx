@@ -28,9 +28,18 @@ export function PublicPassport() {
 
   useEffect(() => {
     if (!username) return;
-    api<PassportData>(`/profiles/${username}`)
-      .then(setData)
-      .catch(() => setError('Profile not found'));
+    const safe = encodeURIComponent(username);
+    let cancelled = false;
+    api<PassportData>(`/profiles/${safe}`)
+      .then((d) => {
+        if (!cancelled) setData(d);
+      })
+      .catch(() => {
+        if (!cancelled) setError('Profile not found');
+      });
+    return () => {
+      cancelled = true;
+    };
   }, [username]);
 
   if (error)

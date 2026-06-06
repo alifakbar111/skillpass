@@ -3,7 +3,7 @@ import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { LoadingFallback } from '../components/ui/LoadingFallback';
 import { useAuth } from '../hooks/useAuth';
-import { api } from '../lib/api';
+import { ApiError, api } from '../lib/api';
 
 interface PassportData {
   name: string;
@@ -29,11 +29,21 @@ export function JobseekerPassport() {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    if (user) {
-      api<PassportData>(`/profiles/${user.username}`)
-        .then(setData)
-        .catch((err) => setError(err instanceof Error ? err.message : 'Failed to load passport'));
-    }
+    if (!user) return;
+    const safe = encodeURIComponent(user.username);
+    let cancelled = false;
+    api<PassportData>(`/profiles/${safe}`)
+      .then((d) => {
+        if (!cancelled) setData(d);
+      })
+      .catch((err) => {
+        if (!cancelled) {
+          setError(err instanceof ApiError ? (err.serverMessage ?? err.message) : 'Failed to load passport');
+        }
+      });
+    return () => {
+      cancelled = true;
+    };
   }, [user]);
 
   if (error) {

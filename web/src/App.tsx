@@ -6,12 +6,10 @@ import { LoadingFallback } from './components/ui/LoadingFallback';
 import { ProtectedRoute } from './components/ui/ProtectedRoute';
 import { AuthProvider } from './hooks/useAuth';
 
-// Eager — critical path (always needed)
 import { Landing } from './pages/Landing';
 import { Login } from './pages/Login';
 import { Register } from './pages/Register';
 
-// Lazy — loaded on navigation (named exports wrapped for lazy())
 const JobseekerProfile = lazy(() => import('./pages/JobseekerProfile').then((m) => ({ default: m.JobseekerProfile })));
 const JobseekerPassport = lazy(() =>
   import('./pages/JobseekerPassport').then((m) => ({ default: m.JobseekerPassport })),
@@ -29,16 +27,6 @@ const AdminVerifications = lazy(() =>
   import('./pages/AdminVerifications').then((m) => ({ default: m.AdminVerifications })),
 );
 
-function Protect({
-  requiredRole,
-  children,
-}: {
-  requiredRole: 'jobseeker' | 'company' | 'admin';
-  children: React.ReactNode;
-}) {
-  return <ProtectedRoute requiredRole={requiredRole}>{children}</ProtectedRoute>;
-}
-
 const router = createBrowserRouter([
   {
     element: <RootLayout />,
@@ -49,95 +37,69 @@ const router = createBrowserRouter([
       {
         path: '/jobseeker/profile',
         element: (
-          <Suspense fallback={<LoadingFallback />}>
-            <Protect requiredRole="jobseeker">
-              <JobseekerProfile />
-            </Protect>
-          </Suspense>
+          <ProtectedRoute requiredRole="jobseeker">
+            <JobseekerProfile />
+          </ProtectedRoute>
         ),
       },
       {
         path: '/jobseeker/passport',
         element: (
-          <Suspense fallback={<LoadingFallback />}>
-            <Protect requiredRole="jobseeker">
-              <JobseekerPassport />
-            </Protect>
-          </Suspense>
+          <ProtectedRoute requiredRole="jobseeker">
+            <JobseekerPassport />
+          </ProtectedRoute>
         ),
       },
       {
         path: '/company/profile',
         element: (
-          <Suspense fallback={<LoadingFallback />}>
-            <Protect requiredRole="company">
-              <CompanyProfile />
-            </Protect>
-          </Suspense>
+          <ProtectedRoute requiredRole="company">
+            <CompanyProfile />
+          </ProtectedRoute>
         ),
       },
       {
         path: '/company/verification',
         element: (
-          <Suspense fallback={<LoadingFallback />}>
-            <Protect requiredRole="company">
-              <CompanyVerification />
-            </Protect>
-          </Suspense>
+          <ProtectedRoute requiredRole="company">
+            <CompanyVerification />
+          </ProtectedRoute>
         ),
       },
       {
         path: '/company/search',
         element: (
-          <Suspense fallback={<LoadingFallback />}>
-            <Protect requiredRole="company">
-              <CompanySearch />
-            </Protect>
-          </Suspense>
+          <ProtectedRoute requiredRole="company">
+            <CompanySearch />
+          </ProtectedRoute>
         ),
       },
       {
         path: '/company/jobs',
         element: (
-          <Suspense fallback={<LoadingFallback />}>
-            <Protect requiredRole="company">
-              <CompanyJobs />
-            </Protect>
-          </Suspense>
+          <ProtectedRoute requiredRole="company">
+            <CompanyJobs />
+          </ProtectedRoute>
         ),
       },
       {
         path: '/jobs',
-        element: (
-          <Suspense fallback={<LoadingFallback />}>
-            <PublicJobs />
-          </Suspense>
-        ),
+        element: <PublicJobs />,
       },
       {
         path: '/jobs/:id',
-        element: (
-          <Suspense fallback={<LoadingFallback />}>
-            <JobDetail />
-          </Suspense>
-        ),
+        element: <JobDetail />,
       },
       {
         path: '/profiles/:username',
-        element: (
-          <Suspense fallback={<LoadingFallback />}>
-            <PublicPassport />
-          </Suspense>
-        ),
+        element: <PublicPassport />,
       },
       {
         path: '/admin/verifications',
         element: (
-          <Suspense fallback={<LoadingFallback />}>
-            <Protect requiredRole="admin">
-              <AdminVerifications />
-            </Protect>
-          </Suspense>
+          <ProtectedRoute requiredRole="admin">
+            <AdminVerifications />
+          </ProtectedRoute>
         ),
       },
     ],
@@ -148,7 +110,9 @@ export function App() {
   return (
     <AuthProvider>
       <ErrorBoundary>
-        <RouterProvider router={router} />
+        <Suspense fallback={<LoadingFallback />}>
+          <RouterProvider router={router} />
+        </Suspense>
       </ErrorBoundary>
     </AuthProvider>
   );
