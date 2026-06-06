@@ -1,28 +1,56 @@
 package handlers
 
 import (
+	"database/sql"
+	"errors"
 	"net/http"
+	"regexp"
+	"strconv"
 	"time"
 
 	"github.com/gin-gonic/gin"
 	. "github.com/go-jet/jet/v2/postgres"
-	"database/sql"
+	"github.com/google/uuid"
 
 	"skillpass-server-go/.gen/skillpass/public/model"
 	"skillpass-server-go/internal/gen"
 )
 
+const dateFormat = "2006-01"
+
+var datePattern = regexp.MustCompile(`^\d{4}-(0[1-9]|1[0-2])$`)
+
+func isValidDate(s string) bool {
+	if !datePattern.MatchString(s) {
+		return false
+	}
+	_, err := time.Parse(dateFormat, s)
+	return err == nil
+}
+
+var experienceLevelMap = map[string]StringExpression{
+	"entry":  gen.ExperienceLevelEntry,
+	"mid":    gen.ExperienceLevelMid,
+	"senior": gen.ExperienceLevelSenior,
+	"lead":   gen.ExperienceLevelLead,
+}
+
+var jobStatusMap = map[string]StringExpression{
+	"open":   gen.JobStatusOpen,
+	"closed": gen.JobStatusClosed,
+}
+
 type JobResponse struct {
-	ID              string   `json:"id"`
-	CompanyID       string   `json:"companyId"`
-	Title           string   `json:"title"`
-	Description     string   `json:"description"`
-	Industry        string   `json:"industry"`
-	Tags            []string `json:"tags"`
-	RequiredSkills  []string `json:"requiredSkills"`
-	ExperienceLevel *string  `json:"experienceLevel"`
-	Location        *string  `json:"location"`
-	SalaryRange     *string  `json:"salaryRange"`
+	ID              string    `json:"id"`
+	CompanyID       string    `json:"companyId"`
+	Title           string    `json:"title"`
+	Description     string    `json:"description"`
+	Industry        string    `json:"industry"`
+	Tags            []string  `json:"tags"`
+	RequiredSkills  []string  `json:"requiredSkills"`
+	ExperienceLevel *string   `json:"experienceLevel"`
+	Location        *string   `json:"location"`
+	SalaryRange     *string   `json:"salaryRange"`
 	Status          string    `json:"status"`
 	CreatedAt       time.Time `json:"createdAt"`
 }
@@ -33,21 +61,21 @@ type CreateJobRequest struct {
 	Industry        string   `json:"industry" binding:"required"`
 	Tags            []string `json:"tags"`
 	RequiredSkills  []string `json:"requiredSkills"`
-	ExperienceLevel *string  `json:"experienceLevel"`
+	ExperienceLevel *string  `json:"experienceLevel" binding:"omitempty,oneof=entry mid senior lead"`
 	Location        *string  `json:"location"`
 	SalaryRange     *string  `json:"salaryRange"`
 }
 
 type UpdateJobRequest struct {
-	Title           *string   `json:"title"`
-	Description     *string   `json:"description"`
-	Industry        *string   `json:"industry"`
-	Tags            []string  `json:"tags"`
-	RequiredSkills  []string  `json:"requiredSkills"`
-	ExperienceLevel *string   `json:"experienceLevel"`
-	Location        *string   `json:"location"`
-	SalaryRange     *string   `json:"salaryRange"`
-	Status          *string   `json:"status"`
+	Title           *string  `json:"title" binding:"omitempty,min=1"`
+	Description     *string  `json:"description" binding:"omitempty,min=1"`
+	Industry        *string  `json:"industry" binding:"omitempty,min=1"`
+	Tags            []string `json:"tags"`
+	RequiredSkills  []string `json:"requiredSkills"`
+	ExperienceLevel *string  `json:"experienceLevel" binding:"omitempty,oneof=entry mid senior lead"`
+	Location        *string  `json:"location"`
+	SalaryRange     *string  `json:"salaryRange"`
+	Status          *string  `json:"status" binding:"omitempty,oneof=open closed"`
 }
 
 type JobHandler struct {
@@ -88,14 +116,35 @@ func jobFromModel(j model.JobPostings) JobResponse {
 	}
 }
 
+func parseJobLimit(c *gin.Context) int64 {
+	limit := int64(defaultListLimit)
+	if v, err := strconv.ParseInt(c.Query("limit"), 10, 64); err == nil && v > 0 {
+		limit = v
+	}
+	if limit > maxListLimit {
+		limit = maxListLimit
+	}
+	return limit
+}
+
+func parseJobOffset(c *gin.Context) int64 {
+	offset := int64(0)
+	if v, err := strconv.ParseInt(c.Query("offset"), 10, 64); err == nil && v >= 0 {
+		offset = v
+	}
+	return offset
+}
+
 func (h *JobHandler) ListJobs(c *gin.Context) {
-	var whereCond BoolExpression = gen.JobPostings.Status.EQ(String("open"))
+	var whereCond BoolExpression = gen.JobPostings.Status.EQ(gen.JobStatusOpen)
 
 	if industry := c.Query("industry"); industry != "" {
 		whereCond = whereCond.AND(gen.JobPostings.Industry.EQ(String(industry)))
 	}
 	if expLevel := c.Query("experience_level"); expLevel != "" {
-		whereCond = whereCond.AND(gen.JobPostings.ExperienceLevel.EQ(String(expLevel)))
+		if expr, ok := experienceLevelMap[expLevel]; ok {
+			whereCond = whereCond.AND(gen.JobPostings.ExperienceLevel.EQ(expr))
+		}
 	}
 
 	stmt := SELECT(
@@ -105,12 +154,15 @@ func (h *JobHandler) ListJobs(c *gin.Context) {
 	).WHERE(
 		whereCond,
 	).ORDER_BY(
-		gen.JobPostings.CreatedAt.ASC(),
-	)
+		gen.JobPostings.CreatedAt.DESC(),
+	).LIMIT(parseJobLimit(c)).OFFSET(parseJobOffset(c))
 
 	var jobs []model.JobPostings
-	err := stmt.QueryContext(c.Request.Context(), h.db, &jobs)
-	if err != nil {
+	if err := stmt.QueryContext(c.Request.Context(), h.db, &jobs); err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			c.JSON(http.StatusOK, []JobResponse{})
+			return
+		}
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to query jobs"})
 		return
 	}
@@ -125,19 +177,27 @@ func (h *JobHandler) ListJobs(c *gin.Context) {
 
 func (h *JobHandler) GetJob(c *gin.Context) {
 	id := c.Param("id")
+	jobUUID, err := uuid.Parse(id)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid job id"})
+		return
+	}
 
 	stmt := SELECT(
 		gen.JobPostings.AllColumns,
 	).FROM(
 		gen.JobPostings,
 	).WHERE(
-		gen.JobPostings.ID.EQ(String(id)),
+		gen.JobPostings.ID.EQ(UUID(jobUUID)),
 	)
 
 	var job model.JobPostings
-	err := stmt.QueryContext(c.Request.Context(), h.db, &job)
-	if err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": "Job not found"})
+	if err := stmt.QueryContext(c.Request.Context(), h.db, &job); err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			c.JSON(http.StatusNotFound, gin.H{"error": "Job not found"})
+			return
+		}
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to query job"})
 		return
 	}
 
@@ -145,8 +205,16 @@ func (h *JobHandler) GetJob(c *gin.Context) {
 }
 
 func (h *JobHandler) ListMyJobs(c *gin.Context) {
-	companyID, _ := c.Get("companyId")
-	companyIDStr := companyID.(string)
+	companyIDVal, ok := c.Get("companyId")
+	if !ok {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "Unauthorized"})
+		return
+	}
+	companyIDStr, ok := companyIDVal.(string)
+	if !ok || companyIDStr == "" {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "Unauthorized"})
+		return
+	}
 
 	stmt := SELECT(
 		gen.JobPostings.AllColumns,
@@ -155,12 +223,11 @@ func (h *JobHandler) ListMyJobs(c *gin.Context) {
 	).WHERE(
 		gen.JobPostings.CompanyID.EQ(String(companyIDStr)),
 	).ORDER_BY(
-		gen.JobPostings.CreatedAt.ASC(),
-	)
+		gen.JobPostings.CreatedAt.DESC(),
+	).LIMIT(parseJobLimit(c)).OFFSET(parseJobOffset(c))
 
 	var jobs []model.JobPostings
-	err := stmt.QueryContext(c.Request.Context(), h.db, &jobs)
-	if err != nil {
+	if err := stmt.QueryContext(c.Request.Context(), h.db, &jobs); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to query jobs"})
 		return
 	}
@@ -174,8 +241,16 @@ func (h *JobHandler) ListMyJobs(c *gin.Context) {
 }
 
 func (h *JobHandler) CreateJob(c *gin.Context) {
-	companyID, _ := c.Get("companyId")
-	companyIDStr := companyID.(string)
+	companyIDVal, ok := c.Get("companyId")
+	if !ok {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "Unauthorized"})
+		return
+	}
+	companyIDStr, ok := companyIDVal.(string)
+	if !ok || companyIDStr == "" {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "Unauthorized"})
+		return
+	}
 
 	var req CreateJobRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -196,8 +271,7 @@ func (h *JobHandler) CreateJob(c *gin.Context) {
 	)
 
 	var job model.JobPostings
-	err := stmt.QueryContext(c.Request.Context(), h.db, &job)
-	if err != nil {
+	if err := stmt.QueryContext(c.Request.Context(), h.db, &job); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to create job"})
 		return
 	}
@@ -207,8 +281,21 @@ func (h *JobHandler) CreateJob(c *gin.Context) {
 
 func (h *JobHandler) UpdateJob(c *gin.Context) {
 	id := c.Param("id")
-	companyID, _ := c.Get("companyId")
-	companyIDStr := companyID.(string)
+	jobUUID, err := uuid.Parse(id)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid job id"})
+		return
+	}
+	companyIDVal, ok := c.Get("companyId")
+	if !ok {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "Unauthorized"})
+		return
+	}
+	companyIDStr, ok := companyIDVal.(string)
+	if !ok || companyIDStr == "" {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "Unauthorized"})
+		return
+	}
 
 	var req UpdateJobRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -233,7 +320,12 @@ func (h *JobHandler) UpdateJob(c *gin.Context) {
 		setVals = append(setVals, gen.JobPostings.RequiredSkills.SET(StringArray(req.RequiredSkills...)))
 	}
 	if req.ExperienceLevel != nil {
-		setVals = append(setVals, gen.JobPostings.ExperienceLevel.SET(String(*req.ExperienceLevel)))
+		if expr, ok := experienceLevelMap[*req.ExperienceLevel]; ok {
+			setVals = append(setVals, gen.JobPostings.ExperienceLevel.SET(expr))
+		} else {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid experience level"})
+			return
+		}
 	}
 	if req.Location != nil {
 		setVals = append(setVals, gen.JobPostings.Location.SET(String(*req.Location)))
@@ -242,7 +334,12 @@ func (h *JobHandler) UpdateJob(c *gin.Context) {
 		setVals = append(setVals, gen.JobPostings.SalaryRange.SET(String(*req.SalaryRange)))
 	}
 	if req.Status != nil {
-		setVals = append(setVals, gen.JobPostings.Status.SET(String(*req.Status)))
+		if expr, ok := jobStatusMap[*req.Status]; ok {
+			setVals = append(setVals, gen.JobPostings.Status.SET(expr))
+		} else {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid status"})
+			return
+		}
 	}
 
 	if len(setVals) == 0 {
@@ -251,7 +348,7 @@ func (h *JobHandler) UpdateJob(c *gin.Context) {
 	}
 
 	stmt := gen.JobPostings.UPDATE().SET(setVals[0], setVals[1:]...).WHERE(
-		gen.JobPostings.ID.EQ(String(id)).AND(
+		gen.JobPostings.ID.EQ(UUID(jobUUID)).AND(
 			gen.JobPostings.CompanyID.EQ(String(companyIDStr)),
 		),
 	).RETURNING(
@@ -259,9 +356,12 @@ func (h *JobHandler) UpdateJob(c *gin.Context) {
 	)
 
 	var job model.JobPostings
-	err := stmt.QueryContext(c.Request.Context(), h.db, &job)
-	if err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": "Job not found"})
+	if err := stmt.QueryContext(c.Request.Context(), h.db, &job); err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			c.JSON(http.StatusNotFound, gin.H{"error": "Job not found"})
+			return
+		}
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to update job"})
 		return
 	}
 
@@ -270,18 +370,31 @@ func (h *JobHandler) UpdateJob(c *gin.Context) {
 
 func (h *JobHandler) DeleteJob(c *gin.Context) {
 	id := c.Param("id")
-	companyID, _ := c.Get("companyId")
-	companyIDStr := companyID.(string)
+	jobUUID, err := uuid.Parse(id)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid job id"})
+		return
+	}
+	companyIDVal, ok := c.Get("companyId")
+	if !ok {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "Unauthorized"})
+		return
+	}
+	companyIDStr, ok := companyIDVal.(string)
+	if !ok || companyIDStr == "" {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "Unauthorized"})
+		return
+	}
 
 	stmt := gen.JobPostings.DELETE().WHERE(
-		gen.JobPostings.ID.EQ(String(id)).AND(
+		gen.JobPostings.ID.EQ(UUID(jobUUID)).AND(
 			gen.JobPostings.CompanyID.EQ(String(companyIDStr)),
 		),
 	)
 
 	result, err := stmt.ExecContext(c.Request.Context(), h.db)
 	if err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": "Job not found"})
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to delete job"})
 		return
 	}
 	ra, _ := result.RowsAffected()

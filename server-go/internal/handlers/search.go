@@ -1,14 +1,16 @@
 package handlers
 
 import (
+	"database/sql"
+	"errors"
+	"fmt"
 	"net/http"
+	"strconv"
 	"strings"
 
 	"github.com/gin-gonic/gin"
 	. "github.com/go-jet/jet/v2/postgres"
-	"database/sql"
 
-	"skillpass-server-go/.gen/skillpass/public/model"
 	"skillpass-server-go/internal/gen"
 )
 
@@ -31,161 +33,194 @@ func NewSearchHandler(db *sql.DB) *SearchHandler {
 	return &SearchHandler{db: db}
 }
 
-type searchExp struct {
-	Title        string
-	Organization string
-	Industry     *string
-	SkillsUsed   []string
-}
+const (
+	searchDefaultLimit = 50
+	searchMaxLimit     = 200
+	searchMaxPool      = 1000
+)
 
 func (h *SearchHandler) SearchCandidates(c *gin.Context) {
-	q := c.Query("q")
-	skills := c.Query("skills")
-	industry := c.Query("industry")
+	q := strings.TrimSpace(c.Query("q"))
+	skillsFilter := strings.TrimSpace(c.Query("skills"))
+	industry := strings.TrimSpace(c.Query("industry"))
 
-	profStmt := SELECT(
-		gen.JobseekerProfiles.ID, gen.JobseekerProfiles.UserID, gen.JobseekerProfiles.Headline,
-		gen.JobseekerProfiles.About, gen.JobseekerProfiles.YearsOfExperience, gen.JobseekerProfiles.Slug,
+	limit := int64(searchDefaultLimit)
+	if v, err := strconv.ParseInt(c.Query("limit"), 10, 64); err == nil && v > 0 && v <= searchMaxLimit {
+		limit = v
+	}
+	offset := int64(0)
+	if v, err := strconv.ParseInt(c.Query("offset"), 10, 64); err == nil && v >= 0 {
+		offset = v
+	}
+
+	var skillList []string
+	if skillsFilter != "" {
+		for _, s := range strings.Split(skillsFilter, ",") {
+			s = strings.TrimSpace(strings.ToLower(s))
+			if s != "" {
+				skillList = append(skillList, s)
+			}
+		}
+	}
+
+	var whereConds []BoolExpression
+	if q != "" {
+		pat := "%" + strings.ToLower(q) + "%"
+		whereConds = append(whereConds, OR(
+			LOWER(gen.Users.Name).LIKE(String(pat)),
+			LOWER(CAST(gen.JobseekerProfiles.Headline).AS_TEXT()).LIKE(String(pat)),
+			LOWER(CAST(gen.JobseekerProfiles.About).AS_TEXT()).LIKE(String(pat)),
+		))
+	}
+
+	stmt := SELECT(
+		gen.JobseekerProfiles.ID,
+		gen.Users.Name,
+		gen.Users.AvatarURL,
+		gen.JobseekerProfiles.Headline,
+		gen.JobseekerProfiles.About,
+		gen.JobseekerProfiles.YearsOfExperience,
+		gen.JobseekerProfiles.Slug,
 	).FROM(
-		gen.JobseekerProfiles,
-	)
+		gen.JobseekerProfiles.INNER_JOIN(gen.Users, gen.JobseekerProfiles.UserID.EQ(gen.Users.ID)),
+	).WHERE(
+		AND(whereConds...),
+	).ORDER_BY(
+		gen.JobseekerProfiles.ID.ASC(),
+	).LIMIT(int64(searchMaxPool)).OFFSET(0)
 
-	var profiles []model.JobseekerProfiles
-	err := profStmt.QueryContext(c.Request.Context(), h.db, &profiles)
-	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to query profiles"})
+	type candidateRow struct {
+		ID                string
+		Name              string
+		AvatarURL         *string
+		Headline          *string
+		About             *string
+		YearsOfExperience *int32
+		Slug              string
+	}
+
+	var rows []candidateRow
+	if err := stmt.QueryContext(c.Request.Context(), h.db, &rows); err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			c.JSON(http.StatusOK, []CandidateResult{})
+			return
+		}
+		c.JSON(http.StatusInternalServerError, gin.H{"error": fmt.Sprintf("search failed: %v", err)})
 		return
 	}
 
-	results := make([]CandidateResult, 0)
+	if len(rows) == 0 {
+		c.JSON(http.StatusOK, []CandidateResult{})
+		return
+	}
 
-	for _, p := range profiles {
-		var user model.Users
-		userStmt := SELECT(
-			gen.Users.Name, gen.Users.AvatarURL,
-		).FROM(
-			gen.Users,
-		).WHERE(
-			gen.Users.ID.EQ(String(p.UserID.String())),
-		)
-		err := userStmt.QueryContext(c.Request.Context(), h.db, &user)
-		if err != nil {
-			continue
+	profileIDs := make([]string, 0, len(rows))
+	idSet := make(map[string]struct{}, len(rows))
+	for _, r := range rows {
+		profileIDs = append(profileIDs, r.ID)
+		idSet[r.ID] = struct{}{}
+	}
+
+	expStmt := SELECT(
+		gen.JobExperiences.ProfileID,
+		gen.JobExperiences.Industry,
+		gen.JobExperiences.SkillsUsed,
+	).FROM(
+		gen.JobExperiences,
+	).WHERE(
+		gen.JobExperiences.ProfileID.IN(StringArray(profileIDs...)),
+	)
+
+	var exps []struct {
+		ProfileID  string
+		Industry   *string
+		SkillsUsed *string
+	}
+	if err := expStmt.QueryContext(c.Request.Context(), h.db, &exps); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": fmt.Sprintf("failed to load experiences: %v", err)})
+		return
+	}
+
+	type expAgg struct {
+		skillSet map[string]struct{}
+		hasInd   bool
+	}
+	expsByProfile := make(map[string]*expAgg, len(rows))
+	for _, e := range exps {
+		agg, ok := expsByProfile[e.ProfileID]
+		if !ok {
+			agg = &expAgg{skillSet: map[string]struct{}{}}
+			expsByProfile[e.ProfileID] = agg
 		}
-
-		var exps []model.JobExperiences
-		expStmt := SELECT(
-			gen.JobExperiences.Title, gen.JobExperiences.Organization,
-			gen.JobExperiences.Industry, gen.JobExperiences.SkillsUsed,
-		).FROM(
-			gen.JobExperiences,
-		).WHERE(
-			gen.JobExperiences.ProfileID.EQ(String(p.ID.String())),
-		)
-		err = expStmt.QueryContext(c.Request.Context(), h.db, &exps)
-		if err != nil {
-			continue
+		if industry != "" && e.Industry != nil && strings.EqualFold(*e.Industry, industry) {
+			agg.hasInd = true
 		}
-
-		expList := make([]searchExp, len(exps))
-		for i, e := range exps {
-			expList[i].Title = e.Title
-			expList[i].Organization = e.Organization
-			expList[i].Industry = e.Industry
-			if e.SkillsUsed != nil {
-				expList[i].SkillsUsed = []string(*e.SkillsUsed)
-			}
-		}
-
-		// Filter by search query
-		if q != "" {
-			ql := strings.ToLower(q)
-			matchesName := strings.Contains(strings.ToLower(user.Name), ql)
-			matchesHeadline := p.Headline != nil && strings.Contains(strings.ToLower(*p.Headline), ql)
-			matchesAbout := p.About != nil && strings.Contains(strings.ToLower(*p.About), ql)
-			matchesExp := false
-			for _, e := range expList {
-				if strings.Contains(strings.ToLower(e.Title), ql) ||
-					strings.Contains(strings.ToLower(e.Organization), ql) {
-					matchesExp = true
-					break
+		if e.SkillsUsed != nil {
+			for _, s := range strings.Split(*e.SkillsUsed, ",") {
+				s = strings.TrimSpace(s)
+				if s == "" {
+					continue
 				}
-				for _, s := range e.SkillsUsed {
-					if strings.Contains(strings.ToLower(s), ql) {
-						matchesExp = true
-						break
-					}
-				}
-			}
-			if !matchesName && !matchesHeadline && !matchesAbout && !matchesExp {
-				continue
+				agg.skillSet[strings.ToLower(s)] = struct{}{}
 			}
 		}
+	}
 
-		// Filter by skills
-		if skills != "" {
-			skillList := strings.Split(skills, ",")
-			for i := range skillList {
-				skillList[i] = strings.TrimSpace(strings.ToLower(skillList[i]))
-			}
-			hasSkill := false
-			for _, e := range expList {
-				for _, s := range e.SkillsUsed {
-					for _, sk := range skillList {
-						if strings.EqualFold(s, sk) {
-							hasSkill = true
-							break
-						}
-					}
-					if hasSkill {
-						break
-					}
-				}
-				if hasSkill {
-					break
-				}
-			}
-			if !hasSkill {
-				continue
-			}
-		}
-
-		// Filter by industry
+	results := make([]CandidateResult, 0, len(rows))
+	for _, r := range rows {
+		agg := expsByProfile[r.ID]
 		if industry != "" {
-			hasIndustry := false
-			for _, e := range expList {
-				if e.Industry != nil && strings.EqualFold(*e.Industry, industry) {
-					hasIndustry = true
-					break
-				}
-			}
-			if !hasIndustry {
+			if agg == nil || !agg.hasInd {
 				continue
 			}
 		}
-
-		// Collect unique skills
-		skillSet := make(map[string]struct{})
-		for _, e := range expList {
-			for _, s := range e.SkillsUsed {
-				skillSet[s] = struct{}{}
+		if len(skillList) > 0 {
+			if agg == nil {
+				continue
+			}
+			matched := false
+			for _, s := range skillList {
+				if _, ok := agg.skillSet[s]; ok {
+					matched = true
+					break
+				}
+			}
+			if !matched {
+				continue
 			}
 		}
-		uniqueSkills := make([]string, 0, len(skillSet))
-		for s := range skillSet {
-			uniqueSkills = append(uniqueSkills, s)
+		skills := make([]string, 0)
+		if agg != nil {
+			for s := range agg.skillSet {
+				skills = append(skills, s)
+			}
 		}
-
 		results = append(results, CandidateResult{
-			ID:         p.ID.String(),
-			Name:       user.Name,
-			AvatarURL:  user.AvatarURL,
-			Headline:   p.Headline,
-			About:      p.About,
-			YearsOfExp: int32ToIntPtr(p.YearsOfExperience),
-			Slug:       p.Slug,
-			Skills:     uniqueSkills,
+			ID:         r.ID,
+			Name:       r.Name,
+			AvatarURL:  r.AvatarURL,
+			Headline:   r.Headline,
+			About:      r.About,
+			YearsOfExp: int32ToIntPtr(r.YearsOfExperience),
+			Slug:       r.Slug,
+			Skills:     skills,
 		})
+		if int64(len(results)) >= offset+limit {
+			break
+		}
+	}
+
+	if int64(len(results)) > offset {
+		if offset >= int64(len(results)) {
+			results = results[len(results):]
+		} else {
+			results = results[offset:]
+		}
+		if int64(len(results)) > limit {
+			results = results[:limit]
+		}
+	} else {
+		results = results[:0]
 	}
 
 	c.JSON(http.StatusOK, results)
