@@ -15,7 +15,7 @@ import (
 )
 
 func main() {
-	_ = godotenv.Load()
+	_ = godotenv.Load(".env", "../.env")
 
 	cfg := config.Load()
 
@@ -33,11 +33,13 @@ func main() {
 		AllowCredentials: true,
 		AllowHeaders:     []string{"Origin", "Content-Type", "Authorization"},
 		AllowMethods:     []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"},
+		ExposeHeaders:    []string{"Set-Cookie"},
 	}))
+
+	authRL := middleware.NewRateLimiter(5, 10)
 
 	api := r.Group("/api/v1")
 
-	// ── Handlers ──
 	ref := handlers.NewReferenceHandler(database)
 	jobs := handlers.NewJobHandler(database)
 	auth := handlers.NewAuthHandler(database, cfg.JWTSecret)
@@ -47,7 +49,6 @@ func main() {
 	search := handlers.NewSearchHandler(database)
 	admin := handlers.NewAdminHandler(database)
 
-	// ── Public routes ──
 	api.GET("/health", handlers.GetHealth)
 
 	api.GET("/industries", ref.GetIndustries)
@@ -56,14 +57,13 @@ func main() {
 	api.GET("/jobs", jobs.ListJobs)
 	api.GET("/jobs/:id", jobs.GetJob)
 
-	api.POST("/auth/register", auth.Register)
-	api.POST("/auth/login", auth.Login)
-	api.POST("/auth/refresh", auth.Refresh)
-	api.POST("/auth/logout", auth.Logout)
+	api.POST("/auth/register", authRL.Middleware(), auth.Register)
+	api.POST("/auth/login", authRL.Middleware(), auth.Login)
+	api.POST("/auth/refresh", authRL.Middleware(), auth.Refresh)
+	api.POST("/auth/logout", middleware.AuthRequired(cfg.JWTSecret), auth.Logout)
 
 	api.GET("/profiles/:username", passport.GetProfile)
 
-	// ── Authenticated (any role) ──
 	authGroup := api.Group("/profiles")
 	authGroup.Use(middleware.AuthRequired(cfg.JWTSecret))
 	authGroup.GET("/me", profiles.GetMyProfile)
@@ -72,7 +72,6 @@ func main() {
 	authGroup.PUT("/me/experience/:id", profiles.UpdateExperience)
 	authGroup.DELETE("/me/experience/:id", profiles.DeleteExperience)
 
-	// ── Company only ──
 	companyGroup := api.Group("/company")
 	companyGroup.Use(middleware.AuthRequired(cfg.JWTSecret), middleware.RequireRole("company"))
 	companyGroup.GET("/profile", companies.GetProfile)
@@ -80,12 +79,11 @@ func main() {
 	companyGroup.POST("/verification", companies.SubmitVerification)
 	companyGroup.GET("/verification-status", companies.GetVerificationStatus)
 
-	// ── Verified company only ──
-	verifiedCompany := append([]gin.HandlerFunc{},
+	verifiedCompany := []gin.HandlerFunc{
 		middleware.AuthRequired(cfg.JWTSecret),
 		middleware.RequireRole("company"),
 		middleware.RequireVerifiedCompany(database),
-	)
+	}
 
 	jobsGroup := api.Group("/jobs")
 	for _, m := range verifiedCompany {
@@ -102,7 +100,6 @@ func main() {
 	}
 	searchGroup.GET("/candidates", search.SearchCandidates)
 
-	// ── Admin only ──
 	adminGroup := api.Group("/admin")
 	adminGroup.Use(middleware.AuthRequired(cfg.JWTSecret), middleware.RequireRole("admin"))
 	adminGroup.GET("/verifications/pending", admin.ListPendingVerifications)

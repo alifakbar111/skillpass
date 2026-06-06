@@ -17,7 +17,7 @@ import (
 )
 
 func main() {
-	_ = godotenv.Load("../.env")
+	_ = godotenv.Load(".env", "../.env")
 
 	databaseURL := os.Getenv("DATABASE_URL")
 	if databaseURL == "" {
@@ -72,12 +72,23 @@ func main() {
 	}
 	fmt.Printf("Seeded %d industry categories\n", count)
 
+	adminEmail := os.Getenv("ADMIN_EMAIL")
+	adminPassword := os.Getenv("ADMIN_PASSWORD")
+
+	if adminEmail == "" && adminPassword == "" {
+		fmt.Println("Skipping admin seed (ADMIN_EMAIL and ADMIN_PASSWORD not set)")
+		return
+	}
+	if adminEmail == "" || adminPassword == "" {
+		log.Fatal("Both ADMIN_EMAIL and ADMIN_PASSWORD must be set to seed an admin user")
+	}
+
 	checkStmt := SELECT(
 		gen.Users.ID,
 	).FROM(
 		gen.Users,
 	).WHERE(
-		gen.Users.Email.EQ(String("admin-skillpass@yopmail.com")),
+		gen.Users.Email.EQ(String(adminEmail)),
 	)
 
 	var existing model.Users
@@ -87,7 +98,7 @@ func main() {
 		return
 	}
 
-	passwordHash, err := bcrypt.GenerateFromPassword([]byte("admin123!!"), bcrypt.DefaultCost)
+	passwordHash, err := bcrypt.GenerateFromPassword([]byte(adminPassword), bcrypt.DefaultCost)
 	if err != nil {
 		log.Fatalf("Failed to hash password: %v", err)
 	}
@@ -96,12 +107,12 @@ func main() {
 		gen.Users.Email, gen.Users.Username, gen.Users.PasswordHash,
 		gen.Users.Name, gen.Users.Role,
 	).VALUES(
-		"admin-skillpass@yopmail.com", "admin", string(passwordHash), "Admin", "admin",
+		adminEmail, "admin", string(passwordHash), "Admin", "admin",
 	)
 
 	_, err = insertStmt.ExecContext(ctx, db)
 	if err != nil {
 		log.Fatalf("Failed to create admin: %v", err)
 	}
-	fmt.Println("Seeded admin user (admin-skillpass@yopmail.com / admin123!!)")
+	fmt.Printf("Seeded admin user (%s)\n", adminEmail)
 }

@@ -1,17 +1,30 @@
 package handlers
 
 import (
+	"context"
+	"crypto/sha256"
 	"database/sql"
+	"encoding/hex"
+	"errors"
 	"net/http"
+	"os"
 	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/golang-jwt/jwt/v5"
 	. "github.com/go-jet/jet/v2/postgres"
+	"github.com/google/uuid"
 
 	"skillpass-server-go/.gen/skillpass/public/model"
 	"skillpass-server-go/internal/gen"
 	"skillpass-server-go/internal/lib"
+)
+
+const (
+	accessTokenTTL  = 15 * time.Minute
+	refreshTokenTTL = 7 * 24 * time.Hour
+	minPasswordLen  = 8
+	refreshCookie   = "refreshToken"
 )
 
 type LoginRequest struct {
@@ -19,15 +32,11 @@ type LoginRequest struct {
 	Password string `json:"password"`
 }
 
-type RefreshRequest struct {
-	RefreshToken string `json:"refreshToken"`
-}
-
 type RegisterRequest struct {
-	Email                string  `json:"email" binding:"required"`
-	Username             string  `json:"username" binding:"required"`
-	Password             string  `json:"password" binding:"required"`
-	Name                 string  `json:"name" binding:"required"`
+	Email                string  `json:"email" binding:"required,email"`
+	Username             string  `json:"username" binding:"required,min=3,max=32"`
+	Password             string  `json:"password" binding:"required,min=8,max=128"`
+	Name                 string  `json:"name"`
 	Role                 string  `json:"role" binding:"required,oneof=jobseeker company"`
 	CompanyName          *string `json:"companyName"`
 	BusinessRegistration *string `json:"businessRegistration"`
@@ -45,9 +54,8 @@ type UserResponse struct {
 }
 
 type LoginResponse struct {
-	AccessToken  string       `json:"accessToken"`
-	RefreshToken string       `json:"refreshToken"`
-	User         UserResponse `json:"user"`
+	AccessToken string       `json:"accessToken"`
+	User        UserResponse `json:"user"`
 }
 
 type AuthHandler struct {
@@ -59,26 +67,82 @@ func NewAuthHandler(db *sql.DB, jwtSecret string) *AuthHandler {
 	return &AuthHandler{db: db, jwtSecret: jwtSecret}
 }
 
-func (h *AuthHandler) signTokens(userID, role string) (accessToken, refreshToken string, err error) {
+type tokenClaims struct {
+	UserID string
+	Role   string
+	Type   string
+}
+
+func (h *AuthHandler) signTokens(c *gin.Context, userID, role string) (accessToken, refreshToken string, refreshID uuid.UUID, err error) {
+	now := time.Now()
 	accessToken, err = jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
 		"userId": userID,
 		"role":   role,
+		"iat":    now.Unix(),
+		"exp":    now.Add(accessTokenTTL).Unix(),
 	}).SignedString([]byte(h.jwtSecret))
 	if err != nil {
-		return "", "", err
+		return "", "", uuid.Nil, err
 	}
 
+	refreshID = uuid.New()
+	refreshExpires := now.Add(refreshTokenTTL)
 	refreshToken, err = jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
+		"jti":   refreshID.String(),
 		"userId": userID,
 		"role":   role,
 		"type":   "refresh",
-		"exp":    time.Now().Add(7 * 24 * time.Hour).Unix(),
+		"iat":    now.Unix(),
+		"exp":    refreshExpires.Unix(),
 	}).SignedString([]byte(h.jwtSecret))
 	if err != nil {
-		return "", "", err
+		return "", "", uuid.Nil, err
 	}
 
-	return accessToken, refreshToken, nil
+	hash := hashToken(refreshToken)
+	insertStmt := gen.RefreshTokens.INSERT(
+		gen.RefreshTokens.ID, gen.RefreshTokens.UserID, gen.RefreshTokens.TokenHash,
+		gen.RefreshTokens.ExpiresAt,
+	).VALUES(
+		refreshID, userID, hash, TimestampzT(refreshExpires),
+	)
+	ctx := c.Request.Context()
+	if _, err = insertStmt.ExecContext(ctx, h.db); err != nil {
+		return "", "", uuid.Nil, err
+	}
+
+	setRefreshCookie(c, refreshToken, refreshTokenTTL)
+	return accessToken, refreshToken, refreshID, nil
+}
+
+func setRefreshCookie(c *gin.Context, token string, ttl time.Duration) {
+	secure := os.Getenv("COOKIE_SECURE") == "true" || os.Getenv("GIN_MODE") == "release"
+	cookie := &http.Cookie{
+		Name:     refreshCookie,
+		Value:    token,
+		Path:     "/api/v1/auth",
+		HttpOnly: true,
+		Secure:   secure,
+		SameSite: http.SameSiteStrictMode,
+		MaxAge:   int(ttl.Seconds()),
+	}
+	http.SetCookie(c.Writer, cookie)
+}
+
+func clearRefreshCookie(c *gin.Context) {
+	cookie := &http.Cookie{
+		Name:     refreshCookie,
+		Value:    "",
+		Path:     "/api/v1/auth",
+		HttpOnly: true,
+		MaxAge:   -1,
+	}
+	http.SetCookie(c.Writer, cookie)
+}
+
+func hashToken(token string) string {
+	sum := sha256.Sum256([]byte(token))
+	return hex.EncodeToString(sum[:])
 }
 
 func (h *AuthHandler) Register(c *gin.Context) {
@@ -88,30 +152,18 @@ func (h *AuthHandler) Register(c *gin.Context) {
 		return
 	}
 
-	var count int64
-	countStmt := SELECT(
-		COUNT(STAR).AS("count"),
-	).FROM(
-		gen.Users,
-	).WHERE(
-		gen.Users.Email.EQ(String(req.Email)),
-	)
-
-	var countResult struct{ Count int64 }
-	err := countStmt.QueryContext(c.Request.Context(), h.db, &countResult)
-	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "database error"})
-		return
-	}
-	count = countResult.Count
-	if count > 0 {
-		c.JSON(http.StatusConflict, gin.H{"error": "Email already registered"})
-		return
-	}
-
 	displayName := req.Name
-	if req.Role == "company" && req.CompanyName != nil && *req.CompanyName != "" {
+	if req.Role == "company" {
+		if req.CompanyName == nil || *req.CompanyName == "" {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request body"})
+			return
+		}
 		displayName = *req.CompanyName
+	} else {
+		if displayName == "" {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request body"})
+			return
+		}
 	}
 
 	passwordHash, err := lib.HashPassword(req.Password)
@@ -120,6 +172,14 @@ func (h *AuthHandler) Register(c *gin.Context) {
 		return
 	}
 
+	tx, err := h.db.BeginTx(c.Request.Context(), nil)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to start transaction"})
+		return
+	}
+	defer tx.Rollback()
+
+	var user model.Users
 	insertStmt := gen.Users.INSERT(
 		gen.Users.Email, gen.Users.Username, gen.Users.PasswordHash, gen.Users.Name, gen.Users.Role,
 	).VALUES(
@@ -128,10 +188,8 @@ func (h *AuthHandler) Register(c *gin.Context) {
 		gen.Users.ID, gen.Users.Email, gen.Users.Username, gen.Users.Name, gen.Users.Role,
 	)
 
-	var user model.Users
-	err = insertStmt.QueryContext(c.Request.Context(), h.db, &user)
-	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to create user"})
+	if err = insertStmt.QueryContext(c.Request.Context(), tx, &user); err != nil {
+		c.JSON(http.StatusConflict, gin.H{"error": "Could not create account"})
 		return
 	}
 
@@ -140,12 +198,12 @@ func (h *AuthHandler) Register(c *gin.Context) {
 			gen.JobseekerProfiles.UserID, gen.JobseekerProfiles.Slug,
 		).VALUES(
 			user.ID, req.Username,
-		).ExecContext(c.Request.Context(), h.db)
+		).ExecContext(c.Request.Context(), tx)
 		if err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to create profile"})
 			return
 		}
-	} else if req.Role == "company" {
+	} else {
 		coName := displayName
 		if req.CompanyName != nil {
 			coName = *req.CompanyName
@@ -155,23 +213,27 @@ func (h *AuthHandler) Register(c *gin.Context) {
 			gen.Companies.VerificationDocs, gen.Companies.VerificationStatus,
 		).VALUES(
 			user.ID, coName, "Technology",
-			`{"businessRegistration":"","website":"","address":"","contact":""}`, "pending",
-		).ExecContext(c.Request.Context(), h.db)
+			`{"businessRegistration":"","website":"","address":"","contact":""}`, gen.VerificationStatusPending,
+		).ExecContext(c.Request.Context(), tx)
 		if err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to create company"})
 			return
 		}
 	}
 
-	accessToken, refreshToken, err := h.signTokens(user.ID.String(), string(user.Role))
+	if err = tx.Commit(); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to commit"})
+		return
+	}
+
+	accessToken, _, _, err := h.signTokens(c, user.ID.String(), string(user.Role))
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to sign token"})
 		return
 	}
 
 	c.JSON(http.StatusCreated, LoginResponse{
-		AccessToken:  accessToken,
-		RefreshToken: refreshToken,
+		AccessToken: accessToken,
 		User: UserResponse{
 			ID:       user.ID.String(),
 			Email:    user.Email,
@@ -201,6 +263,7 @@ func (h *AuthHandler) Login(c *gin.Context) {
 	var user model.Users
 	err := stmt.QueryContext(c.Request.Context(), h.db, &user)
 	if err != nil {
+		_, _ = lib.HashPassword("dummy-equalize-timing")
 		c.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid credentials"})
 		return
 	}
@@ -211,15 +274,14 @@ func (h *AuthHandler) Login(c *gin.Context) {
 		return
 	}
 
-	accessToken, refreshToken, err := h.signTokens(user.ID.String(), string(user.Role))
+	accessToken, _, _, err := h.signTokens(c, user.ID.String(), string(user.Role))
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to sign token"})
 		return
 	}
 
 	c.JSON(http.StatusOK, LoginResponse{
-		AccessToken:  accessToken,
-		RefreshToken: refreshToken,
+		AccessToken: accessToken,
 		User: UserResponse{
 			ID:       user.ID.String(),
 			Email:    user.Email,
@@ -231,58 +293,136 @@ func (h *AuthHandler) Login(c *gin.Context) {
 }
 
 func (h *AuthHandler) Refresh(c *gin.Context) {
-	var req RefreshRequest
-	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request body"})
-		return
-	}
-
-	token, err := jwt.ParseWithClaims(req.RefreshToken, &jwt.MapClaims{}, func(t *jwt.Token) (any, error) {
-		return []byte(h.jwtSecret), nil
-	})
-	if err != nil || !token.Valid {
+	cookie, err := c.Cookie(refreshCookie)
+	if err != nil || cookie == "" {
 		c.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid refresh token"})
 		return
 	}
 
-	claims, ok := token.Claims.(*jwt.MapClaims)
-	if !ok || (*claims)["type"] != "refresh" {
+	claims, err := parseRefreshToken(cookie, h.jwtSecret)
+	if err != nil {
 		c.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid refresh token"})
 		return
 	}
 
-	userID := (*claims)["userId"].(string)
-	role, ok := (*claims)["role"].(string)
-	if !ok || role == "" {
-		stmt := SELECT(
-			gen.Users.Role,
-		).FROM(
-			gen.Users,
-		).WHERE(
-			gen.Users.ID.EQ(String(userID)),
-		)
+	tokenHash := hashToken(cookie)
 
-		var user model.Users
-		err := stmt.QueryContext(c.Request.Context(), h.db, &user)
-		if err != nil {
-			c.JSON(http.StatusUnauthorized, gin.H{"error": "User not found"})
-			return
-		}
-		role = string(user.Role)
+	tx, err := h.db.BeginTx(c.Request.Context(), nil)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to start transaction"})
+		return
+	}
+	defer tx.Rollback()
+
+	rtStmt := SELECT(
+		gen.RefreshTokens.ID, gen.RefreshTokens.UserID, gen.RefreshTokens.ExpiresAt,
+		gen.RefreshTokens.RevokedAt, gen.RefreshTokens.ReplacedBy,
+	).FROM(
+		gen.RefreshTokens,
+	).WHERE(
+		gen.RefreshTokens.TokenHash.EQ(String(tokenHash)),
+	).FOR(UPDATE())
+
+	var rt model.RefreshTokens
+	if err = rtStmt.QueryContext(c.Request.Context(), tx, &rt); err != nil {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid refresh token"})
+		return
+	}
+	if rt.RevokedAt != nil || time.Now().After(rt.ExpiresAt) {
+		revokeAllForUser(c.Request.Context(), tx, rt.UserID)
+		_ = tx.Commit()
+		clearRefreshCookie(c)
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid refresh token"})
+		return
 	}
 
-	accessToken, err := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
-		"userId": userID,
-		"role":   role,
-	}).SignedString([]byte(h.jwtSecret))
+	accessToken, _, _, err := h.signTokens(c, rt.UserID.String(), claims.Role)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to sign token"})
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{"accessToken": accessToken})
+	revokeStmt := gen.RefreshTokens.UPDATE().SET(
+		gen.RefreshTokens.RevokedAt.SET(TimestampzT(time.Now())),
+	).WHERE(
+		gen.RefreshTokens.ID.EQ(UUID(rt.ID)),
+	)
+	if _, err = revokeStmt.ExecContext(c.Request.Context(), tx); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to rotate token"})
+		return
+	}
+
+	if err = tx.Commit(); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to commit"})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"accessToken": accessToken,
+	})
 }
 
 func (h *AuthHandler) Logout(c *gin.Context) {
+	userIDVal, exists := c.Get("userId")
+	if !exists {
+		clearRefreshCookie(c)
+		c.JSON(http.StatusOK, gin.H{"message": "Logged out"})
+		return
+	}
+	userIDStr, ok := userIDVal.(string)
+	if !ok {
+		clearRefreshCookie(c)
+		c.JSON(http.StatusOK, gin.H{"message": "Logged out"})
+		return
+	}
+
+	if err := revokeAllForUserString(c.Request.Context(), h.db, userIDStr); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to log out"})
+		return
+	}
+	clearRefreshCookie(c)
 	c.JSON(http.StatusOK, gin.H{"message": "Logged out"})
+}
+
+func parseRefreshToken(tokenStr, secret string) (*tokenClaims, error) {
+	token, err := jwt.ParseWithClaims(tokenStr, &jwt.MapClaims{}, func(t *jwt.Token) (any, error) {
+		if _, ok := t.Method.(*jwt.SigningMethodHMAC); !ok {
+			return nil, jwt.ErrTokenSignatureInvalid
+		}
+		return []byte(secret), nil
+	}, jwt.WithExpirationRequired(), jwt.WithValidMethods([]string{"HS256"}))
+	if err != nil || !token.Valid {
+		return nil, errInvalidToken
+	}
+	mc, ok := token.Claims.(*jwt.MapClaims)
+	if !ok {
+		return nil, errInvalidToken
+	}
+	if t, _ := (*mc)["type"].(string); t != "refresh" {
+		return nil, errInvalidToken
+	}
+	userID, _ := (*mc)["userId"].(string)
+	role, _ := (*mc)["role"].(string)
+	if userID == "" {
+		return nil, errInvalidToken
+	}
+	return &tokenClaims{UserID: userID, Role: role, Type: "refresh"}, nil
+}
+
+var errInvalidToken = errors.New("invalid refresh token")
+
+func revokeAllForUserString(ctx context.Context, db *sql.DB, userID string) error {
+	uid, err := uuid.Parse(userID)
+	if err != nil {
+		return nil
+	}
+	stmt := gen.RefreshTokens.UPDATE().SET(
+		gen.RefreshTokens.RevokedAt.SET(TimestampzT(time.Now())),
+	).WHERE(
+		gen.RefreshTokens.UserID.EQ(UUID(uid)).AND(
+			gen.RefreshTokens.RevokedAt.IS_NULL(),
+		),
+	)
+	_, err = stmt.ExecContext(ctx, db)
+	return err
 }

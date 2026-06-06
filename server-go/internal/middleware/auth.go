@@ -1,7 +1,6 @@
 package middleware
 
 import (
-	"context"
 	"net/http"
 	"strings"
 
@@ -29,8 +28,11 @@ func AuthRequired(jwtSecret string) gin.HandlerFunc {
 		}
 
 		token, err := jwt.ParseWithClaims(auth[7:], &Claims{}, func(token *jwt.Token) (any, error) {
+			if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
+				return nil, jwt.ErrTokenSignatureInvalid
+			}
 			return []byte(jwtSecret), nil
-		})
+		}, jwt.WithExpirationRequired(), jwt.WithValidMethods([]string{"HS256"}))
 		if err != nil || !token.Valid {
 			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "Unauthorized"})
 			return
@@ -61,8 +63,16 @@ func RequireRole(role string) gin.HandlerFunc {
 
 func RequireVerifiedCompany(db *sql.DB) gin.HandlerFunc {
 	return func(c *gin.Context) {
-		userID, _ := c.Get("userId")
-		userIDStr := userID.(string)
+		userIDVal, exists := c.Get("userId")
+		if !exists {
+			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "Unauthorized"})
+			return
+		}
+		userIDStr, ok := userIDVal.(string)
+		if !ok || userIDStr == "" {
+			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "Unauthorized"})
+			return
+		}
 
 		stmt := SELECT(
 			gen.Companies.ID, gen.Companies.VerificationStatus,
@@ -73,7 +83,7 @@ func RequireVerifiedCompany(db *sql.DB) gin.HandlerFunc {
 		)
 
 		var company model.Companies
-		err := stmt.QueryContext(context.Background(), db, &company)
+		err := stmt.QueryContext(c.Request.Context(), db, &company)
 		if err != nil {
 			c.AbortWithStatusJSON(http.StatusNotFound, gin.H{"error": "Company not found"})
 			return

@@ -1,13 +1,15 @@
 package handlers
 
 import (
+	"database/sql"
 	"encoding/json"
+	"errors"
 	"net/http"
 	"time"
 
 	"github.com/gin-gonic/gin"
 	. "github.com/go-jet/jet/v2/postgres"
-	"database/sql"
+	"log/slog"
 
 	"skillpass-server-go/.gen/skillpass/public/model"
 	"skillpass-server-go/internal/gen"
@@ -27,15 +29,15 @@ type CompanyResponse struct {
 }
 
 type UpdateCompanyRequest struct {
-	CompanyName *string `json:"companyName"`
-	Website     *string `json:"website"`
-	Industry    *string `json:"industry"`
+	CompanyName *string `json:"companyName" binding:"omitempty,min=1"`
+	Website     *string `json:"website" binding:"omitempty,url"`
+	Industry    *string `json:"industry" binding:"omitempty,min=1"`
 	Description *string `json:"description"`
 }
 
 type VerificationRequest struct {
 	BusinessRegistration string `json:"businessRegistration" binding:"required"`
-	Website              string `json:"website" binding:"required"`
+	Website              string `json:"website" binding:"required,url"`
 	Address              string `json:"address" binding:"required"`
 	Contact              string `json:"contact" binding:"required"`
 }
@@ -68,8 +70,16 @@ func companyFromModel(c model.Companies) CompanyResponse {
 }
 
 func (h *CompanyHandler) GetProfile(c *gin.Context) {
-	userID, _ := c.Get("userId")
-	userIDStr := userID.(string)
+	userIDVal, ok := c.Get("userId")
+	if !ok {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "Unauthorized"})
+		return
+	}
+	userIDStr, ok := userIDVal.(string)
+	if !ok || userIDStr == "" {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "Unauthorized"})
+		return
+	}
 
 	stmt := SELECT(
 		gen.Companies.AllColumns,
@@ -80,9 +90,13 @@ func (h *CompanyHandler) GetProfile(c *gin.Context) {
 	)
 
 	var company model.Companies
-	err := stmt.QueryContext(c.Request.Context(), h.db, &company)
-	if err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": "Company not found"})
+	if err := stmt.QueryContext(c.Request.Context(), h.db, &company); err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			c.JSON(http.StatusNotFound, gin.H{"error": "Company not found"})
+			return
+		}
+		slog.Error("failed to load company", "error", err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to load company"})
 		return
 	}
 
@@ -90,8 +104,16 @@ func (h *CompanyHandler) GetProfile(c *gin.Context) {
 }
 
 func (h *CompanyHandler) UpdateProfile(c *gin.Context) {
-	userID, _ := c.Get("userId")
-	userIDStr := userID.(string)
+	userIDVal, ok := c.Get("userId")
+	if !ok {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "Unauthorized"})
+		return
+	}
+	userIDStr, ok := userIDVal.(string)
+	if !ok || userIDStr == "" {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "Unauthorized"})
+		return
+	}
 
 	var req UpdateCompanyRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -125,9 +147,13 @@ func (h *CompanyHandler) UpdateProfile(c *gin.Context) {
 	)
 
 	var company model.Companies
-	err := stmt.QueryContext(c.Request.Context(), h.db, &company)
-	if err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": "Company not found"})
+	if err := stmt.QueryContext(c.Request.Context(), h.db, &company); err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			c.JSON(http.StatusNotFound, gin.H{"error": "Company not found"})
+			return
+		}
+		slog.Error("failed to update company", "error", err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to update company"})
 		return
 	}
 
@@ -135,8 +161,16 @@ func (h *CompanyHandler) UpdateProfile(c *gin.Context) {
 }
 
 func (h *CompanyHandler) SubmitVerification(c *gin.Context) {
-	userID, _ := c.Get("userId")
-	userIDStr := userID.(string)
+	userIDVal, ok := c.Get("userId")
+	if !ok {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "Unauthorized"})
+		return
+	}
+	userIDStr, ok := userIDVal.(string)
+	if !ok || userIDStr == "" {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "Unauthorized"})
+		return
+	}
 
 	var req VerificationRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -148,14 +182,15 @@ func (h *CompanyHandler) SubmitVerification(c *gin.Context) {
 
 	stmt := gen.Companies.UPDATE().SET(
 		gen.Companies.VerificationDocs.SET(String(string(docs))),
-		gen.Companies.VerificationStatus.SET(String("pending")),
+		gen.Companies.VerificationStatus.SET(gen.VerificationStatusPending),
 	).WHERE(
 		gen.Companies.UserID.EQ(String(userIDStr)),
 	)
 
 	result, err := stmt.ExecContext(c.Request.Context(), h.db)
 	if err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": "Company not found"})
+		slog.Error("failed to submit verification", "error", err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to submit verification"})
 		return
 	}
 	ra, _ := result.RowsAffected()
@@ -168,8 +203,16 @@ func (h *CompanyHandler) SubmitVerification(c *gin.Context) {
 }
 
 func (h *CompanyHandler) GetVerificationStatus(c *gin.Context) {
-	userID, _ := c.Get("userId")
-	userIDStr := userID.(string)
+	userIDVal, ok := c.Get("userId")
+	if !ok {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "Unauthorized"})
+		return
+	}
+	userIDStr, ok := userIDVal.(string)
+	if !ok || userIDStr == "" {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "Unauthorized"})
+		return
+	}
 
 	stmt := SELECT(
 		gen.Companies.VerificationStatus,
@@ -182,7 +225,12 @@ func (h *CompanyHandler) GetVerificationStatus(c *gin.Context) {
 	var company model.Companies
 	err := stmt.QueryContext(c.Request.Context(), h.db, &company)
 	if err != nil {
-		c.JSON(http.StatusOK, gin.H{"verificationStatus": "none"})
+		if errors.Is(err, sql.ErrNoRows) {
+			c.JSON(http.StatusOK, gin.H{"verificationStatus": "none"})
+			return
+		}
+		slog.Error("failed to load verification status", "error", err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to load verification status"})
 		return
 	}
 

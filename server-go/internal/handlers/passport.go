@@ -2,6 +2,8 @@ package handlers
 
 import (
 	"database/sql"
+	"errors"
+	"log/slog"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
@@ -43,7 +45,12 @@ func (h *PassportHandler) GetProfile(c *gin.Context) {
 	var profile model.JobseekerProfiles
 	err := profileStmt.QueryContext(c.Request.Context(), h.db, &profile)
 	if err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": "Profile not found"})
+		if errors.Is(err, sql.ErrNoRows) {
+			c.JSON(http.StatusNotFound, gin.H{"error": "Profile not found"})
+			return
+		}
+		slog.Error("failed to load profile", "error", err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to load profile"})
 		return
 	}
 
@@ -58,7 +65,8 @@ func (h *PassportHandler) GetProfile(c *gin.Context) {
 	var user model.Users
 	err = userStmt.QueryContext(c.Request.Context(), h.db, &user)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to fetch user"})
+		slog.Error("failed to load user", "error", err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to load user"})
 		return
 	}
 
@@ -78,6 +86,7 @@ func (h *PassportHandler) GetProfile(c *gin.Context) {
 	var exps []model.JobExperiences
 	err = expStmt.QueryContext(c.Request.Context(), h.db, &exps)
 	if err != nil {
+		slog.Error("failed to query experiences", "error", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to query experiences"})
 		return
 	}

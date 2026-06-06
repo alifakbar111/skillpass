@@ -2,10 +2,13 @@ package handlers
 
 import (
 	"database/sql"
+	"errors"
 	"net/http"
+	"regexp"
 
 	"github.com/gin-gonic/gin"
 	. "github.com/go-jet/jet/v2/postgres"
+	"github.com/google/uuid"
 
 	"skillpass-server-go/.gen/skillpass/public/model"
 	"skillpass-server-go/internal/gen"
@@ -15,11 +18,11 @@ type UpdateProfileRequest struct {
 	Headline          *string `json:"headline"`
 	About             *string `json:"about"`
 	YearsOfExperience *int    `json:"yearsOfExperience"`
-	Slug              *string `json:"slug"`
+	Slug              *string `json:"slug" binding:"omitempty,min=3,max=64,slug_format"`
 }
 
 type CreateExperienceRequest struct {
-	Type         string   `json:"type" binding:"required"`
+	Type         string   `json:"type" binding:"required,oneof=employment gig education certification project volunteering"`
 	Title        string   `json:"title" binding:"required"`
 	Organization string   `json:"organization" binding:"required"`
 	StartDate    string   `json:"startDate" binding:"required"`
@@ -32,7 +35,7 @@ type CreateExperienceRequest struct {
 }
 
 type UpdateExperienceRequest struct {
-	Type         *string  `json:"type"`
+	Type         *string  `json:"type" binding:"omitempty,oneof=employment gig education certification project volunteering"`
 	Title        *string  `json:"title"`
 	Organization *string  `json:"organization"`
 	StartDate    *string  `json:"startDate"`
@@ -103,6 +106,50 @@ func mapExperience(exp model.JobExperiences) Experience {
 	}
 }
 
+var slugPattern = regexp.MustCompile(`^[a-z0-9](?:[a-z0-9-]{1,62}[a-z0-9])?$`)
+
+var reservedSlugs = map[string]struct{}{
+	"admin":       {},
+	"administrator": {},
+	"api":         {},
+	"auth":        {},
+	"company":     {},
+	"companies":   {},
+	"jobseeker":   {},
+	"jobseekers":  {},
+	"profile":     {},
+	"profiles":    {},
+	"public":      {},
+	"login":       {},
+	"register":    {},
+	"logout":      {},
+	"search":      {},
+	"settings":    {},
+	"help":        {},
+	"about":       {},
+	"terms":       {},
+	"privacy":     {},
+}
+
+var experienceTypeMap = map[string]StringExpression{
+	"employment":    gen.ExperienceTypeEmployment,
+	"gig":           gen.ExperienceTypeGig,
+	"education":     gen.ExperienceTypeEducation,
+	"certification": gen.ExperienceTypeCertification,
+	"project":       gen.ExperienceTypeProject,
+	"volunteering":  gen.ExperienceTypeVolunteering,
+}
+
+func isValidSlug(s string) bool {
+	if !slugPattern.MatchString(s) {
+		return false
+	}
+	if _, ok := reservedSlugs[s]; ok {
+		return false
+	}
+	return true
+}
+
 func int32ToIntPtr(v *int32) *int {
 	if v == nil {
 		return nil
@@ -112,8 +159,16 @@ func int32ToIntPtr(v *int32) *int {
 }
 
 func (h *ProfileHandler) GetMyProfile(c *gin.Context) {
-	userID, _ := c.Get("userId")
-	userIDStr := userID.(string)
+	userIDVal, ok := c.Get("userId")
+	if !ok {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "Unauthorized"})
+		return
+	}
+	userIDStr, ok := userIDVal.(string)
+	if !ok || userIDStr == "" {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "Unauthorized"})
+		return
+	}
 
 	profileStmt := SELECT(
 		gen.JobseekerProfiles.ID, gen.JobseekerProfiles.UserID, gen.JobseekerProfiles.Headline,
@@ -188,8 +243,16 @@ func (h *ProfileHandler) GetMyProfile(c *gin.Context) {
 }
 
 func (h *ProfileHandler) UpdateMyProfile(c *gin.Context) {
-	userID, _ := c.Get("userId")
-	userIDStr := userID.(string)
+	userIDVal, ok := c.Get("userId")
+	if !ok {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "Unauthorized"})
+		return
+	}
+	userIDStr, ok := userIDVal.(string)
+	if !ok || userIDStr == "" {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "Unauthorized"})
+		return
+	}
 
 	var req UpdateProfileRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -208,6 +271,10 @@ func (h *ProfileHandler) UpdateMyProfile(c *gin.Context) {
 		setVals = append(setVals, gen.JobseekerProfiles.YearsOfExperience.SET(Int64(int64(*req.YearsOfExperience))))
 	}
 	if req.Slug != nil {
+		if !isValidSlug(*req.Slug) {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid slug format or reserved word"})
+			return
+		}
 		setVals = append(setVals, gen.JobseekerProfiles.Slug.SET(String(*req.Slug)))
 	}
 
@@ -226,7 +293,11 @@ func (h *ProfileHandler) UpdateMyProfile(c *gin.Context) {
 	var profile model.JobseekerProfiles
 	err := stmt.QueryContext(c.Request.Context(), h.db, &profile)
 	if err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": "Profile not found"})
+		if errors.Is(err, sql.ErrNoRows) {
+			c.JSON(http.StatusNotFound, gin.H{"error": "Profile not found"})
+			return
+		}
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to update profile"})
 		return
 	}
 
@@ -241,12 +312,29 @@ func (h *ProfileHandler) UpdateMyProfile(c *gin.Context) {
 }
 
 func (h *ProfileHandler) CreateExperience(c *gin.Context) {
-	userID, _ := c.Get("userId")
-	userIDStr := userID.(string)
+	userIDVal, ok := c.Get("userId")
+	if !ok {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "Unauthorized"})
+		return
+	}
+	userIDStr, ok := userIDVal.(string)
+	if !ok || userIDStr == "" {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "Unauthorized"})
+		return
+	}
 
 	var req CreateExperienceRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request body"})
+		return
+	}
+
+	if !isValidDate(req.StartDate) {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "startDate must be YYYY-MM"})
+		return
+	}
+	if req.EndDate != nil && *req.EndDate != "" && !isValidDate(*req.EndDate) {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "endDate must be YYYY-MM"})
 		return
 	}
 
@@ -261,7 +349,11 @@ func (h *ProfileHandler) CreateExperience(c *gin.Context) {
 	var profile model.JobseekerProfiles
 	err := profileStmt.QueryContext(c.Request.Context(), h.db, &profile)
 	if err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": "Profile not found"})
+		if errors.Is(err, sql.ErrNoRows) {
+			c.JSON(http.StatusNotFound, gin.H{"error": "Profile not found"})
+			return
+		}
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to load profile"})
 		return
 	}
 
@@ -296,9 +388,21 @@ func (h *ProfileHandler) CreateExperience(c *gin.Context) {
 }
 
 func (h *ProfileHandler) UpdateExperience(c *gin.Context) {
-	userID, _ := c.Get("userId")
-	userIDStr := userID.(string)
+	userIDVal, ok := c.Get("userId")
+	if !ok {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "Unauthorized"})
+		return
+	}
+	userIDStr, ok := userIDVal.(string)
+	if !ok || userIDStr == "" {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "Unauthorized"})
+		return
+	}
 	expID := c.Param("id")
+	if _, err := uuid.Parse(expID); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid experience id"})
+		return
+	}
 
 	profileStmt := SELECT(
 		gen.JobseekerProfiles.ID,
@@ -311,7 +415,11 @@ func (h *ProfileHandler) UpdateExperience(c *gin.Context) {
 	var profile model.JobseekerProfiles
 	err := profileStmt.QueryContext(c.Request.Context(), h.db, &profile)
 	if err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": "Profile not found"})
+		if errors.Is(err, sql.ErrNoRows) {
+			c.JSON(http.StatusNotFound, gin.H{"error": "Profile not found"})
+			return
+		}
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to load profile"})
 		return
 	}
 
@@ -321,9 +429,23 @@ func (h *ProfileHandler) UpdateExperience(c *gin.Context) {
 		return
 	}
 
+	if req.StartDate != nil && *req.StartDate != "" && !isValidDate(*req.StartDate) {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "startDate must be YYYY-MM"})
+		return
+	}
+	if req.EndDate != nil && *req.EndDate != "" && !isValidDate(*req.EndDate) {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "endDate must be YYYY-MM"})
+		return
+	}
+
 	var setVals []interface{}
 	if req.Type != nil {
-		setVals = append(setVals, gen.JobExperiences.Type.SET(String(*req.Type)))
+		if expr, ok := experienceTypeMap[*req.Type]; ok {
+			setVals = append(setVals, gen.JobExperiences.Type.SET(expr))
+		} else {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid experience type"})
+			return
+		}
 	}
 	if req.Title != nil {
 		setVals = append(setVals, gen.JobExperiences.Title.SET(String(*req.Title)))
@@ -372,7 +494,11 @@ func (h *ProfileHandler) UpdateExperience(c *gin.Context) {
 	var exp model.JobExperiences
 	err = stmt.QueryContext(c.Request.Context(), h.db, &exp)
 	if err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": "Experience not found"})
+		if errors.Is(err, sql.ErrNoRows) {
+			c.JSON(http.StatusNotFound, gin.H{"error": "Experience not found"})
+			return
+		}
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to update experience"})
 		return
 	}
 
@@ -380,9 +506,21 @@ func (h *ProfileHandler) UpdateExperience(c *gin.Context) {
 }
 
 func (h *ProfileHandler) DeleteExperience(c *gin.Context) {
-	userID, _ := c.Get("userId")
-	userIDStr := userID.(string)
+	userIDVal, ok := c.Get("userId")
+	if !ok {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "Unauthorized"})
+		return
+	}
+	userIDStr, ok := userIDVal.(string)
+	if !ok || userIDStr == "" {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "Unauthorized"})
+		return
+	}
 	expID := c.Param("id")
+	if _, err := uuid.Parse(expID); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid experience id"})
+		return
+	}
 
 	profileStmt := SELECT(
 		gen.JobseekerProfiles.ID,
@@ -395,7 +533,11 @@ func (h *ProfileHandler) DeleteExperience(c *gin.Context) {
 	var profile model.JobseekerProfiles
 	err := profileStmt.QueryContext(c.Request.Context(), h.db, &profile)
 	if err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": "Profile not found"})
+		if errors.Is(err, sql.ErrNoRows) {
+			c.JSON(http.StatusNotFound, gin.H{"error": "Profile not found"})
+			return
+		}
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to load profile"})
 		return
 	}
 

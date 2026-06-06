@@ -15,10 +15,15 @@ func Load() *Config {
 		panic("JWT_SECRET environment variable is required")
 	}
 
+	dbURL := os.Getenv("DATABASE_URL")
+	if dbURL == "" {
+		panic("DATABASE_URL environment variable is required")
+	}
+
 	return &Config{
 		Port:        getEnv("PORT", "1234"),
 		JWTSecret:   jwtSecret,
-		DatabaseURL: getEnv("DATABASE_URL", "postgres://postgres:postgres@localhost:5432/skillpass"),
+		DatabaseURL: dbURL,
 		CORSOrigin:  getEnv("CORS_ORIGIN", "http://localhost:4200"),
 	}
 }
