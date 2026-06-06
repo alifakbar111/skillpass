@@ -1,5 +1,6 @@
-import { createContext, type ReactNode, useCallback, useContext, useEffect, useState } from 'react';
+import { createContext, type ReactNode, useCallback, useContext, useEffect, useMemo, useState } from 'react';
 import {
+  ApiError,
   api,
   login as apiLogin,
   logout as apiLogout,
@@ -42,12 +43,25 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    const onStorage = (e: StorageEvent) => {
+      if (e.key === 'accessToken' && !e.newValue) {
+        setUser(null);
+      }
+    };
+    window.addEventListener('storage', onStorage);
+    return () => window.removeEventListener('storage', onStorage);
+  }, []);
+
+  useEffect(() => {
     const accessToken = localStorage.getItem('accessToken');
     if (accessToken) {
       api<User>('/profiles/me')
         .then((u) => setUser(u))
         .catch((err) => {
-          if (isAuthError(err)) clearTokens();
+          if (isAuthError(err) || err instanceof ApiError) {
+            clearTokens();
+            setUser(null);
+          }
         })
         .finally(() => setLoading(false));
     } else {
@@ -85,7 +99,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setUser(null);
   }, []);
 
-  return <AuthContext.Provider value={{ user, loading, login, register, logout }}>{children}</AuthContext.Provider>;
+  const value = useMemo<AuthContextType>(
+    () => ({ user, loading, login, register, logout }),
+    [user, loading, login, register, logout],
+  );
+
+  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }
 
 export function useAuth() {

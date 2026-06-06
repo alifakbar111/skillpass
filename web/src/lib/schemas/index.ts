@@ -2,7 +2,7 @@ import { z } from 'zod';
 
 export const loginSchema = z.object({
   email: z.string().email('Invalid email address'),
-  password: z.string().min(1, 'Password is required'),
+  password: z.string().min(1, 'Password is required').max(128),
 });
 export type LoginForm = z.infer<typeof loginSchema>;
 
@@ -10,8 +10,12 @@ export const registerSchema = z
   .object({
     role: z.enum(['jobseeker', 'company']),
     email: z.string().email('Invalid email address'),
-    username: z.string().min(3, 'Username must be at least 3 characters'),
-    password: z.string().min(6, 'Password must be at least 6 characters'),
+    username: z
+      .string()
+      .min(3, 'Username must be at least 3 characters')
+      .max(32, 'Username must be at most 32 characters')
+      .regex(/^[a-z0-9_-]+$/i, 'Username may only contain letters, numbers, _ and -'),
+    password: z.string().min(8, 'Password must be at least 8 characters').max(128),
     name: z.string().optional(),
     companyName: z.string().optional(),
     businessRegistration: z.string().optional(),

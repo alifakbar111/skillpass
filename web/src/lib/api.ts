@@ -1,24 +1,49 @@
 const BASE_URL = '/api/v1';
 
-function getTokens() {
-  const accessToken = localStorage.getItem('accessToken');
-  const refreshToken = localStorage.getItem('refreshToken');
-  return { accessToken, refreshToken };
-}
+const ACCESS_TOKEN_KEY = 'accessToken';
 
-function setTokens(accessToken: string, refreshToken?: string) {
-  localStorage.setItem('accessToken', accessToken);
-  if (refreshToken) localStorage.setItem('refreshToken', refreshToken);
+export function getAccessToken(): string | null {
+  return localStorage.getItem(ACCESS_TOKEN_KEY);
 }
 
 export function clearTokens() {
-  localStorage.removeItem('accessToken');
-  localStorage.removeItem('refreshToken');
+  localStorage.removeItem(ACCESS_TOKEN_KEY);
 }
 
-export function isAuthError(err: unknown): boolean {
-  if (!(err instanceof Error)) return false;
-  return err.message.includes('401') || err.message.includes('Unauthorized') || err.message.includes('Session expired');
+export class ApiError extends Error {
+  constructor(
+    public status: number,
+    public body: string,
+    public serverMessage: string | null,
+  ) {
+    super(serverMessage ?? `HTTP ${status}`);
+    this.name = 'ApiError';
+  }
+}
+
+export class AuthError extends ApiError {
+  constructor(status: number, body: string, serverMessage: string | null) {
+    super(status, body, serverMessage);
+    this.name = 'AuthError';
+  }
+}
+
+export function isAuthError(err: unknown): err is AuthError {
+  return err instanceof AuthError;
+}
+
+interface ErrorBody {
+  error?: string;
+}
+
+function parseServerMessage(body: string): string | null {
+  if (!body) return null;
+  try {
+    const obj = JSON.parse(body) as ErrorBody;
+    return typeof obj.error === 'string' ? obj.error : null;
+  } catch {
+    return null;
+  }
 }
 
 async function fetchJson(url: string, options?: RequestInit): Promise<{ ok: boolean; status: number; body: string }> {
@@ -27,80 +52,96 @@ async function fetchJson(url: string, options?: RequestInit): Promise<{ ok: bool
   return { ok: res.ok, status: res.status, body };
 }
 
-function parseJson<T>(body: string): T {
-  return JSON.parse(body) as T;
+function throwApiError(status: number, body: string): never {
+  const serverMessage = parseServerMessage(body);
+  if (status === 401) {
+    throw new AuthError(status, body, serverMessage);
+  }
+  throw new ApiError(status, body, serverMessage);
 }
 
+let refreshInFlight: Promise<string | null> | null = null;
+
 async function refreshAccessToken(): Promise<string | null> {
-  const refreshToken = localStorage.getItem('refreshToken');
-  if (!refreshToken) return null;
-
-  try {
-    const res = await fetchJson(`${BASE_URL}/auth/refresh`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ refreshToken }),
-    });
-
-    if (!res.ok) {
-      clearTokens();
-      return null;
-    }
-
-    let data: { accessToken?: string };
-    try {
-      data = parseJson<{ accessToken?: string }>(res.body);
-    } catch {
-      clearTokens();
-      return null;
-    }
-
-    if (!data.accessToken || typeof data.accessToken !== 'string') {
-      clearTokens();
-      return null;
-    }
-
-    setTokens(data.accessToken);
-    return data.accessToken;
-  } catch {
-    clearTokens();
-    return null;
+  if (refreshInFlight) {
+    return refreshInFlight;
   }
+  const promise = (async (): Promise<string | null> => {
+    try {
+      const res = await fetchJson(`${BASE_URL}/auth/refresh`, {
+        method: 'POST',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+      });
+      if (!res.ok) {
+        return null;
+      }
+      const data = JSON.parse(res.body) as { accessToken?: string; refreshToken?: string };
+      if (!data.accessToken || typeof data.accessToken !== 'string') {
+        return null;
+      }
+      setAccessToken(data.accessToken);
+      return data.accessToken;
+    } catch {
+      return null;
+    } finally {
+      refreshInFlight = null;
+    }
+  })();
+  refreshInFlight = promise;
+  return promise;
+}
+
+function setAccessToken(token: string) {
+  localStorage.setItem(ACCESS_TOKEN_KEY, token);
 }
 
 export async function api<T = unknown>(path: string, options: RequestInit = {}): Promise<T> {
-  const { accessToken } = getTokens();
   const headers = new Headers(options.headers);
   headers.set('Content-Type', 'application/json');
+
+  const accessToken = getAccessToken();
   if (accessToken) headers.set('Authorization', `Bearer ${accessToken}`);
 
-  try {
-    let res = await fetchJson(`${BASE_URL}${path}`, { ...options, headers });
+  let res = await fetchJson(`${BASE_URL}${path}`, {
+    ...options,
+    headers,
+    credentials: 'include',
+  });
 
+  if (res.status === 401) {
+    const newToken = await refreshAccessToken();
+    if (newToken) {
+      headers.set('Authorization', `Bearer ${newToken}`);
+      res = await fetchJson(`${BASE_URL}${path}`, {
+        ...options,
+        headers,
+        credentials: 'include',
+      });
+    }
+  }
+
+  if (!res.ok) {
     if (res.status === 401) {
-      const newToken = await refreshAccessToken();
-      if (newToken) {
-        headers.set('Authorization', `Bearer ${newToken}`);
-        res = await fetchJson(`${BASE_URL}${path}`, { ...options, headers });
-      }
+      clearTokens();
     }
+    throwApiError(res.status, res.body);
+  }
 
-    if (!res.ok) {
-      throw new Error(res.body || `HTTP ${res.status}`);
-    }
+  if (res.status === 204 || res.body === '') {
+    return undefined as T;
+  }
 
-    return parseJson<T>(res.body);
-  } catch (err) {
-    if (err instanceof TypeError && err.message === 'Failed to fetch') {
-      throw new Error('Network error — please check your connection');
-    }
-    throw err;
+  try {
+    return JSON.parse(res.body) as T;
+  } catch {
+    throwApiError(res.status, res.body);
   }
 }
 
 export interface LoginResponse {
   accessToken: string;
-  refreshToken: string;
+  refreshToken?: string;
   user: { id: string; email: string; username: string; name: string; role: 'jobseeker' | 'company' };
 }
 
@@ -109,7 +150,7 @@ export async function login(email: string, password: string): Promise<LoginRespo
     method: 'POST',
     body: JSON.stringify({ email, password }),
   });
-  setTokens(data.accessToken, data.refreshToken);
+  setAccessToken(data.accessToken);
   return data;
 }
 
@@ -129,7 +170,7 @@ export async function register(body: {
     method: 'POST',
     body: JSON.stringify(body),
   });
-  setTokens(data.accessToken, data.refreshToken);
+  setAccessToken(data.accessToken);
   return data;
 }
 
