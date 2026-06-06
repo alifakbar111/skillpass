@@ -1,4 +1,4 @@
-import { useCallback, useRef, useState } from 'react';
+import { useCallback, useEffect, useId, useRef, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../hooks/useAuth';
 import { ThemeToggle } from '../ui/ThemeToggle';
@@ -8,8 +8,10 @@ export function Navbar() {
   const navigate = useNavigate();
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
+  const menuId = useId();
 
   const handleLogout = async () => {
+    setDropdownOpen(false);
     await logout();
     navigate('/');
   };
@@ -17,6 +19,17 @@ export function Navbar() {
   const toggleDropdown = () => {
     setDropdownOpen((prev) => !prev);
   };
+
+  useEffect(() => {
+    if (!dropdownOpen) return;
+    const handleClick = (e: MouseEvent) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) {
+        setDropdownOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClick);
+    return () => document.removeEventListener('mousedown', handleClick);
+  }, [dropdownOpen]);
 
   const handleDropdownKeyDown = useCallback((e: React.KeyboardEvent) => {
     if (e.key === 'Escape') {
@@ -61,8 +74,9 @@ export function Navbar() {
                 type="button"
                 className="btn btn-ghost btn-circle avatar avatar-placeholder"
                 onClick={toggleDropdown}
-                aria-haspopup="true"
-                aria-expanded="false"
+                aria-haspopup="menu"
+                aria-expanded={dropdownOpen}
+                aria-controls={menuId}
                 aria-label="User menu"
               >
                 <div className="bg-neutral text-neutral-content rounded-full w-10">
@@ -71,22 +85,26 @@ export function Navbar() {
               </button>
               {dropdownOpen && (
                 <ul
+                  id={menuId}
+                  aria-label="User menu"
                   className="menu dropdown-content bg-base-100 rounded-box z-1 mt-3 w-52 p-2 shadow-sm"
                   onKeyDown={handleDropdownKeyDown}
                 >
-                  <li className="menu-label text-xs text-muted">{user.email}</li>
+                  <li role="presentation" className="menu-label text-xs text-muted">
+                    {user.email}
+                  </li>
                   <li>
                     <hr className="divider my-1" />
                   </li>
                   {user.role === 'company' && (
-                    <li>
-                      <Link to="/company/profile" onClick={() => setDropdownOpen(false)}>
+                    <li role="none">
+                      <Link role="menuitem" to="/company/profile" onClick={() => setDropdownOpen(false)}>
                         Company Profile
                       </Link>
                     </li>
                   )}
-                  <li>
-                    <button type="button" onClick={handleLogout} className="text-error">
+                  <li role="none">
+                    <button type="button" role="menuitem" onClick={handleLogout} className="text-error">
                       Logout
                     </button>
                   </li>

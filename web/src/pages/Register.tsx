@@ -5,6 +5,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { FormInput, FormTextarea } from '../components/ui/FormField';
 import { LoadingSpinner } from '../components/ui/LoadingFallback';
 import { useAuth } from '../hooks/useAuth';
+import { ApiError } from '../lib/api';
 import { type RegisterForm, registerSchema } from '../lib/schemas';
 
 export function Register() {
@@ -13,22 +14,17 @@ export function Register() {
   const {
     register,
     handleSubmit,
-    watch,
     setValue,
+    watch,
     formState: { errors },
   } = useForm<RegisterForm>({
     resolver: zodResolver(registerSchema),
+    shouldUnregister: true,
     defaultValues: {
       email: '',
       username: '',
       password: '',
-      name: '',
       role: 'jobseeker',
-      companyName: '',
-      businessRegistration: '',
-      website: '',
-      address: '',
-      contact: '',
     },
   });
   const [error, setError] = useState('');
@@ -42,8 +38,11 @@ export function Register() {
       await authRegister(data);
       navigate('/');
     } catch (err) {
-      console.error('registration error', err);
-      setError(err instanceof Error ? err.message : 'Registration failed');
+      if (err instanceof ApiError) {
+        setError(err.serverMessage ?? err.message);
+      } else {
+        setError(err instanceof Error ? err.message : 'Registration failed');
+      }
     } finally {
       setLoading(false);
     }
@@ -61,7 +60,7 @@ export function Register() {
                 <button
                   type="button"
                   className={`btn flex-1 ${role === 'jobseeker' ? 'btn-primary' : 'btn-outline'}`}
-                  onClick={() => setValue('role', 'jobseeker')}
+                  onClick={() => setValue('role', 'jobseeker', { shouldDirty: true })}
                   aria-label="Jobseeker"
                 >
                   Jobseeker
@@ -69,7 +68,7 @@ export function Register() {
                 <button
                   type="button"
                   className={`btn flex-1 ${role === 'company' ? 'btn-primary' : 'btn-outline'}`}
-                  onClick={() => setValue('role', 'company')}
+                  onClick={() => setValue('role', 'company', { shouldDirty: true })}
                   aria-label="Company"
                 >
                   Company
@@ -79,12 +78,21 @@ export function Register() {
             <fieldset className="fieldset">
               <legend className="fieldset-legend">Account Details</legend>
               <div className="space-y-4">
-                <FormInput
-                  label={role === 'company' ? 'Company Name' : 'Full Name'}
-                  registration={role === 'company' ? register('companyName') : register('name')}
-                  error={errors.companyName || errors.name}
-                  autoComplete={role === 'company' ? 'organization' : 'name'}
-                />
+                {role === 'company' ? (
+                  <FormInput
+                    label="Company Name"
+                    registration={register('companyName')}
+                    error={errors.companyName}
+                    autoComplete="organization"
+                  />
+                ) : (
+                  <FormInput
+                    label="Full Name"
+                    registration={register('name')}
+                    error={errors.name}
+                    autoComplete="name"
+                  />
+                )}
                 <FormInput
                   label="Username"
                   registration={register('username')}

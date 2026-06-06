@@ -1,16 +1,24 @@
-import { Outlet } from 'react-router-dom';
+import { useEffect, useRef } from 'react';
+import { Outlet, useLocation } from 'react-router-dom';
 import { Navbar } from './Navbar';
 
 export function RootLayout() {
+  const mainRef = useRef<HTMLElement>(null);
+  const _location = useLocation();
+
+  useEffect(() => {
+    mainRef.current?.focus();
+  }, []);
+
   return (
     <div className="min-h-screen flex flex-col">
-      {/* <a href="#main-content" className="skip-link">
+      <a href="#main-content" className="skip-link">
         Skip to content
-      </a> */}
+      </a>
       <nav aria-label="Main navigation">
         <Navbar />
       </nav>
-      <main id="main-content" className="flex-1" tabIndex={-1}>
+      <main id="main-content" ref={mainRef} className="flex-1 outline-none" tabIndex={-1}>
         <Outlet />
       </main>
       <footer className="footer footer-center bg-base-200 text-base-content p-4 text-sm text-muted">
