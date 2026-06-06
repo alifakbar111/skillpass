@@ -2,7 +2,7 @@ import { Briefcase, Calendar, DollarSign, MapPin } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { LoadingFallback } from '../components/ui/LoadingFallback';
-import { api } from '../lib/api';
+import { ApiError, api } from '../lib/api';
 
 interface Job {
   id: string;
@@ -24,11 +24,21 @@ export function JobDetail() {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    if (id) {
-      api<Job>(`/jobs/${id}`)
-        .then(setJob)
-        .catch((err) => setError(err instanceof Error ? err.message : 'Failed to load job'));
-    }
+    if (!id) return;
+    const safe = encodeURIComponent(id);
+    let cancelled = false;
+    api<Job>(`/jobs/${safe}`)
+      .then((j) => {
+        if (!cancelled) setJob(j);
+      })
+      .catch((err) => {
+        if (!cancelled) {
+          setError(err instanceof ApiError ? (err.serverMessage ?? err.message) : 'Failed to load job');
+        }
+      });
+    return () => {
+      cancelled = true;
+    };
   }, [id]);
 
   if (error) return <p className="text-center p-8 text-error">{error}</p>;

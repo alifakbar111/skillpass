@@ -1,7 +1,7 @@
 import { Briefcase } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { api } from '../lib/api';
+import { ApiError, api } from '../lib/api';
 
 interface Job {
   id: string;
@@ -21,14 +21,21 @@ export function PublicJobs() {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
+    const controller = new AbortController();
     setError(null);
     api<Array<{ id: string; name: string }>>('/industries')
       .then(setIndustries)
       .catch(() => {});
-    const params = industry ? `?industry=${industry}` : '';
-    api<Job[]>(`/jobs${params}`)
+    const params = new URLSearchParams();
+    if (industry) params.set('industry', industry);
+    const qs = params.toString();
+    api<Job[]>(`/jobs${qs ? `?${qs}` : ''}`)
       .then(setJobs)
-      .catch((err) => setError(err instanceof Error ? err.message : 'Failed to load jobs'));
+      .catch((err) => {
+        if (err.name === 'AbortError') return;
+        setError(err instanceof ApiError ? (err.serverMessage ?? err.message) : 'Failed to load jobs');
+      });
+    return () => controller.abort();
   }, [industry]);
 
   return (

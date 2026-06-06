@@ -5,7 +5,7 @@ import { useForm } from 'react-hook-form';
 import { Link } from 'react-router-dom';
 import { FormInput, FormSelect, FormTextarea } from '../components/ui/FormField';
 import { LoadingSpinner } from '../components/ui/LoadingFallback';
-import { api } from '../lib/api';
+import { ApiError, api } from '../lib/api';
 import { type JobForm, jobSchema } from '../lib/schemas';
 
 interface Job {
@@ -52,12 +52,20 @@ export function CompanyJobs() {
   });
 
   useEffect(() => {
+    let cancelled = false;
     api<Array<{ id: string; name: string }>>('/industries')
-      .then(setIndustries)
-      .catch((err) => console.error('Failed to load industries:', err));
+      .then((data) => {
+        if (!cancelled) setIndustries(data);
+      })
+      .catch(() => {});
     api<Job[]>('/jobs/me')
-      .then(setJobs)
-      .catch((err) => console.error('Failed to load jobs:', err));
+      .then((data) => {
+        if (!cancelled) setJobs(data);
+      })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   const createJob = async (data: JobForm) => {
@@ -85,7 +93,7 @@ export function CompanyJobs() {
       setShowForm(false);
       reset();
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to create job');
+      setError(err instanceof ApiError ? (err.serverMessage ?? err.message) : 'Failed to create job');
     } finally {
       setSaving(false);
     }
@@ -93,10 +101,13 @@ export function CompanyJobs() {
 
   const closeJob = async (id: string) => {
     try {
-      await api(`/jobs/${id}`, { method: 'PUT', body: JSON.stringify({ status: 'closed' }) });
+      await api(`/jobs/${encodeURIComponent(id)}`, {
+        method: 'PUT',
+        body: JSON.stringify({ status: 'closed' }),
+      });
       setJobs((prev) => prev.map((j) => (j.id === id ? { ...j, status: 'closed' } : j)));
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to close job');
+      setError(err instanceof ApiError ? (err.serverMessage ?? err.message) : 'Failed to close job');
     }
   };
 

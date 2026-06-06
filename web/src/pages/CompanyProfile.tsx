@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { FormInput, FormSelect, FormTextarea } from '../components/ui/FormField';
 import { LoadingFallback, LoadingSpinner } from '../components/ui/LoadingFallback';
-import { api } from '../lib/api';
+import { ApiError, api } from '../lib/api';
 import { type CompanyProfileForm, companyProfileSchema } from '../lib/schemas';
 
 export function CompanyProfile() {
@@ -12,6 +12,7 @@ export function CompanyProfile() {
   const [saving, setSaving] = useState(false);
   const [industries, setIndustries] = useState<Array<{ id: string; name: string }>>([]);
   const [error, setError] = useState<string | null>(null);
+  const [success, setSuccess] = useState(false);
 
   const {
     register,
@@ -23,29 +24,44 @@ export function CompanyProfile() {
   });
 
   useEffect(() => {
+    let cancelled = false;
     api<Array<{ id: string; name: string }>>('/industries')
-      .then(setIndustries)
+      .then((data) => {
+        if (!cancelled) setIndustries(data);
+      })
       .catch(() => {});
     api<{ companyName: string; website?: string; industry: string; description?: string }>('/company/profile')
-      .then((data) =>
+      .then((data) => {
+        if (cancelled) return;
         reset({
           companyName: data.companyName,
           website: data.website || '',
           industry: data.industry,
           description: data.description || '',
-        }),
-      )
-      .catch((err) => setError(err instanceof Error ? err.message : 'Failed to load profile'))
-      .finally(() => setLoading(false));
+        });
+      })
+      .catch((err) => {
+        if (!cancelled) {
+          setError(err instanceof ApiError ? (err.serverMessage ?? err.message) : 'Failed to load profile');
+        }
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
   }, [reset]);
 
   const onSubmit = async (data: CompanyProfileForm) => {
     setSaving(true);
     setError(null);
+    setSuccess(false);
     try {
       await api('/company/profile', { method: 'PUT', body: JSON.stringify(data) });
+      setSuccess(true);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to save profile');
+      setError(err instanceof ApiError ? (err.serverMessage ?? err.message) : 'Failed to save profile');
     } finally {
       setSaving(false);
     }
@@ -63,6 +79,12 @@ export function CompanyProfile() {
           <button type="button" title="close" className="btn btn-ghost btn-xs" onClick={() => setError(null)}>
             <X size={14} />
           </button>
+        </div>
+      )}
+
+      {success && (
+        <div className="alert alert-success mb-4" role="status">
+          <span>Profile saved</span>
         </div>
       )}
 

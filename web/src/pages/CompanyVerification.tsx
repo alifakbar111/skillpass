@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { FormInput, FormTextarea } from '../components/ui/FormField';
 import { LoadingSpinner } from '../components/ui/LoadingFallback';
-import { api } from '../lib/api';
+import { ApiError, api } from '../lib/api';
 import { type VerificationForm, verificationSchema } from '../lib/schemas';
 
 export function CompanyVerification() {
@@ -21,9 +21,19 @@ export function CompanyVerification() {
   });
 
   useEffect(() => {
+    let cancelled = false;
     api<{ verificationStatus: string }>('/company/verification-status')
-      .then((data) => setStatus(data.verificationStatus))
-      .catch((err) => setError(err instanceof Error ? err.message : 'Failed to load verification status'));
+      .then((data) => {
+        if (!cancelled) setStatus(data.verificationStatus);
+      })
+      .catch((err) => {
+        if (!cancelled) {
+          setError(err instanceof ApiError ? (err.serverMessage ?? err.message) : 'Failed to load verification status');
+        }
+      });
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   const onSubmit = async (data: VerificationForm) => {
@@ -33,7 +43,7 @@ export function CompanyVerification() {
       await api('/company/verification', { method: 'POST', body: JSON.stringify(data) });
       setStatus('pending');
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Submission failed');
+      setError(err instanceof ApiError ? (err.serverMessage ?? err.message) : 'Submission failed');
     } finally {
       setSubmitting(false);
     }
