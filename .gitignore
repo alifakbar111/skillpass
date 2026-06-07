@@ -12,6 +12,8 @@ docs/
 .kilo/
 .vscode/
 
+server-go/migrations/.applied/
+
 # Auto-emitted tsc output (should not be checked in)
 web/src/**/*.js
 web/src/**/*.js.map
