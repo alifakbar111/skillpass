@@ -33,6 +33,8 @@ var requiredTables = []tableDef{
 	{name: "tags"},
 	{name: "job_postings"},
 	{name: "refresh_tokens"},
+	{name: "ai_evaluations"},
+	{name: "applications"},
 }
 
 func main() {
