@@ -26,6 +26,12 @@ const PublicPassport = lazy(() => import('./pages/PublicPassport').then((m) => (
 const AdminVerifications = lazy(() =>
   import('./pages/AdminVerifications').then((m) => ({ default: m.AdminVerifications })),
 );
+const EvaluationPage = lazy(() =>
+  import('./pages/jobseeker/EvaluationPage').then((m) => ({ default: m.EvaluationPage })),
+);
+const ApplicationsPage = lazy(() =>
+  import('./pages/jobseeker/ApplicationsPage').then((m) => ({ default: m.ApplicationsPage })),
+);
 
 const router = createBrowserRouter([
   {
@@ -47,6 +53,22 @@ const router = createBrowserRouter([
         element: (
           <ProtectedRoute requiredRole="jobseeker">
             <JobseekerPassport />
+          </ProtectedRoute>
+        ),
+      },
+      {
+        path: '/jobseeker/evaluation',
+        element: (
+          <ProtectedRoute requiredRole="jobseeker">
+            <EvaluationPage />
+          </ProtectedRoute>
+        ),
+      },
+      {
+        path: '/jobseeker/applications',
+        element: (
+          <ProtectedRoute requiredRole="jobseeker">
+            <ApplicationsPage />
           </ProtectedRoute>
         ),
       },
