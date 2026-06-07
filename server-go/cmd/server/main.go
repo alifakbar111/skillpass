@@ -8,9 +8,13 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/joho/godotenv"
 
+	"skillpass-server-go/internal/application"
 	"skillpass-server-go/internal/config"
 	"skillpass-server-go/internal/db"
+	"skillpass-server-go/internal/evaluation"
 	"skillpass-server-go/internal/handlers"
+	"skillpass-server-go/internal/lib"
+	"skillpass-server-go/internal/matching"
 	"skillpass-server-go/internal/middleware"
 )
 
@@ -48,6 +52,17 @@ func main() {
 	companies := handlers.NewCompanyHandler(database)
 	search := handlers.NewSearchHandler(database)
 	admin := handlers.NewAdminHandler(database)
+
+	// Phase 2: AI Evaluation & Matching
+	llmClient := lib.NewOpenAIClient()
+	evalService := evaluation.NewService(database, llmClient)
+	evalHandler := evaluation.NewHandler(database, evalService)
+
+	appService := application.NewService(database)
+	appHandler := application.NewHandler(appService)
+
+	matchService := matching.NewService(database)
+	matchHandler := matching.NewHandler(matchService)
 
 	api.GET("/health", handlers.GetHealth)
 
@@ -104,6 +119,39 @@ func main() {
 	adminGroup.Use(middleware.AuthRequired(cfg.JWTSecret), middleware.RequireRole("admin"))
 	adminGroup.GET("/verifications/pending", admin.ListPendingVerifications)
 	adminGroup.POST("/verifications/:id", admin.HandleVerification)
+
+	// ── Evaluation routes (jobseeker) ──
+	evalGroup := api.Group("/evaluate")
+	evalGroup.Use(middleware.AuthRequired(cfg.JWTSecret), middleware.RequireRole("jobseeker"))
+	evalGroup.POST("/me", evalHandler.PostEvaluate)
+	evalGroup.GET("/me/results", evalHandler.GetLatestEvaluation)
+
+	// ── Application routes (jobseeker applies) ──
+	jobApplyGroup := api.Group("/jobs")
+	jobApplyGroup.Use(middleware.AuthRequired(cfg.JWTSecret), middleware.RequireRole("jobseeker"))
+	jobApplyGroup.POST("/:id/apply", appHandler.Apply)
+
+	appGroup := api.Group("/applications")
+	appGroup.Use(middleware.AuthRequired(cfg.JWTSecret), middleware.RequireRole("jobseeker"))
+	appGroup.GET("/me", appHandler.ListMyApplications)
+
+	// ── Application status update (company) ──
+	appStatusGroup := api.Group("/applications")
+	for _, m := range verifiedCompany {
+		appStatusGroup.Use(m)
+	}
+	appStatusGroup.PUT("/:id/status", appHandler.UpdateStatus)
+
+	// ── Matching routes ──
+	matchesJobseekerGroup := api.Group("/jobs")
+	matchesJobseekerGroup.Use(middleware.AuthRequired(cfg.JWTSecret), middleware.RequireRole("jobseeker"))
+	matchesJobseekerGroup.GET("/matches", matchHandler.MatchJobs)
+
+	matchesCompanyGroup := api.Group("/candidates")
+	for _, m := range verifiedCompany {
+		matchesCompanyGroup.Use(m)
+	}
+	matchesCompanyGroup.GET("/matches", matchHandler.MatchCandidates)
 
 	log.Printf("SkillPass API (Go) running at http://localhost:%s", cfg.Port)
 	if err := r.Run(":" + cfg.Port); err != nil {
