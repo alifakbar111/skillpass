@@ -1,9 +1,12 @@
-import { ExternalLink, X } from 'lucide-react';
+import { ExternalLink, Sparkles, X } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
+import { EvaluationScoreBadge } from '../components/jobseeker/EvaluationScoreBadge';
 import { LoadingFallback } from '../components/ui/LoadingFallback';
 import { useAuth } from '../hooks/useAuth';
 import { ApiError, api } from '../lib/api';
+import type { EvaluationResult } from '../lib/evaluation';
+import { getLatestEvaluation } from '../lib/evaluation';
 
 interface PassportData {
   name: string;
@@ -26,21 +29,38 @@ interface PassportData {
 export function JobseekerPassport() {
   const { user } = useAuth();
   const [data, setData] = useState<PassportData | null>(null);
+  const [evaluation, setEvaluation] = useState<EvaluationResult | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     if (!user) return;
     const safe = encodeURIComponent(user.username);
     let cancelled = false;
-    api<PassportData>(`/profiles/${safe}`)
-      .then((d) => {
-        if (!cancelled) setData(d);
-      })
-      .catch((err) => {
-        if (!cancelled) {
-          setError(err instanceof ApiError ? (err.serverMessage ?? err.message) : 'Failed to load passport');
+
+    const fetchData = async () => {
+      try {
+        const [profile, evalResult] = await Promise.allSettled([
+          api<PassportData>(`/profiles/${safe}`),
+          getLatestEvaluation(),
+        ]);
+        if (cancelled) return;
+        if (profile.status === 'fulfilled') setData(profile.value);
+        if (profile.status === 'rejected') {
+          setError(
+            profile.reason instanceof ApiError
+              ? (profile.reason.serverMessage ?? profile.reason.message)
+              : 'Failed to load passport',
+          );
         }
-      });
+        if (evalResult.status === 'fulfilled') {
+          setEvaluation(evalResult.value);
+        }
+      } catch {
+        // handled per-Promise above
+      }
+    };
+
+    fetchData();
     return () => {
       cancelled = true;
     };
@@ -65,9 +85,12 @@ export function JobseekerPassport() {
     <div className="max-w-2xl mx-auto p-4 space-y-4">
       <div className="flex justify-between items-center">
         <h1 className="text-2xl font-bold">My Passport</h1>
-        <Link to={`/profiles/${user?.username}`} className="btn btn-outline btn-sm gap-2" target="_blank">
-          <ExternalLink size={14} aria-hidden="true" /> View Public
-        </Link>
+        <div className="flex items-center gap-2">
+          {evaluation && <EvaluationScoreBadge overallScore={evaluation.overallScore} />}
+          <Link to={`/profiles/${user?.username}`} className="btn btn-outline btn-sm gap-2" target="_blank">
+            <ExternalLink size={14} aria-hidden="true" /> View Public
+          </Link>
+        </div>
       </div>
 
       <div className="card bg-base-200 p-6">
@@ -87,6 +110,41 @@ export function JobseekerPassport() {
         </div>
         {data.about && <p className="text-muted-strong mb-4">{data.about}</p>}
       </div>
+
+      {evaluation && (
+        <div className="card bg-base-200 p-4">
+          <div className="flex justify-between items-center mb-3">
+            <h3 className="font-semibold">AI Evaluation</h3>
+            <Link to="/jobseeker/evaluation" className="btn btn-ghost btn-sm gap-1">
+              <Sparkles size={14} aria-hidden="true" /> Details
+            </Link>
+          </div>
+          {evaluation.strengths.length > 0 && (
+            <div className="mb-3">
+              <p className="text-sm font-semibold text-success mb-1">Top Strengths</p>
+              <div className="flex flex-wrap gap-1">
+                {evaluation.strengths.slice(0, 5).map((s) => (
+                  <span key={s.skill} className="badge badge-success badge-sm">
+                    {s.skill} ({s.score})
+                  </span>
+                ))}
+              </div>
+            </div>
+          )}
+          {evaluation.skillScores.length > 0 && (
+            <div>
+              <p className="text-sm font-semibold mb-1">Skill Scores</p>
+              <div className="flex flex-wrap gap-1">
+                {evaluation.skillScores.slice(0, 8).map((s) => (
+                  <span key={s.skill} className="badge badge-ghost badge-sm">
+                    {s.skill}: {s.score}
+                  </span>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+      )}
 
       <div className="card bg-base-200 p-4">
         <h3 className="font-semibold mb-3">Experience</h3>
