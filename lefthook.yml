@@ -1,0 +1,12 @@
+pre-commit:
+  commands:
+    format:
+      run: bun run format
+      stage_fixed: true
+
+pre-push:
+  commands:
+    test-server:
+      run: go -C server-go test ./...
+    test-web:
+      run: ls web/src/**/*.{test,spec}.{ts,tsx} 2>/dev/null | head -1 | grep -q . && bun --cwd web test || echo "No web tests found, skipping"

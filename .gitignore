@@ -9,7 +9,6 @@ server-go/seed
 server-go/server
 .qwen/
 docs/
-.agents/
 .kilo/
 .vscode/
 

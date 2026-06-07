@@ -8,6 +8,21 @@
 - **DB**: PostgreSQL + go-jet (codegen)
 - **Linter**: Biome (single binary, replaces ESLint + Prettier)
 
+## Agent Dev Kit
+
+- Rules: `.agents/rules/`  · Skills: `.agents/skills/`  · Agents: `.agents/agents/`
+- Deterministic checks: git hooks (`lefthook.yml`)
+- Docs output: specs go to `docs/specs/`, plans go to `docs/plans/`
+
+### Per-Tool Enablement (opencode)
+
+**Setup:**
+1. `bun add -D lefthook && bun run lefthook install` — install git hooks
+2. Skills auto-discovered from `.agents/skills/`
+3. Subagents in `.opencode/agents/` (`mode: subagent`)
+
+> `opencode.json` points to `AGENTS.md` and `.agents/rules/*.md` for instructions.
+
 ## Monorepo layout
 ```
 skillpass/          — root: orchestration (concurrently runs both)
