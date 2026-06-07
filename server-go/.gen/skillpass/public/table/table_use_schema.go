@@ -11,6 +11,8 @@ package table
 // this method only once at the beginning of the program.
 func UseSchema(schema string) {
 	AdminAuditLog = AdminAuditLog.FromSchema(schema)
+	AiEvaluations = AiEvaluations.FromSchema(schema)
+	Applications = Applications.FromSchema(schema)
 	Companies = Companies.FromSchema(schema)
 	IndustryCategories = IndustryCategories.FromSchema(schema)
 	JobExperiences = JobExperiences.FromSchema(schema)

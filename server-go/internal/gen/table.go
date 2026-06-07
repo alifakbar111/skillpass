@@ -15,4 +15,6 @@ var (
 	JobPostings        = table.JobPostings
 	RefreshTokens      = table.RefreshTokens
 	AdminAuditLog      = table.AdminAuditLog
+	AiEvaluations      = table.AiEvaluations
+	Applications       = table.Applications
 )

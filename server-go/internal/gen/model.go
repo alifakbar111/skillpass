@@ -17,4 +17,6 @@ type (
 	JobPosting        = model.JobPostings
 	RefreshToken      = model.RefreshTokens
 	AdminAudit        = model.AdminAuditLog
+	AiEvaluation      = model.AiEvaluations
+	Application       = model.Applications
 )

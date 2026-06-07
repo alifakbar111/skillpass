@@ -28,4 +28,10 @@ var (
 	ExperienceTypeCertification = enum.ExperienceType.Certification
 	ExperienceTypeProject       = enum.ExperienceType.Project
 	ExperienceTypeVolunteering  = enum.ExperienceType.Volunteering
+
+	ApplicationStatusApplied      = enum.ApplicationStatus.Applied
+	ApplicationStatusReviewed     = enum.ApplicationStatus.Reviewed
+	ApplicationStatusInterviewed  = enum.ApplicationStatus.Interviewed
+	ApplicationStatusOffered      = enum.ApplicationStatus.Offered
+	ApplicationStatusRejected     = enum.ApplicationStatus.Rejected
 )
