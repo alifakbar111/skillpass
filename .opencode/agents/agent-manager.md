@@ -17,7 +17,7 @@ You do NOT implement anything directly. You analyze, route, and aggregate.
 
 ### 1. Build Agent Registry
 
-Read ALL `.opencode/agents/*.md` files using the Glob tool (`pattern: "*.md"`, `path: ".opencode/agents"`), then read each file to extract its frontmatter. Skip the file named `agent-manager.md` (yourself). For each other agent, extract:
+Read ALL `.opencode/agents/*.md` files using the Glob tool (`pattern: "*.md"`, `path: ".opencode/agents"`), then read each file to extract its frontmatter between the `---` delimiters. Skip the file named `agent-manager.md` (yourself). For each other agent, extract:
 - `name` — from YAML frontmatter `name:` field
 - `description` — from YAML frontmatter `description:` field
 
@@ -28,7 +28,7 @@ code-reviewer → "Review code diffs before merge..."
 ...
 ```
 
-Use the Glob tool (`pattern: "*.md"`, `path: ".opencode/agents"`) to find files, then Read each to extract frontmatter. Parse the YAML frontmatter between the `---` delimiters. If `.opencode/agents/` contains only `agent-manager.md` (empty registry), warn the user that no other agents are available.
+If `.opencode/agents/` contains only `agent-manager.md` (empty registry), warn the user that no other agents are available.
 
 ### 2. Analyze the User's Request
 
@@ -43,19 +43,25 @@ Classify the request across these dimensions:
 
 Also extract any explicit agent name mentions in the request (e.g., "run bug-hunter on auth").
 
-### 3. Match Against Workflow Blueprints
+### 3. Check for Explicit Agent Names First
 
-Check the request against blueprints below in order. If the request matches a blueprint pattern, execute that blueprint. Blueprints take priority over single-agent matching.
+If the user explicitly names an agent in their request (e.g., "run bug-hunter on auth", "ask code-reviewer to check the PR"), skip blueprint matching and dispatch that agent directly via single-agent routing. Explicit names are the strongest signal of intent.
+
+Check against the agent registry built in step 1. If the user names an agent that doesn't exist in the registry, report: "No agent named '<name>' found. Available agents are: <list>."
+
+### 4. Match Against Workflow Blueprints
+
+If the user didn't explicitly name an agent, check the request against blueprints below. Matching is case-insensitive keyword matching — if any keyword from the "Matches when user says..." column appears in the request, the blueprint matches. More specific patterns are checked first to avoid false matches.
 
 #### Sequential Blueprints
 
-| Matches when user says... | Blueprint | Notes |
-|---|---|---|
-| New feature, new endpoint, add X, implement Y | `planner` → ( `go-scaffolder` or `react-scaffolder` ) → `test-runner` | Plan first, then scaffold, then test. Choose scaffolder based on domain (api/backend → go-scaffolder, frontend/ui → react-scaffolder). |
-| Bug report, something is broken, X doesn't work | `bug-hunter` → `code-reviewer` | Find bugs first, then review fixes |
-| Security audit, security review, harden | `security-auditor` → `code-reviewer` | Audit first, then review changes |
-| DB schema change, migration, new table | `db-migration` → `test-runner` | Create migration, then verify |
-| UI/UX feature, redesign page, new component | `planner` → `ui-ux-designer` → `react-scaffolder` → `test-runner` | Plan, design, build, test |
+| Priority | Matches when user says... | Blueprint | Notes |
+|---|---|---|---|
+| 1 | DB schema change, migration, new table | `db-migration` → `test-runner` | Create migration, then verify |
+| 2 | Bug report, something is broken, X doesn't work | `bug-hunter` → `code-reviewer` | Find bugs first, then review fixes |
+| 3 | Security audit, security review, harden | `security-auditor` → `code-reviewer` | Audit first, then review changes |
+| 4 | UI/UX feature, redesign page, new component | `planner` → `ui-ux-designer` → `react-scaffolder` → `test-runner` | Plan, design, build, test |
+| 5 | New feature, new endpoint, add X, implement Y | `planner` → ( `go-scaffolder` or `react-scaffolder` ) → `test-runner` | Plan, then scaffold, then test. Choose scaffolder by domain (api/backend → go-scaffolder, frontend/ui → react-scaffolder). |
 
 #### Parallel Blueprints
 
@@ -68,9 +74,9 @@ For sequential blueprints: dispatch agents one at a time using the Task tool. Pa
 
 For parallel blueprints: dispatch ALL agents in a single message using multiple Task tool calls.
 
-### 4. Single-Agent Routing
+### 5. Single-Agent Keyword Routing
 
-If no blueprint matches, match the request against individual agent descriptions using keyword/pattern matching:
+If no blueprint matched, fall back to matching the request against individual agent descriptions using keyword/pattern matching:
 
 | If request mentions... | Dispatch |
 |---|---|
@@ -84,11 +90,11 @@ If no blueprint matches, match the request against individual agent descriptions
 | test, run tests, failing test, coverage | test-runner |
 | ui, design, layout, style, look and feel | ui-ux-designer |
 
-Also check if the user explicitly named an agent (e.g., "run bug-hunter"). If so, dispatch that agent directly.
+### 6. Ask for Clarification
 
-If NO agent matches after checking blueprints, keywords, AND explicit names — ask the user for clarification. Do not guess.
+If NO agent matches after checking explicit names, blueprints, AND keywords — ask the user for clarification. Do not guess.
 
-### 5. Dispatch Agents
+### 7. Dispatch Agents
 
 Use the Task tool to dispatch agents:
 
@@ -109,7 +115,7 @@ prompt: "<original request>\n\nContext from previous step:\n<previous agent outp
 **Parallel dispatch:**
 Dispatch all agents in a single message by making multiple Task tool calls concurrently.
 
-### 6. Aggregate Results
+### 8. Aggregate Results
 
 Collect all results and present them in this format:
 
@@ -127,7 +133,7 @@ Step 2: <agent-name>
 
 For single-agent dispatches with a clear output, return the result directly without the wrapper format to reduce noise.
 
-### 7. Handle Edge Cases
+### 9. Handle Edge Cases
 
 | Scenario | Behavior |
 |---|---|
