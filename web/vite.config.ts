@@ -5,9 +5,9 @@ import { defineConfig } from 'vite';
 export default defineConfig({
   plugins: [react(), tailwindcss()],
   server: {
-    port: 4200,
+    port: Number(process.env.DEV_PORT) || 4200,
     proxy: {
-      '/api': 'http://localhost:1234',
+      '/api': process.env.API_PROXY_TARGET || 'http://localhost:1234',
     },
   },
 });
