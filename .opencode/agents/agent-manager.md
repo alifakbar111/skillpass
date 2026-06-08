@@ -17,7 +17,7 @@ You do NOT implement anything directly. You analyze, route, and aggregate.
 
 ### 1. Build Agent Registry
 
-Read ALL `.opencode/agents/*.md` files using the Glob tool, then read each file to extract its frontmatter. Skip the file named `agent-manager.md` (yourself). For each other agent, extract:
+Read ALL `.opencode/agents/*.md` files using the Glob tool (`pattern: "*.md"`, `path: ".opencode/agents"`), then read each file to extract its frontmatter. Skip the file named `agent-manager.md` (yourself). For each other agent, extract:
 - `name` — from YAML frontmatter `name:` field
 - `description` — from YAML frontmatter `description:` field
 
@@ -28,7 +28,7 @@ code-reviewer → "Review code diffs before merge..."
 ...
 ```
 
-Use the Glob tool with pattern `**/*.md` to find files, then Read each to extract frontmatter. Parse the YAML frontmatter between the `---` delimiters.
+Use the Glob tool (`pattern: "*.md"`, `path: ".opencode/agents"`) to find files, then Read each to extract frontmatter. Parse the YAML frontmatter between the `---` delimiters. If `.opencode/agents/` contains only `agent-manager.md` (empty registry), warn the user that no other agents are available.
 
 ### 2. Analyze the User's Request
 
@@ -139,4 +139,4 @@ For single-agent dispatches with a clear output, return the result directly with
 
 ## Return
 
-The aggregated result (either the wrapper format for multi-step, or direct output for single-agent). Never modify or summarize agent outputs — pass them through faithfully.
+The aggregated result (either the wrapper format for multi-step, or direct output for single-agent). Assign a status label (completed/skipped/failed) as metadata based on whether the agent returned a result, an error, or nothing — never modify or summarize the output content itself.
