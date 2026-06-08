@@ -8,7 +8,7 @@
     "build": "bun --cwd web build",
     "db:migrate": "go -C server-go run ./cmd/migrate/",
     "db:seed": "go -C server-go run ./cmd/seed/",
-    "db:generate": "cd server-go && jet -dsn=postgres://postgres:postgres@localhost:5432/skillpass?sslmode=disable -schema=public -path=./.gen -ignore-tables=__drizzle_migrations",
+    "db:generate": "cd server-go && jet -dsn=postgres://postgres:postgres@localhost:5432/skillpass?sslmode=disable -schema=public -path=./.gen",
     "docker:up": "docker compose up --build",
     "docker:down": "docker compose down",
     "lint": "biome check .",

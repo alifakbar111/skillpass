@@ -15,11 +15,6 @@ import (
 	"github.com/joho/godotenv"
 )
 
-type migration struct {
-	file    string
-	content string
-}
-
 type tableDef struct {
 	name string
 }
@@ -57,6 +52,16 @@ func main() {
 		log.Fatalf("Failed to connect: %v", err)
 	}
 
+	// Bootstrap: create schema_migrations table if not exists
+	if err := ensureMigrationsTable(ctx, db); err != nil {
+		log.Fatalf("Failed to create schema_migrations table: %v", err)
+	}
+
+	// Transitional import: migrate any existing .applied/ file markers to DB
+	if err := importAppliedMarkers(ctx, db); err != nil {
+		log.Fatalf("Failed to import .applied/ markers: %v", err)
+	}
+
 	migrationsDir := "migrations"
 	files, err := filepath.Glob(filepath.Join(migrationsDir, "*.sql"))
 	if err != nil {
@@ -68,14 +73,15 @@ func main() {
 	}
 	sort.Strings(files)
 
-	appliedDir := filepath.Join(migrationsDir, ".applied")
-	_ = os.MkdirAll(appliedDir, 0755)
+	// Read already-applied migrations from DB
+	applied, err := getAppliedMigrations(ctx, db)
+	if err != nil {
+		log.Fatalf("Failed to read applied migrations: %v", err)
+	}
 
 	for _, file := range files {
 		filename := filepath.Base(file)
-		appliedMarker := filepath.Join(appliedDir, filename)
-
-		if _, err := os.Stat(appliedMarker); err == nil {
+		if applied[filename] {
 			fmt.Printf("  SKIP %s (already applied)\n", filename)
 			continue
 		}
@@ -90,10 +96,19 @@ func main() {
 			log.Fatalf("FAILED %s: %v\n\nSQL:\n%s", filename, err, sqlText)
 		}
 
-		if err := os.WriteFile(appliedMarker, []byte{}, 0644); err != nil {
-			log.Fatalf("Failed to write marker %s: %v", appliedMarker, err)
+		// Record in DB
+		if _, err := db.ExecContext(ctx,
+			"INSERT INTO schema_migrations (filename) VALUES ($1)", filename,
+		); err != nil {
+			log.Fatalf("Failed to record migration %s: %v", filename, err)
 		}
 		fmt.Printf("  OK   %s\n", filename)
+	}
+
+	// Clean up old .applied/ directory
+	appliedDir := filepath.Join(migrationsDir, ".applied")
+	if _, err := os.Stat(appliedDir); err == nil {
+		_ = os.RemoveAll(appliedDir)
 	}
 
 	if err := verifySchema(ctx, db); err != nil {
@@ -102,6 +117,79 @@ func main() {
 
 	fmt.Println(strings.Repeat("─", 40))
 	fmt.Println("All migrations complete")
+}
+
+func ensureMigrationsTable(ctx context.Context, db *sql.DB) error {
+	_, err := db.ExecContext(ctx, `
+		CREATE TABLE IF NOT EXISTS schema_migrations (
+			id SERIAL PRIMARY KEY,
+			filename VARCHAR(255) NOT NULL UNIQUE,
+			applied_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+		)
+	`)
+	return err
+}
+
+func importAppliedMarkers(ctx context.Context, db *sql.DB) error {
+	// Only import if schema_migrations is empty (first run with new system)
+	var count int
+	if err := db.QueryRowContext(ctx, "SELECT COUNT(*) FROM schema_migrations").Scan(&count); err != nil {
+		return fmt.Errorf("count schema_migrations: %w", err)
+	}
+	if count > 0 {
+		return nil // Already seeded
+	}
+
+	appliedDir := "migrations/.applied"
+	entries, err := os.ReadDir(appliedDir)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return nil // No .applied/ directory, nothing to import
+		}
+		return fmt.Errorf("read .applied/ directory: %w", err)
+	}
+
+	for _, entry := range entries {
+		if entry.IsDir() || !strings.HasSuffix(entry.Name(), ".sql") {
+			continue
+		}
+		modTime := getFileModTime(filepath.Join(appliedDir, entry.Name()))
+		_, err := db.ExecContext(ctx,
+			"INSERT INTO schema_migrations (filename, applied_at) VALUES ($1, $2)",
+			entry.Name(), modTime,
+		)
+		if err != nil {
+			return fmt.Errorf("import marker %s: %w", entry.Name(), err)
+		}
+		fmt.Printf("  IMPORT %s (from .applied/)\n", entry.Name())
+	}
+	return nil
+}
+
+func getAppliedMigrations(ctx context.Context, db *sql.DB) (map[string]bool, error) {
+	rows, err := db.QueryContext(ctx, "SELECT filename FROM schema_migrations ORDER BY id")
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	applied := make(map[string]bool)
+	for rows.Next() {
+		var filename string
+		if err := rows.Scan(&filename); err != nil {
+			return nil, err
+		}
+		applied[filename] = true
+	}
+	return applied, rows.Err()
+}
+
+func getFileModTime(path string) time.Time {
+	info, err := os.Stat(path)
+	if err != nil {
+		return time.Now()
+	}
+	return info.ModTime()
 }
 
 func runMigration(ctx context.Context, db *sql.DB, sqlText string) error {
