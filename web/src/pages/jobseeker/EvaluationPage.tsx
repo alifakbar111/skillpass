@@ -4,7 +4,7 @@ import { EvaluationScoreBadge } from '../../components/jobseeker/EvaluationScore
 import { SkillScoresChart } from '../../components/jobseeker/SkillScoresChart';
 import { LoadingFallback } from '../../components/ui/LoadingFallback';
 import { useAuth } from '../../hooks/useAuth';
-import { ApiError, api } from '../../lib/api';
+import { ApiError } from '../../lib/api';
 import { type EvaluationResult, getLatestEvaluation, triggerEvaluation } from '../../lib/evaluation';
 
 export function EvaluationPage() {
@@ -144,8 +144,8 @@ export function EvaluationPage() {
               <p className="text-sm opacity-60">No suggestions yet.</p>
             ) : (
               <ul className="space-y-2">
-                {evaluation.suggestions.map((s, i) => (
-                  <li key={i} className="p-3 bg-base-100 rounded-box">
+                {evaluation.suggestions.map((s) => (
+                  <li key={`suggest-${s.area}-${s.tip}`} className="p-3 bg-base-100 rounded-box">
                     <p className="font-medium capitalize">{s.area}</p>
                     <p className="text-sm opacity-70">{s.tip}</p>
                   </li>

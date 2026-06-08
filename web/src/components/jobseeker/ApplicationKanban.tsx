@@ -29,7 +29,7 @@ export function ApplicationKanban({ applications }: Props) {
                 <h3 className="font-semibold">{col.title}</h3>
                 <span className="badge badge-ghost badge-sm">{col.items.length}</span>
               </div>
-              <div className="space-y-2 min-h-[120px]">
+              <div className="space-y-2 min-h-30">
                 {col.items.length === 0 ? (
                   <p className="text-sm opacity-50 italic">No applications</p>
                 ) : (

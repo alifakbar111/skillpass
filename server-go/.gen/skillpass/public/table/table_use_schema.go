@@ -19,6 +19,7 @@ func UseSchema(schema string) {
 	JobPostings = JobPostings.FromSchema(schema)
 	JobseekerProfiles = JobseekerProfiles.FromSchema(schema)
 	RefreshTokens = RefreshTokens.FromSchema(schema)
+	SchemaMigrations = SchemaMigrations.FromSchema(schema)
 	Tags = Tags.FromSchema(schema)
 	Users = Users.FromSchema(schema)
 }
