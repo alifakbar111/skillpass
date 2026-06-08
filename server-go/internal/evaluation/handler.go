@@ -7,10 +7,7 @@ import (
 	"net/http"
 
 	"github.com/gin-gonic/gin"
-	. "github.com/go-jet/jet/v2/postgres"
 	"github.com/google/uuid"
-
-	"skillpass-server-go/internal/gen"
 )
 
 type Handler struct {
@@ -96,22 +93,14 @@ func (h *Handler) GetLatestEvaluation(c *gin.Context) {
 }
 
 func (h *Handler) lookupProfileID(c *gin.Context, userID string) (string, error) {
-	stmt := SELECT(
-		gen.JobseekerProfiles.ID,
-	).FROM(
-		gen.JobseekerProfiles,
-	).WHERE(
-		gen.JobseekerProfiles.UserID.EQ(String(userID)),
-	)
-
-	var profile struct {
-		ID uuid.UUID
-	}
-	err := stmt.QueryContext(c.Request.Context(), h.db, &profile)
+	var profileID uuid.UUID
+	err := h.db.QueryRowContext(c.Request.Context(),
+		`SELECT id FROM jobseeker_profiles WHERE user_id = $1`, userID,
+	).Scan(&profileID)
 	if err != nil {
 		return "", err
 	}
-	return profile.ID.String(), nil
+	return profileID.String(), nil
 }
 
 func getUserID(c *gin.Context) (string, error) {

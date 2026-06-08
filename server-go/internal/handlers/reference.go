@@ -6,6 +6,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 	. "github.com/go-jet/jet/v2/postgres"
+	"github.com/google/uuid"
 
 	"skillpass-server-go/internal/gen"
 )
@@ -47,7 +48,7 @@ func (h *ReferenceHandler) GetTags(c *gin.Context) {
 		).FROM(
 			gen.Tags,
 		).WHERE(
-			gen.Tags.IndustryCategoryID.EQ(String(industryID)),
+			gen.Tags.IndustryCategoryID.EQ(UUID(uuid.MustParse(industryID))),
 		).ORDER_BY(
 			gen.Tags.Name,
 		)

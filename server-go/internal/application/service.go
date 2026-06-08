@@ -70,19 +70,20 @@ func (s *Service) Apply(ctx context.Context, jobseekerID, jobPostingID string) (
 	).FROM(
 		gen.JobPostings,
 	).WHERE(
-		gen.JobPostings.ID.EQ(String(jobPostingID)),
+		gen.JobPostings.ID.EQ(UUID(uuid.MustParse(jobPostingID))),
 	)
 
-	var job struct {
+	var jobs []struct {
 		model.JobPostings
 	}
-	err := jobStmt.QueryContext(ctx, s.db, &job)
+	err := jobStmt.QueryContext(ctx, s.db, &jobs)
 	if err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
-			return nil, ErrJobNotFound
-		}
 		return nil, fmt.Errorf("query job posting: %w", err)
 	}
+	if len(jobs) == 0 {
+		return nil, ErrJobNotFound
+	}
+	job := jobs[0]
 	if string(job.Status) != "open" {
 		return nil, ErrJobClosed
 	}
@@ -93,8 +94,8 @@ func (s *Service) Apply(ctx context.Context, jobseekerID, jobPostingID string) (
 	).FROM(
 		gen.Applications,
 	).WHERE(
-		gen.Applications.JobseekerID.EQ(String(jobseekerID)).
-			AND(gen.Applications.JobPostingID.EQ(String(jobPostingID))),
+		gen.Applications.JobseekerID.EQ(UUID(uuid.MustParse(jobseekerID))).
+			AND(gen.Applications.JobPostingID.EQ(UUID(uuid.MustParse(jobPostingID)))),
 	).LIMIT(1)
 
 	var dups []model.Applications
@@ -114,10 +115,10 @@ func (s *Service) Apply(ctx context.Context, jobseekerID, jobPostingID string) (
 		gen.Applications.JobPostingID,
 		gen.Applications.Status,
 	).VALUES(
-		String(newID.String()),
-		String(jobseekerID),
-		String(jobPostingID),
-		String("applied"),
+		newID,
+		uuid.MustParse(jobseekerID),
+		uuid.MustParse(jobPostingID),
+		"applied",
 	).RETURNING(
 		gen.Applications.AllColumns,
 	)
@@ -147,7 +148,7 @@ func (s *Service) ListForJobseeker(ctx context.Context, jobseekerID string) ([]A
 			INNER_JOIN(gen.JobPostings, gen.JobPostings.ID.EQ(gen.Applications.JobPostingID)).
 			INNER_JOIN(gen.Companies, gen.Companies.ID.EQ(gen.JobPostings.CompanyID)),
 	).WHERE(
-		gen.Applications.JobseekerID.EQ(String(jobseekerID)),
+		gen.Applications.JobseekerID.EQ(UUID(uuid.MustParse(jobseekerID))),
 	).ORDER_BY(
 		gen.Applications.CreatedAt.DESC(),
 	)
@@ -194,20 +195,21 @@ func (s *Service) UpdateStatus(ctx context.Context, applicationID, companyID, st
 		gen.Applications.
 			INNER_JOIN(gen.JobPostings, gen.JobPostings.ID.EQ(gen.Applications.JobPostingID)),
 	).WHERE(
-		gen.Applications.ID.EQ(String(applicationID)),
+		gen.Applications.ID.EQ(UUID(uuid.MustParse(applicationID))),
 	).LIMIT(1)
 
-	var current struct {
+	var currentRows []struct {
 		model.Applications
-		CompanyID uuid.UUID
+		CompanyID uuid.UUID `alias:"job_postings.company_id"`
 	}
-	err := selectStmt.QueryContext(ctx, s.db, &current)
+	err := selectStmt.QueryContext(ctx, s.db, &currentRows)
 	if err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
-			return nil, ErrAppNotFound
-		}
 		return nil, fmt.Errorf("query application: %w", err)
 	}
+	if len(currentRows) == 0 {
+		return nil, ErrAppNotFound
+	}
+	current := currentRows[0]
 
 	// Verify company ownership
 	if current.CompanyID.String() != companyID {
@@ -221,24 +223,40 @@ func (s *Service) UpdateStatus(ctx context.Context, applicationID, companyID, st
 	}
 
 	// Update (trigger handles updated_at)
+	var statusExpr StringExpression
+	switch status {
+	case "applied":
+		statusExpr = gen.ApplicationStatusApplied
+	case "reviewed":
+		statusExpr = gen.ApplicationStatusReviewed
+	case "interviewed":
+		statusExpr = gen.ApplicationStatusInterviewed
+	case "offered":
+		statusExpr = gen.ApplicationStatusOffered
+	case "rejected":
+		statusExpr = gen.ApplicationStatusRejected
+	default:
+		return nil, ErrInvalidStatus
+	}
 	updStmt := gen.Applications.UPDATE(
 		gen.Applications.Status,
 	).SET(
-		gen.Applications.Status.SET(String(status)),
+		gen.Applications.Status.SET(statusExpr),
 	).WHERE(
-		gen.Applications.ID.EQ(String(applicationID)),
+		gen.Applications.ID.EQ(UUID(uuid.MustParse(applicationID))),
 	).RETURNING(
 		gen.Applications.AllColumns,
 	)
 
-	var app model.Applications
-	err = updStmt.QueryContext(ctx, s.db, &app)
+	var apps []model.Applications
+	err = updStmt.QueryContext(ctx, s.db, &apps)
 	if err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
-			return nil, ErrAppNotFound
-		}
 		return nil, fmt.Errorf("update application: %w", err)
 	}
+	if len(apps) == 0 {
+		return nil, ErrAppNotFound
+	}
+	app := apps[0]
 
 	return &ApplicationResult{
 		ID:           app.ID.String(),
@@ -251,21 +269,15 @@ func (s *Service) UpdateStatus(ctx context.Context, applicationID, companyID, st
 }
 
 func (s *Service) LookupJobseekerProfileID(ctx context.Context, userID string) (string, error) {
-	stmt := SELECT(
-		gen.JobseekerProfiles.ID,
-	).FROM(
-		gen.JobseekerProfiles,
-	).WHERE(
-		gen.JobseekerProfiles.UserID.EQ(String(userID)),
-	)
-
-	var profile struct{ ID uuid.UUID }
-	err := stmt.QueryContext(ctx, s.db, &profile)
+	var profileID uuid.UUID
+	err := s.db.QueryRowContext(ctx,
+		`SELECT id FROM jobseeker_profiles WHERE user_id = $1`, userID,
+	).Scan(&profileID)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return "", ErrProfileNotFound
 		}
 		return "", fmt.Errorf("lookup jobseeker profile: %w", err)
 	}
-	return profile.ID.String(), nil
+	return profileID.String(), nil
 }

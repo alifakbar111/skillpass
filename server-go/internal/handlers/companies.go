@@ -9,6 +9,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 	. "github.com/go-jet/jet/v2/postgres"
+	"github.com/google/uuid"
 	"log/slog"
 
 	"skillpass-server-go/.gen/skillpass/public/model"
@@ -86,7 +87,7 @@ func (h *CompanyHandler) GetProfile(c *gin.Context) {
 	).FROM(
 		gen.Companies,
 	).WHERE(
-		gen.Companies.UserID.EQ(String(userIDStr)),
+		gen.Companies.UserID.EQ(UUID(uuid.MustParse(userIDStr))),
 	)
 
 	var company model.Companies
@@ -141,7 +142,7 @@ func (h *CompanyHandler) UpdateProfile(c *gin.Context) {
 	}
 
 	stmt := gen.Companies.UPDATE().SET(setVals[0], setVals[1:]...).WHERE(
-		gen.Companies.UserID.EQ(String(userIDStr)),
+		gen.Companies.UserID.EQ(UUID(uuid.MustParse(userIDStr))),
 	).RETURNING(
 		gen.Companies.AllColumns,
 	)
@@ -181,10 +182,10 @@ func (h *CompanyHandler) SubmitVerification(c *gin.Context) {
 	docs, _ := json.Marshal(req)
 
 	stmt := gen.Companies.UPDATE().SET(
-		gen.Companies.VerificationDocs.SET(String(string(docs))),
+		gen.Companies.VerificationDocs.SET(StringExp(CAST(String(string(docs))).AS("jsonb"))),
 		gen.Companies.VerificationStatus.SET(gen.VerificationStatusPending),
 	).WHERE(
-		gen.Companies.UserID.EQ(String(userIDStr)),
+		gen.Companies.UserID.EQ(UUID(uuid.MustParse(userIDStr))),
 	)
 
 	result, err := stmt.ExecContext(c.Request.Context(), h.db)
@@ -219,7 +220,7 @@ func (h *CompanyHandler) GetVerificationStatus(c *gin.Context) {
 	).FROM(
 		gen.Companies,
 	).WHERE(
-		gen.Companies.UserID.EQ(String(userIDStr)),
+		gen.Companies.UserID.EQ(UUID(uuid.MustParse(userIDStr))),
 	)
 
 	var company model.Companies

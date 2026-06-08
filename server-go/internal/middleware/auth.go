@@ -4,10 +4,12 @@ import (
 	"net/http"
 	"strings"
 
+	"database/sql"
+
 	"github.com/gin-gonic/gin"
 	"github.com/golang-jwt/jwt/v5"
 	. "github.com/go-jet/jet/v2/postgres"
-	"database/sql"
+	"github.com/google/uuid"
 
 	"skillpass-server-go/.gen/skillpass/public/model"
 	"skillpass-server-go/internal/gen"
@@ -79,15 +81,20 @@ func RequireVerifiedCompany(db *sql.DB) gin.HandlerFunc {
 		).FROM(
 			gen.Companies,
 		).WHERE(
-			gen.Companies.UserID.EQ(String(userIDStr)),
+			gen.Companies.UserID.EQ(UUID(uuid.MustParse(userIDStr))),
 		)
 
-		var company model.Companies
-		err := stmt.QueryContext(c.Request.Context(), db, &company)
+		var companies []model.Companies
+		err := stmt.QueryContext(c.Request.Context(), db, &companies)
 		if err != nil {
+			c.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{"error": "Company lookup failed"})
+			return
+		}
+		if len(companies) == 0 {
 			c.AbortWithStatusJSON(http.StatusNotFound, gin.H{"error": "Company not found"})
 			return
 		}
+		company := companies[0]
 		if company.VerificationStatus != model.VerificationStatus_Verified {
 			c.AbortWithStatusJSON(http.StatusForbidden, gin.H{"error": "Company not verified"})
 			return

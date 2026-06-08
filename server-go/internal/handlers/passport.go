@@ -2,7 +2,6 @@ package handlers
 
 import (
 	"database/sql"
-	"errors"
 	"log/slog"
 	"net/http"
 
@@ -42,33 +41,39 @@ func (h *PassportHandler) GetProfile(c *gin.Context) {
 		gen.JobseekerProfiles.Slug.EQ(String(username)),
 	)
 
-	var profile model.JobseekerProfiles
-	err := profileStmt.QueryContext(c.Request.Context(), h.db, &profile)
+	var profiles []model.JobseekerProfiles
+	err := profileStmt.QueryContext(c.Request.Context(), h.db, &profiles)
 	if err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
-			c.JSON(http.StatusNotFound, gin.H{"error": "Profile not found"})
-			return
-		}
 		slog.Error("failed to load profile", "error", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to load profile"})
 		return
 	}
+	if len(profiles) == 0 {
+		c.JSON(http.StatusNotFound, gin.H{"error": "Profile not found"})
+		return
+	}
+	profile := profiles[0]
 
 	userStmt := SELECT(
 		gen.Users.Name, gen.Users.AvatarURL,
 	).FROM(
 		gen.Users,
 	).WHERE(
-		gen.Users.ID.EQ(String(profile.UserID.String())),
+		gen.Users.ID.EQ(UUID(profile.UserID)),
 	)
 
-	var user model.Users
-	err = userStmt.QueryContext(c.Request.Context(), h.db, &user)
+	var users []model.Users
+	err = userStmt.QueryContext(c.Request.Context(), h.db, &users)
 	if err != nil {
 		slog.Error("failed to load user", "error", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to load user"})
 		return
 	}
+	if len(users) == 0 {
+		c.JSON(http.StatusNotFound, gin.H{"error": "Profile not found"})
+		return
+	}
+	user := users[0]
 
 	expStmt := SELECT(
 		gen.JobExperiences.ID, gen.JobExperiences.ProfileID, gen.JobExperiences.Type,
@@ -78,7 +83,7 @@ func (h *PassportHandler) GetProfile(c *gin.Context) {
 	).FROM(
 		gen.JobExperiences,
 	).WHERE(
-		gen.JobExperiences.ProfileID.EQ(String(profile.ID.String())),
+		gen.JobExperiences.ProfileID.EQ(UUID(profile.ID)),
 	).ORDER_BY(
 		gen.JobExperiences.StartDate.ASC(),
 	)

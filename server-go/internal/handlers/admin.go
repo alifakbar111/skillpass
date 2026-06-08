@@ -3,7 +3,6 @@ package handlers
 import (
 	"database/sql"
 	"encoding/json"
-	"errors"
 	"log/slog"
 	"net/http"
 	"strconv"
@@ -150,7 +149,7 @@ func (h *AdminHandler) HandleVerification(c *gin.Context) {
 	}
 	defer tx.Rollback()
 
-	var existing model.Companies
+	var existing []model.Companies
 	checkStmt := SELECT(
 		gen.Companies.ID, gen.Companies.UserID,
 	).FROM(
@@ -160,12 +159,12 @@ func (h *AdminHandler) HandleVerification(c *gin.Context) {
 	).FOR(UPDATE())
 
 	if err = checkStmt.QueryContext(c.Request.Context(), tx, &existing); err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
-			c.JSON(http.StatusNotFound, gin.H{"error": "Company not found"})
-			return
-		}
 		slog.Error("failed to find company", "error", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to process verification"})
+		return
+	}
+	if len(existing) == 0 {
+		c.JSON(http.StatusNotFound, gin.H{"error": "Company not found"})
 		return
 	}
 
@@ -188,7 +187,7 @@ func (h *AdminHandler) HandleVerification(c *gin.Context) {
 		if _, err = gen.Users.UPDATE().SET(
 			gen.Users.IsVerified.SET(Bool(true)),
 		).WHERE(
-			gen.Users.ID.EQ(UUID(existing.UserID)),
+			gen.Users.ID.EQ(UUID(existing[0].UserID)),
 		).ExecContext(c.Request.Context(), tx); err != nil {
 			slog.Error("failed to mark user verified", "error", err)
 			c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to approve"})

@@ -2,16 +2,12 @@ package handlers
 
 import (
 	"database/sql"
-	"errors"
 	"fmt"
 	"net/http"
 	"strconv"
 	"strings"
 
 	"github.com/gin-gonic/gin"
-	. "github.com/go-jet/jet/v2/postgres"
-
-	"skillpass-server-go/internal/gen"
 )
 
 type CandidateResult struct {
@@ -63,31 +59,34 @@ func (h *SearchHandler) SearchCandidates(c *gin.Context) {
 		}
 	}
 
-	var whereConds []BoolExpression
+	// Build the search query using raw SQL to avoid go-jet type issues with UUID/enum columns
+	var args []interface{}
+	argIdx := 1
+
+	whereClauses := []string{"1=1"}
 	if q != "" {
 		pat := "%" + strings.ToLower(q) + "%"
-		whereConds = append(whereConds, OR(
-			LOWER(gen.Users.Name).LIKE(String(pat)),
-			LOWER(CAST(gen.JobseekerProfiles.Headline).AS_TEXT()).LIKE(String(pat)),
-			LOWER(CAST(gen.JobseekerProfiles.About).AS_TEXT()).LIKE(String(pat)),
-		))
+		whereClauses = append(whereClauses,
+			fmt.Sprintf("(LOWER(u.name) LIKE $%d OR LOWER(jp.headline) LIKE $%d OR LOWER(jp.about) LIKE $%d)", argIdx, argIdx, argIdx))
+		args = append(args, pat)
+		argIdx++
 	}
 
-	stmt := SELECT(
-		gen.JobseekerProfiles.ID,
-		gen.Users.Name,
-		gen.Users.AvatarURL,
-		gen.JobseekerProfiles.Headline,
-		gen.JobseekerProfiles.About,
-		gen.JobseekerProfiles.YearsOfExperience,
-		gen.JobseekerProfiles.Slug,
-	).FROM(
-		gen.JobseekerProfiles.INNER_JOIN(gen.Users, gen.JobseekerProfiles.UserID.EQ(gen.Users.ID)),
-	).WHERE(
-		AND(whereConds...),
-	).ORDER_BY(
-		gen.JobseekerProfiles.ID.ASC(),
-	).LIMIT(int64(searchMaxPool)).OFFSET(0)
+	query := fmt.Sprintf(`
+		SELECT jp.id, u.name, u.avatar_url, jp.headline, jp.about, jp.years_of_experience, jp.slug
+		FROM jobseeker_profiles jp
+		INNER JOIN users u ON jp.user_id = u.id
+		WHERE %s
+		ORDER BY jp.id ASC
+		LIMIT %d OFFSET 0
+	`, strings.Join(whereClauses, " AND "), searchMaxPool)
+
+	rows, err := h.db.QueryContext(c.Request.Context(), query, args...)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": fmt.Sprintf("search failed: %v", err)})
+		return
+	}
+	defer rows.Close()
 
 	type candidateRow struct {
 		ID                string
@@ -98,55 +97,76 @@ func (h *SearchHandler) SearchCandidates(c *gin.Context) {
 		YearsOfExperience *int32
 		Slug              string
 	}
-
-	var rows []candidateRow
-	if err := stmt.QueryContext(c.Request.Context(), h.db, &rows); err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
-			c.JSON(http.StatusOK, []CandidateResult{})
+	var profileRows []candidateRow
+	for rows.Next() {
+		var r candidateRow
+		if err := rows.Scan(&r.ID, &r.Name, &r.AvatarURL, &r.Headline, &r.About, &r.YearsOfExperience, &r.Slug); err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": fmt.Sprintf("scan failed: %v", err)})
 			return
 		}
-		c.JSON(http.StatusInternalServerError, gin.H{"error": fmt.Sprintf("search failed: %v", err)})
+		profileRows = append(profileRows, r)
+	}
+	if err := rows.Err(); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": fmt.Sprintf("rows error: %v", err)})
 		return
 	}
 
-	if len(rows) == 0 {
+	if len(profileRows) == 0 {
 		c.JSON(http.StatusOK, []CandidateResult{})
 		return
 	}
 
-	profileIDs := make([]string, 0, len(rows))
-	idSet := make(map[string]struct{}, len(rows))
-	for _, r := range rows {
-		profileIDs = append(profileIDs, r.ID)
+	// Load experiences for the found profiles
+	profileIDs := make([]string, len(profileRows))
+	idSet := make(map[string]struct{}, len(profileRows))
+	for i, r := range profileRows {
+		profileIDs[i] = r.ID
 		idSet[r.ID] = struct{}{}
 	}
 
-	expStmt := SELECT(
-		gen.JobExperiences.ProfileID,
-		gen.JobExperiences.Industry,
-		gen.JobExperiences.SkillsUsed,
-	).FROM(
-		gen.JobExperiences,
-	).WHERE(
-		gen.JobExperiences.ProfileID.IN(StringArray(profileIDs...)),
-	)
-
-	var exps []struct {
+	var expRows []struct {
 		ProfileID  string
 		Industry   *string
-		SkillsUsed *string
+		SkillsRaw  *string
 	}
-	if err := expStmt.QueryContext(c.Request.Context(), h.db, &exps); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": fmt.Sprintf("failed to load experiences: %v", err)})
-		return
+	{
+		placeholders := make([]string, len(profileIDs))
+		expArgs := make([]interface{}, len(profileIDs))
+		for i, pid := range profileIDs {
+			placeholders[i] = fmt.Sprintf("$%d", i+1)
+			expArgs[i] = pid
+		}
+		expQuery := fmt.Sprintf(
+			`SELECT profile_id, industry, skills_used::text FROM job_experiences WHERE profile_id IN (%s)`,
+			strings.Join(placeholders, ","),
+		)
+		eRows, err := h.db.QueryContext(c.Request.Context(), expQuery, expArgs...)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": fmt.Sprintf("failed to load experiences: %v", err)})
+			return
+		}
+		for eRows.Next() {
+			var e struct {
+				ProfileID  string
+				Industry   *string
+				SkillsRaw  *string
+			}
+			if err := eRows.Scan(&e.ProfileID, &e.Industry, &e.SkillsRaw); err != nil {
+				eRows.Close()
+				c.JSON(http.StatusInternalServerError, gin.H{"error": fmt.Sprintf("scan experience: %v", err)})
+				return
+			}
+			expRows = append(expRows, e)
+		}
+		eRows.Close()
 	}
 
 	type expAgg struct {
 		skillSet map[string]struct{}
 		hasInd   bool
 	}
-	expsByProfile := make(map[string]*expAgg, len(rows))
-	for _, e := range exps {
+	expsByProfile := make(map[string]*expAgg, len(profileRows))
+	for _, e := range expRows {
 		agg, ok := expsByProfile[e.ProfileID]
 		if !ok {
 			agg = &expAgg{skillSet: map[string]struct{}{}}
@@ -155,19 +175,24 @@ func (h *SearchHandler) SearchCandidates(c *gin.Context) {
 		if industry != "" && e.Industry != nil && strings.EqualFold(*e.Industry, industry) {
 			agg.hasInd = true
 		}
-		if e.SkillsUsed != nil {
-			for _, s := range strings.Split(*e.SkillsUsed, ",") {
-				s = strings.TrimSpace(s)
-				if s == "" {
-					continue
+		if e.SkillsRaw != nil {
+			// Parse PostgreSQL array format {elem1,elem2} -> individual elements
+			raw := *e.SkillsRaw
+			if len(raw) >= 2 && raw[0] == '{' && raw[len(raw)-1] == '}' {
+				inner := raw[1 : len(raw)-1]
+				for _, s := range strings.Split(inner, ",") {
+					s = strings.TrimSpace(s)
+					if s == "" {
+						continue
+					}
+					agg.skillSet[strings.ToLower(s)] = struct{}{}
 				}
-				agg.skillSet[strings.ToLower(s)] = struct{}{}
 			}
 		}
 	}
 
-	results := make([]CandidateResult, 0, len(rows))
-	for _, r := range rows {
+	results := make([]CandidateResult, 0, len(profileRows))
+	for _, r := range profileRows {
 		agg := expsByProfile[r.ID]
 		if industry != "" {
 			if agg == nil || !agg.hasInd {

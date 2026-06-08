@@ -32,7 +32,7 @@ func (h *Handler) MatchJobs(c *gin.Context) {
 	).FROM(
 		gen.JobseekerProfiles,
 	).WHERE(
-		gen.JobseekerProfiles.UserID.EQ(String(userIDStr)),
+		gen.JobseekerProfiles.UserID.EQ(UUID(uuid.MustParse(userIDStr))),
 	)
 
 	var profile struct{ ID uuid.UUID }

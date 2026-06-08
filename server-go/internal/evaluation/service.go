@@ -126,7 +126,7 @@ Return the evaluation as a JSON object following the schema defined in the syste
 
 	// Delete previous evaluations
 	delStmt := gen.AiEvaluations.DELETE().WHERE(
-		gen.AiEvaluations.ProfileID.EQ(String(profileID)),
+		gen.AiEvaluations.ProfileID.EQ(UUID(uuid.MustParse(profileID))),
 	)
 	if _, err := delStmt.ExecContext(ctx, tx); err != nil {
 		return nil, fmt.Errorf("delete old evaluations: %w", err)
@@ -144,13 +144,13 @@ Return the evaluation as a JSON object following the schema defined in the syste
 		gen.AiEvaluations.SkillScores,
 		gen.AiEvaluations.RawAnalysis,
 	).VALUES(
-		String(newID.String()),
-		String(profileID),
+		newID,
+		uuid.MustParse(profileID),
 		Int(int64(llmResult.OverallScore)),
-		String(string(strengthsJSON)),
-		String(string(weaknessesJSON)),
-		String(string(suggestionsJSON)),
-		String(string(skillScoresJSON)),
+		StringExp(CAST(String(string(strengthsJSON))).AS("jsonb")),
+		StringExp(CAST(String(string(weaknessesJSON))).AS("jsonb")),
+		StringExp(CAST(String(string(suggestionsJSON))).AS("jsonb")),
+		StringExp(CAST(String(string(skillScoresJSON))).AS("jsonb")),
 		String(rawAnalysis),
 	)
 
@@ -194,17 +194,21 @@ func (s *Service) loadFullProfile(ctx context.Context, profileID string) (*fullP
 	).FROM(
 		gen.JobseekerProfiles.INNER_JOIN(gen.Users, gen.Users.ID.EQ(gen.JobseekerProfiles.UserID)),
 	).WHERE(
-		gen.JobseekerProfiles.ID.EQ(String(profileID)),
+		gen.JobseekerProfiles.ID.EQ(UUID(uuid.MustParse(profileID))),
 	)
 
-	var profile struct {
+	var profiles []struct {
 		model.JobseekerProfiles
-		Name string
+		Name string `alias:"users.name"`
 	}
-	err := stmt.QueryContext(ctx, s.db, &profile)
+	err := stmt.QueryContext(ctx, s.db, &profiles)
 	if err != nil {
 		return nil, err
 	}
+	if len(profiles) == 0 {
+		return nil, sql.ErrNoRows
+	}
+	profile := profiles[0]
 
 	// Load experiences
 	expStmt := SELECT(
@@ -223,7 +227,7 @@ func (s *Service) loadFullProfile(ctx context.Context, profileID string) (*fullP
 	).FROM(
 		gen.JobExperiences,
 	).WHERE(
-		gen.JobExperiences.ProfileID.EQ(String(profileID)),
+		gen.JobExperiences.ProfileID.EQ(UUID(uuid.MustParse(profileID))),
 	).ORDER_BY(
 		gen.JobExperiences.StartDate.ASC(),
 	)
@@ -287,16 +291,20 @@ func (s *Service) GetLatest(ctx context.Context, profileID string) (*EvaluationR
 	).FROM(
 		gen.AiEvaluations,
 	).WHERE(
-		gen.AiEvaluations.ProfileID.EQ(String(profileID)),
+		gen.AiEvaluations.ProfileID.EQ(UUID(uuid.MustParse(profileID))),
 	).ORDER_BY(
 		gen.AiEvaluations.CreatedAt.DESC(),
 	).LIMIT(1)
 
-	var eval model.AiEvaluations
-	err := stmt.QueryContext(ctx, s.db, &eval)
+	var evals []model.AiEvaluations
+	err := stmt.QueryContext(ctx, s.db, &evals)
 	if err != nil {
 		return nil, err
 	}
+	if len(evals) == 0 {
+		return nil, sql.ErrNoRows
+	}
+	eval := evals[0]
 
 	var strengths []SkillNote
 	var weaknesses []SkillNote

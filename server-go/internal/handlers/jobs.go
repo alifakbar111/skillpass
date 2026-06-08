@@ -191,17 +191,17 @@ func (h *JobHandler) GetJob(c *gin.Context) {
 		gen.JobPostings.ID.EQ(UUID(jobUUID)),
 	)
 
-	var job model.JobPostings
-	if err := stmt.QueryContext(c.Request.Context(), h.db, &job); err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
-			c.JSON(http.StatusNotFound, gin.H{"error": "Job not found"})
-			return
-		}
+	var jobs []model.JobPostings
+	if err := stmt.QueryContext(c.Request.Context(), h.db, &jobs); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to query job"})
 		return
 	}
+	if len(jobs) == 0 {
+		c.JSON(http.StatusNotFound, gin.H{"error": "Job not found"})
+		return
+	}
 
-	c.JSON(http.StatusOK, jobFromModel(job))
+	c.JSON(http.StatusOK, jobFromModel(jobs[0]))
 }
 
 func (h *JobHandler) ListMyJobs(c *gin.Context) {
@@ -221,10 +221,10 @@ func (h *JobHandler) ListMyJobs(c *gin.Context) {
 	).FROM(
 		gen.JobPostings,
 	).WHERE(
-		gen.JobPostings.CompanyID.EQ(String(companyIDStr)),
+		gen.JobPostings.CompanyID.EQ(UUID(uuid.MustParse(companyIDStr))),
 	).ORDER_BY(
 		gen.JobPostings.CreatedAt.DESC(),
-	).LIMIT(parseJobLimit(c)).OFFSET(parseJobOffset(c))
+	)
 
 	var jobs []model.JobPostings
 	if err := stmt.QueryContext(c.Request.Context(), h.db, &jobs); err != nil {
@@ -347,25 +347,25 @@ func (h *JobHandler) UpdateJob(c *gin.Context) {
 		return
 	}
 
-	stmt := gen.JobPostings.UPDATE().SET(setVals[0], setVals[1:]...).WHERE(
+	stmt := gen.JobPostings.UPDATE().SET(setVals[0], setVals[1:]...	).WHERE(
 		gen.JobPostings.ID.EQ(UUID(jobUUID)).AND(
-			gen.JobPostings.CompanyID.EQ(String(companyIDStr)),
+			gen.JobPostings.CompanyID.EQ(UUID(uuid.MustParse(companyIDStr))),
 		),
 	).RETURNING(
 		gen.JobPostings.AllColumns,
 	)
 
-	var job model.JobPostings
-	if err := stmt.QueryContext(c.Request.Context(), h.db, &job); err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
-			c.JSON(http.StatusNotFound, gin.H{"error": "Job not found"})
-			return
-		}
+	var jobs []model.JobPostings
+	if err := stmt.QueryContext(c.Request.Context(), h.db, &jobs); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to update job"})
 		return
 	}
+	if len(jobs) == 0 {
+		c.JSON(http.StatusNotFound, gin.H{"error": "Job not found"})
+		return
+	}
 
-	c.JSON(http.StatusOK, jobFromModel(job))
+	c.JSON(http.StatusOK, jobFromModel(jobs[0]))
 }
 
 func (h *JobHandler) DeleteJob(c *gin.Context) {
@@ -388,7 +388,7 @@ func (h *JobHandler) DeleteJob(c *gin.Context) {
 
 	stmt := gen.JobPostings.DELETE().WHERE(
 		gen.JobPostings.ID.EQ(UUID(jobUUID)).AND(
-			gen.JobPostings.CompanyID.EQ(String(companyIDStr)),
+			gen.JobPostings.CompanyID.EQ(UUID(uuid.MustParse(companyIDStr))),
 		),
 	)
 

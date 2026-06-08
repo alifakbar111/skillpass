@@ -165,7 +165,7 @@ func (s *Service) MatchCandidates(ctx context.Context, jobPostingID string) ([]C
 	).FROM(
 		gen.JobPostings,
 	).WHERE(
-		gen.JobPostings.ID.EQ(String(jobPostingID)),
+		gen.JobPostings.ID.EQ(UUID(uuid.MustParse(jobPostingID))),
 	)
 
 	var job struct {
@@ -298,17 +298,20 @@ func (s *Service) getLatestEvaluation(ctx context.Context, profileID string) (*m
 	).FROM(
 		gen.AiEvaluations,
 	).WHERE(
-		gen.AiEvaluations.ProfileID.EQ(String(profileID)),
+		gen.AiEvaluations.ProfileID.EQ(UUID(uuid.MustParse(profileID))),
 	).ORDER_BY(
 		gen.AiEvaluations.CreatedAt.DESC(),
 	).LIMIT(1)
 
-	var eval model.AiEvaluations
-	err := stmt.QueryContext(ctx, s.db, &eval)
+	var evals []model.AiEvaluations
+	err := stmt.QueryContext(ctx, s.db, &evals)
 	if err != nil {
 		return nil, err
 	}
-	return &eval, nil
+	if len(evals) == 0 {
+		return nil, sql.ErrNoRows
+	}
+	return &evals[0], nil
 }
 
 func extractSkillNames(eval *model.AiEvaluations) []string {
