@@ -197,7 +197,7 @@ CORS_ORIGIN=http://localhost:4200
 
 ### Database schema changes
 
-1. Write new SQL file in `server-go/migrations/` (naming: `001_initial_schema.sql`)
+1. Write new SQL file in `server-go/migrations/` (naming: `000006_<kebab-name>.sql`)
 2. Run `bun run db:migrate`
 3. Run `bun run db:generate` to regenerate go-jet types
 4. Types appear in `server-go/.gen/`, re-import via `server-go/internal/gen/`

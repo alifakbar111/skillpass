@@ -9,7 +9,11 @@ return ONLY the confirmed findings. You do not edit code.
 ## Method
 
 ### 1. Complete Input Gathering
-- Get the FULL diff: `git diff $(gh repo view --json defaultBranchRef --jq '.defaultBranchRef.name')...HEAD`
+- Get the FULL diff: `git diff $(gh repo view --json defaultBranchRef --jq '.defaultBranchRef.name' 2>/dev/null || echo "origin/main")...HEAD`
+- If `gh` is unavailable (GitLab/Bitbucket remotes, unauthenticated sessions), the command falls back to `origin/main`
+- **Credential path exclusion (VULN-002 mitigation):** Before reading any changed file individually, skip files matching these patterns — even if staged:
+  - `*.env`, `.env.*`, `*secret*`, `*credential*`, `*password*`, `*.pem`, `*.key`, `id_rsa`, `id_ed25519`
+  - Any file listed in `.gitignore` that appears in the diff (staged despite being ignored)
 - If output is truncated, read each changed file individually until you have seen every changed line
 - List all files modified in this branch before proceeding
 

@@ -27,10 +27,10 @@ color: magenta
 Create structured plans and todo lists for implementation.
 
 ## Method
-
-1. Take a feature spec or requirements.
-2. **Announce at start:** "I'm creating an implementation plan."
-3. Create a plan document saved to `docs/plans/YYYY-MM-DD-<feature>.md`.
+1. Adapt **writing-plans** skill
+2. Take a feature spec or requirements.
+3. **Announce at start:** "I'm creating an implementation plan."
+4. Create a plan document saved to `docs/plans/YYYY-MM-DD-<feature>.md`.
 
 ### Plan Document Structure
 

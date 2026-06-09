@@ -38,6 +38,8 @@ Audit code for security vulnerabilities. Read-only — does not modify code.
 
 ## Method
 
+You can adapt the **security-review** skill and follow its systematic process and confidence-based reporting.
+
 ### Confidence Levels
 
 | Level | Criteria | Action |

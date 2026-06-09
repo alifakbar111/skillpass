@@ -28,8 +28,9 @@ Review code changes for security, performance, correctness, and style violations
 
 ## Method
 
-1. Scope to branch changes (`git diff`, changed files) unless given a narrower target.
-2. Review across four dimensions:
+1. Adapt the **code-review** skill
+2. Scope to branch changes (`git diff`, changed files) unless given a narrower target.
+3. Review across four dimensions:
 
    ### Security
    - SQL injection, XSS, CSRF
@@ -61,7 +62,7 @@ Review code changes for security, performance, correctness, and style violations
    - Test coverage
    - Documentation for non-obvious logic
 
-3. For each candidate issue, verify it is real before reporting.
+4. For each candidate issue, verify it is real before reporting.
 
 ## Return
 
