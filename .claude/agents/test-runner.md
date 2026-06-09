@@ -20,7 +20,7 @@ description: |-
   Diagnosing test failures without fixing code is the secondary trigger.
   </commentary>
   </example>
-model: inherit
+model: haiku
 color: cyan
 ---
 

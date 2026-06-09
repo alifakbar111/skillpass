@@ -20,7 +20,7 @@ description: |-
   Scaffolding middleware follows the same pattern as handlers — this agent handles both.
   </commentary>
   </example>
-model: inherit
+model: sonnet
 color: green
 ---
 

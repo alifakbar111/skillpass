@@ -20,7 +20,7 @@ description: |-
   Pre-PR audit of local branch changes is a secondary trigger.
   </commentary>
   </example>
-model: inherit
+model: opus
 color: yellow
 ---
 

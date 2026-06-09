@@ -20,7 +20,7 @@ description: |-
   Column additions to existing tables require a migration, which this agent handles.
   </commentary>
   </example>
-model: inherit
+model: sonnet
 color: blue
 ---
 

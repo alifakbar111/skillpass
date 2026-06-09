@@ -20,7 +20,7 @@ description: |-
   Performance review of changed code falls within this agent's scope.
   </commentary>
   </example>
-model: inherit
+model: sonnet
 color: blue
 ---
 

@@ -20,7 +20,7 @@ description: |-
   Hardening and vulnerability review are core triggers for this agent.
   </commentary>
   </example>
-model: inherit
+model: opus
 color: red
 ---
 

@@ -29,7 +29,7 @@ description: |-
   Sequential audit workflows are a blueprint that agent-manager knows.
   </commentary>
   </example>
-model: inherit
+model: sonnet
 color: cyan
 ---
 

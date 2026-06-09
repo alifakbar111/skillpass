@@ -20,7 +20,7 @@ description: |-
   Creating visually differentiated UI is exactly what this agent specializes in.
   </commentary>
   </example>
-model: inherit
+model: sonnet
 color: magenta
 ---
 

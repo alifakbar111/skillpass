@@ -20,7 +20,7 @@ description: |-
   Turning specs into executable plans with no placeholders is the planner's core purpose.
   </commentary>
   </example>
-model: inherit
+model: opus
 color: magenta
 ---
 
