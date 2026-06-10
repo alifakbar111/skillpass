@@ -165,8 +165,8 @@ func (s *Service) ListForJobseeker(ctx context.Context, jobseekerID string) ([]A
 
 	var rows []struct {
 		model.Applications
-		Title       string
-		CompanyName string
+		Title       string `alias:"job_postings.title"`
+		CompanyName string `alias:"companies.company_name"`
 	}
 	if err := stmt.QueryContext(ctx, s.db, &rows); err != nil {
 		return nil, fmt.Errorf("list applications: %w", err)
@@ -328,11 +328,11 @@ func (s *Service) ListForCompany(ctx context.Context, companyID string) ([]Compa
 
 	var rows []struct {
 		model.Applications
-		Title    string
-		Name     string
-		Email    string
-		Slug     string
-		Headline *string
+		Title    string  `alias:"job_postings.title"`
+		Name     string  `alias:"users.name"`
+		Email    string  `alias:"users.email"`
+		Slug     string  `alias:"jobseeker_profiles.slug"`
+		Headline *string `alias:"jobseeker_profiles.headline"`
 	}
 	if err := stmt.QueryContext(ctx, s.db, &rows); err != nil {
 		return nil, fmt.Errorf("list company applications: %w", err)

@@ -7,10 +7,7 @@ import (
 	"net/http"
 
 	"github.com/gin-gonic/gin"
-	. "github.com/go-jet/jet/v2/postgres"
 	"github.com/google/uuid"
-
-	"skillpass-server-go/internal/gen"
 )
 
 type Handler struct {
@@ -19,6 +16,19 @@ type Handler struct {
 
 func NewHandler(service *Service) *Handler {
 	return &Handler{service: service}
+}
+
+// lookupProfileID resolves the jobseeker profile id for a user via raw SQL
+// (ad-hoc go-jet destinations without alias tags scan zero values silently).
+func (h *Handler) lookupProfileID(c *gin.Context, userID string) (string, error) {
+	var profileID uuid.UUID
+	err := h.service.db.QueryRowContext(c.Request.Context(),
+		`SELECT id FROM jobseeker_profiles WHERE user_id = $1`, userID,
+	).Scan(&profileID)
+	if err != nil {
+		return "", err
+	}
+	return profileID.String(), nil
 }
 
 // MatchJobs		godoc
@@ -38,23 +48,14 @@ func (h *Handler) MatchJobs(c *gin.Context) {
 	}
 	userIDStr := userID.(string)
 
-	profileStmt := SELECT(
-		gen.JobseekerProfiles.ID,
-	).FROM(
-		gen.JobseekerProfiles,
-	).WHERE(
-		gen.JobseekerProfiles.UserID.EQ(UUID(uuid.MustParse(userIDStr))),
-	)
-
-	var profile struct{ ID uuid.UUID }
-	err := profileStmt.QueryContext(c.Request.Context(), h.service.db, &profile)
+	profileID, err := h.lookupProfileID(c, userIDStr)
 	if err != nil {
 		slog.Error("profile lookup failed", "error", err)
 		c.JSON(http.StatusNotFound, gin.H{"error": "Profile not found"})
 		return
 	}
 
-	matches, err := h.service.MatchJobs(c.Request.Context(), profile.ID.String())
+	matches, err := h.service.MatchJobs(c.Request.Context(), profileID)
 	if err != nil {
 		slog.Error("job matching failed", "error", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Matching failed"})
@@ -93,22 +94,14 @@ func (h *Handler) SkillsGap(c *gin.Context) {
 		return
 	}
 
-	profileStmt := SELECT(
-		gen.JobseekerProfiles.ID,
-	).FROM(
-		gen.JobseekerProfiles,
-	).WHERE(
-		gen.JobseekerProfiles.UserID.EQ(UUID(uuid.MustParse(userIDStr))),
-	)
-
-	var profile struct{ ID uuid.UUID }
-	if err := profileStmt.QueryContext(c.Request.Context(), h.service.db, &profile); err != nil {
+	profileID, err := h.lookupProfileID(c, userIDStr)
+	if err != nil {
 		slog.Error("profile lookup failed", "error", err)
 		c.JSON(http.StatusNotFound, gin.H{"error": "Profile not found"})
 		return
 	}
 
-	gap, err := h.service.ComputeSkillsGap(c.Request.Context(), profile.ID.String(), jobPostingID)
+	gap, err := h.service.ComputeSkillsGap(c.Request.Context(), profileID, jobPostingID)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			c.JSON(http.StatusNotFound, gin.H{"error": "Job not found"})

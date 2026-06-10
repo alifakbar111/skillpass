@@ -101,6 +101,13 @@ func TestApplicationFlow(t *testing.T) {
 		if len(resp) != 1 {
 			t.Fatalf("expected 1, got %d", len(resp))
 		}
+		// Guard against silent go-jet scan failures on joined columns.
+		if resp[0].JobTitle != "Software Engineer" {
+			t.Fatalf("expected job title 'Software Engineer', got %q", resp[0].JobTitle)
+		}
+		if resp[0].CompanyName != "App Co" {
+			t.Fatalf("expected company name 'App Co', got %q", resp[0].CompanyName)
+		}
 	})
 
 	t.Run("apply without auth", func(t *testing.T) {
