@@ -24,6 +24,8 @@ func UniqueUsername(prefix string) string {
 // Call at the start of each test function that creates persistent data.
 func CleanTestData(db *sql.DB) {
 	tables := []string{
+		"notifications",
+		"application_messages",
 		"ai_evaluations",
 		"applications",
 		"job_experiences",

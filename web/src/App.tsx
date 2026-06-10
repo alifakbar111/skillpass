@@ -35,6 +35,7 @@ const EvaluationPage = lazy(() =>
 const ApplicationsPage = lazy(() =>
   import('./pages/jobseeker/ApplicationsPage').then((m) => ({ default: m.ApplicationsPage })),
 );
+const MatchesPage = lazy(() => import('./pages/jobseeker/MatchesPage').then((m) => ({ default: m.MatchesPage })));
 
 const router = createBrowserRouter([
   {
@@ -72,6 +73,14 @@ const router = createBrowserRouter([
         element: (
           <ProtectedRoute requiredRole="jobseeker">
             <ApplicationsPage />
+          </ProtectedRoute>
+        ),
+      },
+      {
+        path: '/jobseeker/matches',
+        element: (
+          <ProtectedRoute requiredRole="jobseeker">
+            <MatchesPage />
           </ProtectedRoute>
         ),
       },

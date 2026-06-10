@@ -31,6 +31,7 @@ import (
 	"skillpass-server-go/internal/lib"
 	"skillpass-server-go/internal/matching"
 	"skillpass-server-go/internal/middleware"
+	"skillpass-server-go/internal/notification"
 )
 
 func main() {
@@ -75,6 +76,10 @@ func main() {
 
 	appService := application.NewService(database)
 	appHandler := application.NewHandler(appService)
+
+	notifService := notification.NewService(database)
+	notifHandler := notification.NewHandler(notifService)
+	appHandler.SetNotifier(notifService)
 
 	matchService := matching.NewService(database)
 	matchHandler := matching.NewHandler(matchService)
@@ -162,6 +167,15 @@ func main() {
 		appStatusGroup.Use(m)
 	}
 	appStatusGroup.PUT("/:id/status", appHandler.UpdateStatus)
+	appStatusGroup.GET("/:id/messages", appHandler.ListMessages)
+	appStatusGroup.POST("/:id/messages", appHandler.AddMessage)
+
+	// ── Notification routes (any authenticated user) ──
+	notifGroup := api.Group("/notifications")
+	notifGroup.Use(middleware.AuthRequired(cfg.JWTSecret))
+	notifGroup.GET("/me", notifHandler.ListMine)
+	notifGroup.PUT("/read-all", notifHandler.MarkAllRead)
+	notifGroup.PUT("/:id/read", notifHandler.MarkRead)
 
 	// ── Matching routes ──
 	matchesJobseekerGroup := api.Group("/jobs")

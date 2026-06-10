@@ -1,7 +1,8 @@
 import { zodResolver } from '@hookform/resolvers/zod';
-import { Pencil, Plus, X } from 'lucide-react';
+import { Pencil, Plus, Users, X } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { useForm } from 'react-hook-form';
+import { JobMatches } from '../../components/company/JobMatches';
 import { FormInput, FormSelect, FormTextarea } from '../../components/ui/FormField';
 import { LoadingSpinner } from '../../components/ui/LoadingFallback';
 import { ApiError, api } from '../../lib/api';
@@ -16,6 +17,7 @@ export function CompanyJobs() {
   const [industries, setIndustries] = useState<Industry[]>([]);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [matchesJobId, setMatchesJobId] = useState<string | null>(null);
 
   const {
     register,
@@ -231,6 +233,14 @@ export function CompanyJobs() {
                 </div>
               </div>
               <div className="flex gap-1">
+                <button
+                  type="button"
+                  className="btn btn-ghost btn-xs"
+                  aria-label={`View matches for ${job.title}`}
+                  onClick={() => setMatchesJobId((prev) => (prev === job.id ? null : job.id))}
+                >
+                  <Users size={14} aria-hidden="true" />
+                </button>
                 {job.status === 'open' && (
                   <button
                     type="button"
@@ -253,6 +263,7 @@ export function CompanyJobs() {
                 )}
               </div>
             </div>
+            {matchesJobId === job.id && <JobMatches jobId={job.id} />}
           </div>
         ))}
         {jobs.length === 0 && formMode === 'hidden' && (

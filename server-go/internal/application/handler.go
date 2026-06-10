@@ -1,6 +1,7 @@
 package application
 
 import (
+	"context"
 	"errors"
 	"log/slog"
 	"net/http"
@@ -9,13 +10,28 @@ import (
 	"github.com/google/uuid"
 )
 
+// Notifier creates notifications in response to application events.
+// Implemented by the notification.Service; kept as an interface here to avoid
+// a hard dependency and to allow nil (no-op) in tests.
+type Notifier interface {
+	NotifyCompanyOfApplication(ctx context.Context, jobPostingID, jobseekerProfileID string) error
+	NotifyJobseekerOfStatus(ctx context.Context, applicationID, status string) error
+}
+
 // Handler uses gin context to handle application requests.
 type Handler struct {
-	service *Service
+	service  *Service
+	notifier Notifier
 }
 
 func NewHandler(service *Service) *Handler {
 	return &Handler{service: service}
+}
+
+// SetNotifier attaches a notifier used to emit notifications on application events.
+// Optional — when nil, no notifications are emitted.
+func (h *Handler) SetNotifier(n Notifier) {
+	h.notifier = n
 }
 
 func getUserID(c *gin.Context) (string, bool) {
@@ -84,6 +100,13 @@ func (h *Handler) Apply(c *gin.Context) {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to apply"})
 		}
 		return
+	}
+
+	// Best-effort: notify the company of the new application.
+	if h.notifier != nil {
+		if err := h.notifier.NotifyCompanyOfApplication(c.Request.Context(), jobPostingID, profileID); err != nil {
+			slog.Warn("failed to notify company of application", "error", err)
+		}
 	}
 
 	c.JSON(http.StatusCreated, result)
@@ -158,6 +181,111 @@ func (h *Handler) ListCompanyApplications(c *gin.Context) {
 	c.JSON(http.StatusOK, applications)
 }
 
+// AddMessage	godoc
+// @Summary		Add a note to an application
+// @Description	Company adds a note/message to an application it owns (visible to the candidate)
+// @Tags		applications
+// @Accept		json
+// @Produce		json
+// @Security	BearerAuth
+// @Param		id path string true "Application UUID"
+// @Param		body body object{body=string} true "Message body"
+// @Success		201 {object} application.Message
+// @Failure		400 {object} map[string]string
+// @Failure		403 {object} map[string]string
+// @Failure		404 {object} map[string]string
+// @Router		/applications/{id}/messages [post]
+func (h *Handler) AddMessage(c *gin.Context) {
+	companyID, ok := getCompanyID(c)
+	if !ok {
+		c.JSON(http.StatusForbidden, gin.H{"error": "Company access required"})
+		return
+	}
+	senderUserID, ok := getUserID(c)
+	if !ok {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "Unauthorized"})
+		return
+	}
+
+	applicationID := c.Param("id")
+	if _, err := uuid.Parse(applicationID); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid application ID"})
+		return
+	}
+
+	var req struct {
+		Body string `json:"body" binding:"required"`
+	}
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request: body is required"})
+		return
+	}
+
+	msg, err := h.service.AddMessage(c.Request.Context(), applicationID, companyID, senderUserID, req.Body)
+	if err != nil {
+		switch {
+		case errors.Is(err, ErrAppNotFound):
+			c.JSON(http.StatusNotFound, gin.H{"error": err.Error()})
+		case errors.Is(err, ErrForbidden):
+			c.JSON(http.StatusForbidden, gin.H{"error": err.Error()})
+		default:
+			slog.Error("failed to add message", "error", err)
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to add message"})
+		}
+		return
+	}
+
+	// Best-effort: notify the jobseeker of the new note.
+	if h.notifier != nil {
+		if err := h.notifier.NotifyJobseekerOfStatus(c.Request.Context(), applicationID, "updated with a note"); err != nil {
+			slog.Warn("failed to notify jobseeker of note", "error", err)
+		}
+	}
+
+	c.JSON(http.StatusCreated, msg)
+}
+
+// ListMessages	godoc
+// @Summary		List application messages
+// @Description	Company lists the message thread for an application it owns
+// @Tags		applications
+// @Produce		json
+// @Security	BearerAuth
+// @Param		id path string true "Application UUID"
+// @Success		200 {array} application.Message
+// @Failure		403 {object} map[string]string
+// @Failure		404 {object} map[string]string
+// @Router		/applications/{id}/messages [get]
+func (h *Handler) ListMessages(c *gin.Context) {
+	companyID, ok := getCompanyID(c)
+	if !ok {
+		c.JSON(http.StatusForbidden, gin.H{"error": "Company access required"})
+		return
+	}
+
+	applicationID := c.Param("id")
+	if _, err := uuid.Parse(applicationID); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid application ID"})
+		return
+	}
+
+	messages, err := h.service.ListMessages(c.Request.Context(), applicationID, companyID)
+	if err != nil {
+		switch {
+		case errors.Is(err, ErrAppNotFound):
+			c.JSON(http.StatusNotFound, gin.H{"error": err.Error()})
+		case errors.Is(err, ErrForbidden):
+			c.JSON(http.StatusForbidden, gin.H{"error": err.Error()})
+		default:
+			slog.Error("failed to list messages", "error", err)
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to list messages"})
+		}
+		return
+	}
+
+	c.JSON(http.StatusOK, messages)
+}
+
 // UpdateStatus		godoc
 // @Summary		Update application status
 // @Description	Update an application's status (reviewed, interviewed, offered, rejected). Company action for verified companies.
@@ -207,6 +335,13 @@ func (h *Handler) UpdateStatus(c *gin.Context) {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to update status"})
 		}
 		return
+	}
+
+	// Best-effort: notify the jobseeker of the status change.
+	if h.notifier != nil {
+		if err := h.notifier.NotifyJobseekerOfStatus(c.Request.Context(), applicationID, req.Status); err != nil {
+			slog.Warn("failed to notify jobseeker of status change", "error", err)
+		}
 	}
 
 	c.JSON(http.StatusOK, result)

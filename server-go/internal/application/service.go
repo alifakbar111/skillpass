@@ -9,6 +9,7 @@ import (
 
 	. "github.com/go-jet/jet/v2/postgres"
 	"github.com/google/uuid"
+	"github.com/lib/pq"
 
 	"skillpass-server-go/.gen/skillpass/public/model"
 	"skillpass-server-go/internal/gen"
@@ -50,8 +51,17 @@ type ApplicationResult struct {
 	CreatedAt    string `json:"createdAt"`
 	UpdatedAt    string `json:"updatedAt"`
 	// Joined fields
-	JobTitle    string `json:"jobTitle,omitempty"`
-	CompanyName string `json:"companyName,omitempty"`
+	JobTitle    string  `json:"jobTitle,omitempty"`
+	CompanyName string  `json:"companyName,omitempty"`
+	LatestNote  *string `json:"latestNote,omitempty"`
+}
+
+// Message is a note attached to an application (e.g. company → candidate).
+type Message struct {
+	ID         string `json:"id"`
+	SenderName string `json:"senderName"`
+	Body       string `json:"body"`
+	CreatedAt  string `json:"createdAt"`
 }
 
 func contains(list []string, item string) bool {
@@ -163,6 +173,7 @@ func (s *Service) ListForJobseeker(ctx context.Context, jobseekerID string) ([]A
 	}
 
 	results := make([]ApplicationResult, len(rows))
+	ids := make([]string, len(rows))
 	for i, r := range rows {
 		results[i] = ApplicationResult{
 			ID:           r.ID.String(),
@@ -173,6 +184,18 @@ func (s *Service) ListForJobseeker(ctx context.Context, jobseekerID string) ([]A
 			UpdatedAt:    r.UpdatedAt.Format(time.RFC3339),
 			JobTitle:     r.Title,
 			CompanyName:  r.CompanyName,
+		}
+		ids[i] = results[i].ID
+	}
+
+	notes, err := s.latestNotesFor(ctx, ids)
+	if err != nil {
+		return nil, err
+	}
+	for i := range results {
+		if note, ok := notes[results[i].ID]; ok {
+			n := note
+			results[i].LatestNote = &n
 		}
 	}
 	return results, nil
@@ -281,6 +304,7 @@ type CompanyApplicationResult struct {
 	CandidateEmail   string `json:"candidateEmail"`
 	CandidateSlug    string `json:"candidateSlug"`
 	CandidateHeadline string `json:"candidateHeadline,omitempty"`
+	LatestNote       *string `json:"latestNote,omitempty"`
 }
 
 func (s *Service) ListForCompany(ctx context.Context, companyID string) ([]CompanyApplicationResult, error) {
@@ -315,6 +339,7 @@ func (s *Service) ListForCompany(ctx context.Context, companyID string) ([]Compa
 	}
 
 	results := make([]CompanyApplicationResult, len(rows))
+	ids := make([]string, len(rows))
 	for i, r := range rows {
 		headline := ""
 		if r.Headline != nil {
@@ -333,8 +358,136 @@ func (s *Service) ListForCompany(ctx context.Context, companyID string) ([]Compa
 			CandidateSlug:     r.Slug,
 			CandidateHeadline: headline,
 		}
+		ids[i] = results[i].ID
+	}
+
+	notes, err := s.latestNotesFor(ctx, ids)
+	if err != nil {
+		return nil, err
+	}
+	for i := range results {
+		if note, ok := notes[results[i].ID]; ok {
+			n := note
+			results[i].LatestNote = &n
+		}
 	}
 	return results, nil
+}
+
+// verifyCompanyOwnsApplication returns nil if the application belongs to a job
+// owned by the given company, ErrAppNotFound if missing, ErrForbidden otherwise.
+func (s *Service) verifyCompanyOwnsApplication(ctx context.Context, applicationID, companyID string) error {
+	var ownerCompanyID uuid.UUID
+	err := s.db.QueryRowContext(ctx,
+		`SELECT j.company_id
+		 FROM applications a
+		 JOIN job_postings j ON j.id = a.job_posting_id
+		 WHERE a.id = $1`,
+		applicationID,
+	).Scan(&ownerCompanyID)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return ErrAppNotFound
+		}
+		return fmt.Errorf("verify application owner: %w", err)
+	}
+	if ownerCompanyID.String() != companyID {
+		return ErrForbidden
+	}
+	return nil
+}
+
+// AddMessage attaches a note to an application. The company must own the application.
+func (s *Service) AddMessage(ctx context.Context, applicationID, companyID, senderUserID, body string) (*Message, error) {
+	if err := s.verifyCompanyOwnsApplication(ctx, applicationID, companyID); err != nil {
+		return nil, err
+	}
+
+	var id uuid.UUID
+	var createdAt time.Time
+	err := s.db.QueryRowContext(ctx,
+		`INSERT INTO application_messages (application_id, sender_user_id, message_type, body)
+		 VALUES ($1, $2, 'note', $3)
+		 RETURNING id, created_at`,
+		applicationID, senderUserID, body,
+	).Scan(&id, &createdAt)
+	if err != nil {
+		return nil, fmt.Errorf("insert message: %w", err)
+	}
+
+	var senderName string
+	_ = s.db.QueryRowContext(ctx, `SELECT name FROM users WHERE id = $1`, senderUserID).Scan(&senderName)
+
+	return &Message{
+		ID:         id.String(),
+		SenderName: senderName,
+		Body:       body,
+		CreatedAt:  createdAt.Format(time.RFC3339),
+	}, nil
+}
+
+// ListMessages returns the message thread for an application owned by the company.
+func (s *Service) ListMessages(ctx context.Context, applicationID, companyID string) ([]Message, error) {
+	if err := s.verifyCompanyOwnsApplication(ctx, applicationID, companyID); err != nil {
+		return nil, err
+	}
+
+	rows, err := s.db.QueryContext(ctx,
+		`SELECT m.id, u.name, m.body, m.created_at
+		 FROM application_messages m
+		 JOIN users u ON u.id = m.sender_user_id
+		 WHERE m.application_id = $1
+		 ORDER BY m.created_at ASC`,
+		applicationID,
+	)
+	if err != nil {
+		return nil, fmt.Errorf("query messages: %w", err)
+	}
+	defer rows.Close()
+
+	messages := []Message{}
+	for rows.Next() {
+		var m Message
+		var id uuid.UUID
+		var createdAt time.Time
+		if err := rows.Scan(&id, &m.SenderName, &m.Body, &createdAt); err != nil {
+			return nil, fmt.Errorf("scan message: %w", err)
+		}
+		m.ID = id.String()
+		m.CreatedAt = createdAt.Format(time.RFC3339)
+		messages = append(messages, m)
+	}
+	return messages, rows.Err()
+}
+
+// latestNotesFor returns a map of applicationID → most recent note body.
+func (s *Service) latestNotesFor(ctx context.Context, applicationIDs []string) (map[string]string, error) {
+	result := map[string]string{}
+	if len(applicationIDs) == 0 {
+		return result, nil
+	}
+
+	rows, err := s.db.QueryContext(ctx,
+		`SELECT DISTINCT ON (application_id) application_id, body
+		 FROM application_messages
+		 WHERE application_id = ANY($1)
+		 ORDER BY application_id, created_at DESC`,
+		pq.Array(applicationIDs),
+	)
+	if err != nil {
+		return nil, fmt.Errorf("query latest notes: %w", err)
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		var appID uuid.UUID
+		var body string
+		if err := rows.Scan(&appID, &body); err != nil {
+			return nil, fmt.Errorf("scan latest note: %w", err)
+		}
+		result[appID.String()] = body
+	}
+	return result, rows.Err()
 }
 
 func (s *Service) LookupJobseekerProfileID(ctx context.Context, userID string) (string, error) {

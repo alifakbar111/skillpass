@@ -11,6 +11,14 @@ export interface Application {
   updatedAt: string;
   jobTitle?: string;
   companyName?: string;
+  latestNote?: string;
+}
+
+export interface ApplicationMessage {
+  id: string;
+  senderName: string;
+  body: string;
+  createdAt: string;
 }
 
 export async function applyToJob(jobId: string): Promise<Application> {
@@ -19,4 +27,15 @@ export async function applyToJob(jobId: string): Promise<Application> {
 
 export async function getMyApplications(): Promise<Application[]> {
   return api<Application[]>('/applications/me');
+}
+
+export async function getApplicationMessages(applicationId: string): Promise<ApplicationMessage[]> {
+  return api<ApplicationMessage[]>(`/applications/${applicationId}/messages`);
+}
+
+export async function addApplicationMessage(applicationId: string, body: string): Promise<ApplicationMessage> {
+  return api<ApplicationMessage>(`/applications/${applicationId}/messages`, {
+    method: 'POST',
+    body: JSON.stringify({ body }),
+  });
 }

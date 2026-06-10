@@ -2,6 +2,7 @@ package application
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -216,6 +217,78 @@ func TestApplicationFlow(t *testing.T) {
 		router.ServeHTTP(w2, req2)
 		if w2.Code != http.StatusOK {
 			t.Fatalf("expected 200, got %d: %s", w2.Code, w2.Body.String())
+		}
+	})
+}
+
+func TestApplicationMessages(t *testing.T) {
+	db := testutil.SetupTestDB()
+
+	cu, cID, _ := testutil.CreateCompanyUser(db, "msgco@ex.com", "msgco", "pass123", "Msg Co", true)
+	jID, _ := testutil.CreateJob(db, cID, "QA Engineer", "Technology", true)
+	_, pID, _ := testutil.CreateJobseeker(db, "msgjs@ex.com", "msgjs", "pass123", "Msg JS")
+	appID, _ := testutil.CreateApplication(db, pID, jID, "applied")
+	ctok := testutil.GenerateToken(cu.String(), "company", 15*time.Minute)
+
+	// A second company that should not be able to access this application's messages
+	cu2, _, _ := testutil.CreateCompanyUser(db, "msgco2@ex.com", "msgco2", "pass123", "Msg Co 2", true)
+	ctok2 := testutil.GenerateToken(cu2.String(), "company", 15*time.Minute)
+
+	svc := NewService(db)
+	h := NewHandler(svc)
+
+	router := gin.New()
+	g := router.Group("/api/v1/applications")
+	g.Use(middleware.AuthRequired(testutil.TestJWTSecret), middleware.RequireRole("company"), middleware.RequireVerifiedCompany(db))
+	g.POST("/:id/messages", h.AddMessage)
+	g.GET("/:id/messages", h.ListMessages)
+
+	t.Run("add message", func(t *testing.T) {
+		w := httptest.NewRecorder()
+		req := httptest.NewRequest("POST", fmt.Sprintf("/api/v1/applications/%s/messages", appID), bytes.NewBufferString(`{"body":"We'd like to schedule a call"}`))
+		req.Header.Set("Content-Type", "application/json")
+		req.Header.Set("Authorization", "Bearer "+ctok)
+		router.ServeHTTP(w, req)
+		if w.Code != http.StatusCreated {
+			t.Fatalf("expected 201, got %d: %s", w.Code, w.Body.String())
+		}
+	})
+
+	t.Run("list messages", func(t *testing.T) {
+		w := httptest.NewRecorder()
+		req := httptest.NewRequest("GET", fmt.Sprintf("/api/v1/applications/%s/messages", appID), nil)
+		req.Header.Set("Authorization", "Bearer "+ctok)
+		router.ServeHTTP(w, req)
+		if w.Code != http.StatusOK {
+			t.Fatalf("expected 200, got %d: %s", w.Code, w.Body.String())
+		}
+		var msgs []Message
+		json.Unmarshal(w.Body.Bytes(), &msgs)
+		if len(msgs) != 1 {
+			t.Fatalf("expected 1 message, got %d", len(msgs))
+		}
+	})
+
+	t.Run("other company forbidden", func(t *testing.T) {
+		w := httptest.NewRecorder()
+		req := httptest.NewRequest("GET", fmt.Sprintf("/api/v1/applications/%s/messages", appID), nil)
+		req.Header.Set("Authorization", "Bearer "+ctok2)
+		router.ServeHTTP(w, req)
+		if w.Code != http.StatusForbidden {
+			t.Fatalf("expected 403, got %d: %s", w.Code, w.Body.String())
+		}
+	})
+
+	t.Run("jobseeker sees latest note", func(t *testing.T) {
+		results, err := svc.ListForJobseeker(context.Background(), pID.String())
+		if err != nil {
+			t.Fatalf("list for jobseeker: %v", err)
+		}
+		if len(results) != 1 {
+			t.Fatalf("expected 1 application, got %d", len(results))
+		}
+		if results[0].LatestNote == nil || *results[0].LatestNote != "We'd like to schedule a call" {
+			t.Fatalf("expected latest note, got %v", results[0].LatestNote)
 		}
 	})
 }

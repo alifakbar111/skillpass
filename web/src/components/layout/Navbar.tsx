@@ -2,6 +2,7 @@ import { useCallback, useEffect, useId, useRef, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../hooks/useAuth';
 import { ThemeToggle } from '../ui/ThemeToggle';
+import { NotificationBell } from './NotificationBell';
 
 export function Navbar() {
   const { user, logout } = useAuth();
@@ -50,9 +51,17 @@ export function Navbar() {
         {user ? (
           <>
             {user.role === 'jobseeker' && (
-              <Link to="/jobseeker/profile" className="btn btn-ghost btn-sm">
-                My Profile
-              </Link>
+              <>
+                <Link to="/jobseeker/profile" className="btn btn-ghost btn-sm">
+                  My Profile
+                </Link>
+                <Link to="/jobseeker/matches" className="btn btn-ghost btn-sm">
+                  Matches
+                </Link>
+                <Link to="/jobseeker/applications" className="btn btn-ghost btn-sm">
+                  Applications
+                </Link>
+              </>
             )}
             {user.role === 'company' && (
               <>
@@ -72,6 +81,7 @@ export function Navbar() {
                 Verifications
               </Link>
             )}
+            <NotificationBell />
             <div className="dropdown dropdown-end" ref={dropdownRef}>
               <button
                 type="button"

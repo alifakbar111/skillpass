@@ -1,8 +1,9 @@
-import { ChevronDown, ExternalLink, User } from 'lucide-react';
-import { useEffect, useState } from 'react';
+import { ChevronDown, ExternalLink, MessageSquare, User } from 'lucide-react';
+import { Fragment, useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { LoadingFallback } from '../../components/ui/LoadingFallback';
 import { ApiError, api } from '../../lib/api';
+import { ApplicationNotes } from './ApplicationNotes';
 
 interface CompanyApplication {
   id: string;
@@ -16,6 +17,7 @@ interface CompanyApplication {
   candidateEmail: string;
   candidateSlug: string;
   candidateHeadline?: string;
+  latestNote?: string;
 }
 
 const STATUS_OPTIONS = ['reviewed', 'interviewed', 'offered', 'rejected'] as const;
@@ -33,6 +35,7 @@ export function CompanyApplications() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [updating, setUpdating] = useState<string | null>(null);
+  const [notesAppId, setNotesAppId] = useState<string | null>(null);
 
   useEffect(() => {
     api<CompanyApplication[]>('/company/applications')
@@ -107,68 +110,86 @@ export function CompanyApplications() {
               </thead>
               <tbody>
                 {apps.map((app) => (
-                  <tr key={app.id}>
-                    <td>
-                      <div className="flex items-center gap-3">
-                        <div className="avatar placeholder">
-                          <div className="bg-neutral text-neutral-content w-8 rounded-full">
-                            <User size={16} />
+                  <Fragment key={app.id}>
+                    <tr>
+                      <td>
+                        <div className="flex items-center gap-3">
+                          <div className="avatar placeholder">
+                            <div className="bg-neutral text-neutral-content w-8 rounded-full">
+                              <User size={16} />
+                            </div>
+                          </div>
+                          <div>
+                            <div className="font-medium">{app.candidateName}</div>
+                            {app.candidateHeadline && (
+                              <div className="text-xs opacity-60">{app.candidateHeadline}</div>
+                            )}
                           </div>
                         </div>
-                        <div>
-                          <div className="font-medium">{app.candidateName}</div>
-                          {app.candidateHeadline && (
-                            <div className="text-xs opacity-60">{app.candidateHeadline}</div>
+                      </td>
+                      <td>
+                        <span className={`badge ${STATUS_BADGE[app.status] ?? 'badge-ghost'}`}>{app.status}</span>
+                      </td>
+                      <td className="text-sm opacity-70">{app.createdAt.slice(0, 10)}</td>
+                      <td>
+                        <div className="flex items-center gap-2">
+                          <Link
+                            to={`/profiles/${app.candidateSlug}`}
+                            className="btn btn-xs btn-ghost"
+                            title="View passport"
+                          >
+                            <ExternalLink size={14} />
+                          </Link>
+
+                          <button
+                            type="button"
+                            className="btn btn-xs btn-ghost"
+                            title="Notes"
+                            onClick={() => setNotesAppId((prev) => (prev === app.id ? null : app.id))}
+                          >
+                            <MessageSquare size={14} />
+                          </button>
+
+                          {app.status !== 'rejected' && app.status !== 'offered' && (
+                            <div className="dropdown dropdown-end">
+                              <div
+                                tabIndex={0}
+                                role="button"
+                                className="btn btn-xs btn-outline"
+                              >
+                                {updating === app.id ? (
+                                  <span className="loading loading-spinner loading-xs" />
+                                ) : (
+                                  <>
+                                    Move <ChevronDown size={12} />
+                                  </>
+                                )}
+                              </div>
+                              <ul
+                                tabIndex={0}
+                                className="dropdown-content menu p-2 shadow bg-base-200 rounded-box w-40 z-10"
+                              >
+                                {STATUS_OPTIONS.filter((s) => s !== app.status).map((s) => (
+                                  <li key={s}>
+                                    <button type="button" onClick={() => handleStatusChange(app.id, s)}>
+                                      {s.charAt(0).toUpperCase() + s.slice(1)}
+                                    </button>
+                                  </li>
+                                ))}
+                              </ul>
+                            </div>
                           )}
                         </div>
-                      </div>
-                    </td>
-                    <td>
-                      <span className={`badge ${STATUS_BADGE[app.status] ?? 'badge-ghost'}`}>{app.status}</span>
-                    </td>
-                    <td className="text-sm opacity-70">{app.createdAt.slice(0, 10)}</td>
-                    <td>
-                      <div className="flex items-center gap-2">
-                        <Link
-                          to={`/profiles/${app.candidateSlug}`}
-                          className="btn btn-xs btn-ghost"
-                          title="View passport"
-                        >
-                          <ExternalLink size={14} />
-                        </Link>
-
-                        {app.status !== 'rejected' && app.status !== 'offered' && (
-                          <div className="dropdown dropdown-end">
-                            <div
-                              tabIndex={0}
-                              role="button"
-                              className="btn btn-xs btn-outline"
-                            >
-                              {updating === app.id ? (
-                                <span className="loading loading-spinner loading-xs" />
-                              ) : (
-                                <>
-                                  Move <ChevronDown size={12} />
-                                </>
-                              )}
-                            </div>
-                            <ul
-                              tabIndex={0}
-                              className="dropdown-content menu p-2 shadow bg-base-200 rounded-box w-40 z-10"
-                            >
-                              {STATUS_OPTIONS.filter((s) => s !== app.status).map((s) => (
-                                <li key={s}>
-                                  <button type="button" onClick={() => handleStatusChange(app.id, s)}>
-                                    {s.charAt(0).toUpperCase() + s.slice(1)}
-                                  </button>
-                                </li>
-                              ))}
-                            </ul>
-                          </div>
-                        )}
-                      </div>
-                    </td>
-                  </tr>
+                      </td>
+                    </tr>
+                    {notesAppId === app.id && (
+                      <tr>
+                        <td colSpan={4} className="bg-base-100">
+                          <ApplicationNotes applicationId={app.id} />
+                        </td>
+                      </tr>
+                    )}
+                  </Fragment>
                 ))}
               </tbody>
             </table>
