@@ -23,6 +23,7 @@ const CompanyJobs = lazy(() => import('./pages/CompanyJobs').then((m) => ({ defa
 const CompanyApplications = lazy(() =>
   import('./pages/CompanyApplications').then((m) => ({ default: m.CompanyApplications })),
 );
+const CompanyAnalytics = lazy(() => import('./pages/CompanyAnalytics').then((m) => ({ default: m.CompanyAnalytics })));
 const PublicJobs = lazy(() => import('./pages/PublicJobs').then((m) => ({ default: m.PublicJobs })));
 const JobDetail = lazy(() => import('./pages/JobDetail').then((m) => ({ default: m.JobDetail })));
 const PublicPassport = lazy(() => import('./pages/PublicPassport').then((m) => ({ default: m.PublicPassport })));
@@ -121,6 +122,14 @@ const router = createBrowserRouter([
         element: (
           <ProtectedRoute requiredRole="company">
             <CompanyApplications />
+          </ProtectedRoute>
+        ),
+      },
+      {
+        path: '/company/analytics',
+        element: (
+          <ProtectedRoute requiredRole="company">
+            <CompanyAnalytics />
           </ProtectedRoute>
         ),
       },

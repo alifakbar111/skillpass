@@ -5,6 +5,7 @@ import { LoadingFallback } from '../../components/ui/LoadingFallback';
 import { useAuth } from '../../hooks/useAuth';
 import { ApiError, api } from '../../lib/api';
 import { applyToJob } from '../../lib/application';
+import { SkillsGapPanel } from './SkillsGapPanel';
 import type { Job } from './type';
 
 export function JobDetail() {
@@ -106,7 +107,9 @@ export function JobDetail() {
           </div>
         )}
 
-        {job.status === 'open' && (
+        {user?.role === 'jobseeker' && id && <SkillsGapPanel jobId={id} />}
+
+        {job.status === 'open' && (!user || user.role === 'jobseeker') && (
           <div className="mt-6 pt-4 border-t border-base-300">
             {!user && (
               <Link to="/auth/login" className="btn btn-primary w-full">
