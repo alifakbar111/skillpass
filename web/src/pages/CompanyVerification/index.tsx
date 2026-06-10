@@ -62,12 +62,7 @@ export function CompanyVerification() {
       <div className="max-w-lg mx-auto p-4">
         <div className="alert alert-error">
           <span>{error}</span>
-          <button
-            type="button"
-            title="close"
-            className="btn btn-ghost btn-xs"
-            onClick={() => submitMutation.reset()}
-          >
+          <button type="button" title="close" className="btn btn-ghost btn-xs" onClick={() => submitMutation.reset()}>
             <X size={14} />
           </button>
         </div>
