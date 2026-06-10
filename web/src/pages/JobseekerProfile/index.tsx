@@ -5,6 +5,7 @@ import { useEffect, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { FormInput, FormSelect, FormTextarea } from '../../components/ui/FormField';
 import { LoadingFallback, LoadingSpinner } from '../../components/ui/LoadingFallback';
+import { useAuth } from '../../hooks/useAuth';
 import { ApiError, api } from '../../lib/api';
 import { type ExperienceForm, experienceSchema, type ProfileForm, profileSchema } from '../../lib/schemas';
 import type { Experience, Profile } from './type';
@@ -20,6 +21,13 @@ const EXPERIENCE_TYPES = [
 
 export function JobseekerProfile() {
   const queryClient = useQueryClient();
+  const { user } = useAuth();
+
+  // Profile edits also affect the public passport view (/profiles/:username).
+  const invalidateProfileViews = () => {
+    queryClient.invalidateQueries({ queryKey: ['profile', 'me'] });
+    queryClient.invalidateQueries({ queryKey: ['passport', user?.username] });
+  };
   const [showExpForm, setShowExpForm] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -66,7 +74,7 @@ export function JobseekerProfile() {
     mutationFn: (data: ProfileForm) => api<Profile>('/profiles/me', { method: 'PUT', body: JSON.stringify(data) }),
     onMutate: () => setError(null),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['profile', 'me'] });
+      invalidateProfileViews();
     },
     onError: (err) => {
       setError(err instanceof ApiError ? (err.serverMessage ?? err.message) : 'Failed to save profile');
@@ -92,7 +100,7 @@ export function JobseekerProfile() {
     },
     onMutate: () => setError(null),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['profile', 'me'] });
+      invalidateProfileViews();
       setShowExpForm(false);
       expForm.reset({
         type: 'employment',
@@ -115,7 +123,7 @@ export function JobseekerProfile() {
     mutationFn: (id: string) => api(`/profiles/me/experience/${encodeURIComponent(id)}`, { method: 'DELETE' }),
     onMutate: () => setError(null),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['profile', 'me'] });
+      invalidateProfileViews();
     },
     onError: (err) => {
       setError(err instanceof ApiError ? (err.serverMessage ?? err.message) : 'Failed to delete experience');

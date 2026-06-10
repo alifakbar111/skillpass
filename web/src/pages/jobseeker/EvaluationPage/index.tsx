@@ -26,8 +26,8 @@ export function EvaluationPage() {
       setError(null);
       setSuccessMsg(null);
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['evaluation', 'latest'] });
+    onSuccess: (result) => {
+      queryClient.setQueryData(['evaluation', 'latest'], result);
       setSuccessMsg('Evaluation complete!');
     },
     onError: (err) => {

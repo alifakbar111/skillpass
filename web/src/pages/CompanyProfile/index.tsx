@@ -1,5 +1,5 @@
 import { zodResolver } from '@hookform/resolvers/zod';
-import { useMutation, useQuery } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { X } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { useForm } from 'react-hook-form';
@@ -12,6 +12,7 @@ import { type CompanyProfileForm, companyProfileSchema } from '../../lib/schemas
 type CompanyProfileData = { companyName: string; website?: string; industry: string; description?: string };
 
 export function CompanyProfile() {
+  const queryClient = useQueryClient();
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
 
@@ -48,7 +49,10 @@ export function CompanyProfile() {
       setError(null);
       setSuccess(false);
     },
-    onSuccess: () => setSuccess(true),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['company', 'profile'] });
+      setSuccess(true);
+    },
     onError: (err) => {
       setError(err instanceof ApiError ? (err.serverMessage ?? err.message) : 'Failed to save profile');
     },
