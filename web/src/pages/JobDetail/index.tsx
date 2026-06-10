@@ -1,5 +1,5 @@
+import { useQuery } from '@tanstack/react-query';
 import { Briefcase, Calendar, DollarSign, MapPin } from 'lucide-react';
-import { useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { LoadingFallback } from '../../components/ui/LoadingFallback';
 import { ApiError, api } from '../../lib/api';
@@ -7,29 +7,21 @@ import type { Job } from './type';
 
 export function JobDetail() {
   const { id } = useParams();
-  const [job, setJob] = useState<Job | null>(null);
-  const [error, setError] = useState<string | null>(null);
+  const {
+    data: job,
+    error,
+    isLoading,
+  } = useQuery({
+    queryKey: ['job', id],
+    enabled: !!id,
+    queryFn: () => api<Job>(`/jobs/${encodeURIComponent(id as string)}`),
+  });
 
-  useEffect(() => {
-    if (!id) return;
-    const safe = encodeURIComponent(id);
-    let cancelled = false;
-    api<Job>(`/jobs/${safe}`)
-      .then((j) => {
-        if (!cancelled) setJob(j);
-      })
-      .catch((err) => {
-        if (!cancelled) {
-          setError(err instanceof ApiError ? (err.serverMessage ?? err.message) : 'Failed to load job');
-        }
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [id]);
-
-  if (error) return <p className="text-center p-8 text-error">{error}</p>;
-  if (!job) return <LoadingFallback text="Loading job details" />;
+  if (error) {
+    const message = error instanceof ApiError ? (error.serverMessage ?? error.message) : 'Failed to load job';
+    return <p className="text-center p-8 text-error">{message}</p>;
+  }
+  if (isLoading || !job) return <LoadingFallback text="Loading job details" />;
 
   return (
     <div className="max-w-2xl mx-auto p-4">
