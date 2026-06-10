@@ -1,3 +1,15 @@
+// SkillPass API
+//
+// SkillPass — skills-based hiring platform API.
+//
+//	@title			SkillPass API
+//	@version		1.0
+//	@description	SkillPass — skills-based hiring platform API
+//	@host			localhost:1234
+//	@BasePath		/api/v1
+//	@securityDefinitions.apikey	BearerAuth
+//	@in							header
+//	@name						Authorization
 package main
 
 import (
@@ -7,10 +19,13 @@ import (
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
 	"github.com/joho/godotenv"
+	swaggerFiles "github.com/swaggo/files"
+	ginSwagger "github.com/swaggo/gin-swagger"
 
 	"skillpass-server-go/internal/application"
 	"skillpass-server-go/internal/config"
 	"skillpass-server-go/internal/db"
+	_ "skillpass-server-go/docs"
 	"skillpass-server-go/internal/evaluation"
 	"skillpass-server-go/internal/handlers"
 	"skillpass-server-go/internal/lib"
@@ -153,7 +168,11 @@ func main() {
 	}
 	matchesCompanyGroup.GET("/matches", matchHandler.MatchCandidates)
 
+	// Swagger UI
+	r.GET("/docs/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
+
 	log.Printf("SkillPass API (Go) running at http://localhost:%s", cfg.Port)
+	log.Printf("Swagger UI at http://localhost:%s/docs/index.html", cfg.Port)
 	if err := r.Run(":" + cfg.Port); err != nil {
 		log.Fatalf("Failed to start server: %v", err)
 	}

@@ -135,6 +135,17 @@ func parseJobOffset(c *gin.Context) int64 {
 	return offset
 }
 
+// ListJobs		godoc
+// @Summary		List open job postings
+// @Description	Get all open job postings with optional filters
+// @Tags		jobs
+// @Produce		json
+// @Param		industry query string false "Filter by industry name"
+// @Param		experience_level query string false "Filter by experience level (entry, mid, senior, lead)"
+// @Param		limit query int false "Max results (default 50, max 200)"
+// @Param		offset query int false "Result offset for pagination"
+// @Success		200 {array} JobResponse
+// @Router		/jobs [get]
 func (h *JobHandler) ListJobs(c *gin.Context) {
 	var whereCond BoolExpression = gen.JobPostings.Status.EQ(gen.JobStatusOpen)
 
@@ -175,6 +186,15 @@ func (h *JobHandler) ListJobs(c *gin.Context) {
 	c.JSON(http.StatusOK, result)
 }
 
+// GetJob		godoc
+// @Summary		Get a job posting
+// @Description	Get a single job posting by ID
+// @Tags		jobs
+// @Produce		json
+// @Param		id path string true "Job posting UUID"
+// @Success		200 {object} JobResponse
+// @Failure		404 {object} map[string]string
+// @Router		/jobs/{id} [get]
 func (h *JobHandler) GetJob(c *gin.Context) {
 	id := c.Param("id")
 	jobUUID, err := uuid.Parse(id)
@@ -204,6 +224,14 @@ func (h *JobHandler) GetJob(c *gin.Context) {
 	c.JSON(http.StatusOK, jobFromModel(jobs[0]))
 }
 
+// ListMyJobs	godoc
+// @Summary		List company's job postings
+// @Description	Get all job postings for the authenticated company
+// @Tags		jobs
+// @Produce		json
+// @Security	BearerAuth
+// @Success		200 {array} JobResponse
+// @Router		/jobs/me [get]
 func (h *JobHandler) ListMyJobs(c *gin.Context) {
 	companyIDVal, ok := c.Get("companyId")
 	if !ok {
@@ -240,6 +268,17 @@ func (h *JobHandler) ListMyJobs(c *gin.Context) {
 	c.JSON(http.StatusOK, result)
 }
 
+// CreateJob	godoc
+// @Summary		Create a job posting
+// @Description	Create a new job posting for the authenticated company
+// @Tags		jobs
+// @Accept		json
+// @Produce		json
+// @Security	BearerAuth
+// @Param		body body CreateJobRequest true "Job posting details"
+// @Success		201 {object} JobResponse
+// @Failure		400 {object} map[string]string
+// @Router		/jobs [post]
 func (h *JobHandler) CreateJob(c *gin.Context) {
 	companyIDVal, ok := c.Get("companyId")
 	if !ok {
@@ -279,6 +318,19 @@ func (h *JobHandler) CreateJob(c *gin.Context) {
 	c.JSON(http.StatusCreated, jobFromModel(job))
 }
 
+// UpdateJob	godoc
+// @Summary		Update a job posting
+// @Description	Update specific fields of a job posting owned by the authenticated company
+// @Tags		jobs
+// @Accept		json
+// @Produce		json
+// @Security	BearerAuth
+// @Param		id path string true "Job posting UUID"
+// @Param		body body UpdateJobRequest true "Fields to update"
+// @Success		200 {object} JobResponse
+// @Failure		400 {object} map[string]string
+// @Failure		404 {object} map[string]string
+// @Router		/jobs/{id} [put]
 func (h *JobHandler) UpdateJob(c *gin.Context) {
 	id := c.Param("id")
 	jobUUID, err := uuid.Parse(id)
@@ -368,6 +420,16 @@ func (h *JobHandler) UpdateJob(c *gin.Context) {
 	c.JSON(http.StatusOK, jobFromModel(jobs[0]))
 }
 
+// DeleteJob	godoc
+// @Summary		Delete a job posting
+// @Description	Delete a job posting owned by the authenticated company
+// @Tags		jobs
+// @Produce		json
+// @Security	BearerAuth
+// @Param		id path string true "Job posting UUID"
+// @Success		200 {object} map[string]string
+// @Failure		404 {object} map[string]string
+// @Router		/jobs/{id} [delete]
 func (h *JobHandler) DeleteJob(c *gin.Context) {
 	id := c.Param("id")
 	jobUUID, err := uuid.Parse(id)

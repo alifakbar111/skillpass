@@ -87,6 +87,16 @@ func parseOffset(c *gin.Context) int64 {
 	return offset
 }
 
+// ListPendingVerifications	godoc
+// @Summary		List pending company verifications
+// @Description	Get all companies with pending verification status. Requires admin role.
+// @Tags		admin
+// @Produce		json
+// @Security	BearerAuth
+// @Param		limit query int false "Max results (default 50, max 200)"
+// @Param		offset query int false "Result offset for pagination"
+// @Success		200 {array} map[string]interface{}
+// @Router		/admin/verifications/pending [get]
 func (h *AdminHandler) ListPendingVerifications(c *gin.Context) {
 	limit := parseLimit(c)
 	offset := parseOffset(c)
@@ -116,6 +126,19 @@ func (h *AdminHandler) ListPendingVerifications(c *gin.Context) {
 	c.JSON(http.StatusOK, result)
 }
 
+// HandleVerification	godoc
+// @Summary		Approve or reject company verification
+// @Description	Process a company verification request (approve or reject). Requires admin role.
+// @Tags		admin
+// @Accept		json
+// @Produce		json
+// @Security	BearerAuth
+// @Param		id path string true "Company UUID"
+// @Param		body body VerificationActionRequest true "Verification action"
+// @Success		200 {object} map[string]interface{}
+// @Failure		400 {object} map[string]string
+// @Failure		404 {object} map[string]string
+// @Router		/admin/verifications/{id} [post]
 func (h *AdminHandler) HandleVerification(c *gin.Context) {
 	id := c.Param("id")
 	companyUUID, err := uuid.Parse(id)

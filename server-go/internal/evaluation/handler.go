@@ -30,7 +30,16 @@ type EvaluationResponse struct {
 	CreatedAt    string           `json:"createdAt"`
 }
 
-// PostEvaluate triggers a fresh AI evaluation for the authenticated jobseeker.
+// PostEvaluate		godoc
+// @Summary		Trigger AI evaluation
+// @Description	Trigger a fresh AI evaluation of the authenticated jobseeker's profile and experiences
+// @Tags		evaluation
+// @Produce		json
+// @Security	BearerAuth
+// @Success		200 {object} EvaluationResponse
+// @Failure		401 {object} map[string]string
+// @Failure		404 {object} map[string]string
+// @Router		/evaluate/me [post]
 func (h *Handler) PostEvaluate(c *gin.Context) {
 	userID, err := getUserID(c)
 	if err != nil {
@@ -59,7 +68,16 @@ func (h *Handler) PostEvaluate(c *gin.Context) {
 	c.JSON(http.StatusOK, toResponse(result))
 }
 
-// GetLatestEvaluation returns the most recent evaluation.
+// GetLatestEvaluation	godoc
+// @Summary		Get latest evaluation
+// @Description	Get the most recent AI evaluation result for the authenticated jobseeker
+// @Tags		evaluation
+// @Produce		json
+// @Security	BearerAuth
+// @Success		200 {object} EvaluationResponse
+// @Failure		401 {object} map[string]string
+// @Failure		404 {object} map[string]string
+// @Router		/evaluate/me/results [get]
 func (h *Handler) GetLatestEvaluation(c *gin.Context) {
 	userID, err := getUserID(c)
 	if err != nil {

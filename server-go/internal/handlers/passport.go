@@ -29,6 +29,15 @@ func NewPassportHandler(db *sql.DB) *PassportHandler {
 	return &PassportHandler{db: db}
 }
 
+// GetProfile		godoc
+// @Summary		Get public profile
+// @Description	Get a jobseeker's public profile by username/slug (no auth required)
+// @Tags		passport
+// @Produce		json
+// @Param		username path string true "Profile username/slug"
+// @Success		200 {object} PublicProfileResponse
+// @Failure		404 {object} map[string]string
+// @Router		/profiles/{username} [get]
 func (h *PassportHandler) GetProfile(c *gin.Context) {
 	username := c.Param("username")
 

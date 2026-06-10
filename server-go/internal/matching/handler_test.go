@@ -92,4 +92,65 @@ func TestMatching(t *testing.T) {
 			t.Fatalf("expected 403, got %d", w.Code)
 		}
 	})
+
+	t.Run("match jobs no evaluations", func(t *testing.T) {
+		u2, _, _ := testutil.CreateJobseeker(db, "mee2@ex.com", "mee2", "pass123", "Matchee2")
+		t2 := testutil.GenerateToken(u2.String(), "jobseeker", 15*time.Minute)
+		w := httptest.NewRecorder()
+		req := httptest.NewRequest("GET", "/api/v1/jobs/matches", nil)
+		req.Header.Set("Authorization", "Bearer "+t2)
+		router.ServeHTTP(w, req)
+		if w.Code != http.StatusOK {
+			t.Fatalf("expected 200, got %d: %s", w.Code, w.Body.String())
+		}
+		var resp []JobMatch
+		json.Unmarshal(w.Body.Bytes(), &resp)
+		if len(resp) != 0 {
+			t.Fatalf("expected 0 matches, got %d", len(resp))
+		}
+	})
+
+	t.Run("match jobs no auth", func(t *testing.T) {
+		w := httptest.NewRecorder()
+		req := httptest.NewRequest("GET", "/api/v1/jobs/matches", nil)
+		router.ServeHTTP(w, req)
+		if w.Code != http.StatusUnauthorized {
+			t.Fatalf("expected 401, got %d", w.Code)
+		}
+	})
+
+	t.Run("match candidates no matches", func(t *testing.T) {
+		weirdID := "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"
+		db.Exec(`INSERT INTO job_postings (id, company_id, title, description, industry, required_skills, status) VALUES ($1,$2,'COBOL Dev','Mainframe','Technology',$3,'open')`,
+			weirdID, cID.String(), `{COBOL,Fortran,PunchCard}`)
+		w := httptest.NewRecorder()
+		req := httptest.NewRequest("GET", "/api/v1/candidates/matches?jobId="+weirdID, nil)
+		req.Header.Set("Authorization", "Bearer "+ctok)
+		router.ServeHTTP(w, req)
+		if w.Code != http.StatusOK {
+			t.Fatalf("expected 200, got %d: %s", w.Code, w.Body.String())
+		}
+		var resp []CandidateMatch
+		json.Unmarshal(w.Body.Bytes(), &resp)
+		if len(resp) != 0 {
+			t.Fatalf("expected 0 candidate matches, got %d", len(resp))
+		}
+	})
+
+	t.Run("match candidates different company", func(t *testing.T) {
+		// A different verified company can also call MatchCandidates
+		jID2 := "44444444-4444-4444-4444-444444444444"
+		db.Exec(`INSERT INTO job_postings (id, company_id, title, description, industry, required_skills, status) VALUES ($1,$2,'Go Specialist','Go services','Technology',$3,'open')`,
+			jID2, cID.String(), `{Go,PostgreSQL}`)
+		w := httptest.NewRecorder()
+		req := httptest.NewRequest("GET", "/api/v1/candidates/matches?jobId="+jID2, nil)
+		req.Header.Set("Authorization", "Bearer "+ctok)
+		router.ServeHTTP(w, req)
+		if w.Code != http.StatusOK {
+			t.Fatalf("expected 200, got %d: %s", w.Code, w.Body.String())
+		}
+		var resp []CandidateMatch
+		json.Unmarshal(w.Body.Bytes(), &resp)
+		t.Logf("different company got %d candidate matches", len(resp))
+	})
 }

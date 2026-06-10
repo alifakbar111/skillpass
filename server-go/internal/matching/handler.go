@@ -19,6 +19,15 @@ func NewHandler(service *Service) *Handler {
 	return &Handler{service: service}
 }
 
+// MatchJobs		godoc
+// @Summary		Match jobs for jobseeker
+// @Description	Get job recommendations based on the authenticated jobseeker's skills and AI evaluation
+// @Tags		matching
+// @Produce		json
+// @Security	BearerAuth
+// @Success		200 {array} matching.JobMatch
+// @Failure		401 {object} map[string]string
+// @Router		/jobs/matches [get]
 func (h *Handler) MatchJobs(c *gin.Context) {
 	userID, ok := c.Get("userId")
 	if !ok {
@@ -57,6 +66,17 @@ func (h *Handler) MatchJobs(c *gin.Context) {
 	c.JSON(http.StatusOK, matches)
 }
 
+// MatchCandidates		godoc
+// @Summary		Match candidates for a job
+// @Description	Get candidate recommendations for a specific job posting based on skill matching
+// @Tags		matching
+// @Produce		json
+// @Security	BearerAuth
+// @Param		jobId query string true "Job posting UUID to find candidates for"
+// @Success		200 {array} matching.CandidateMatch
+// @Failure		400 {object} map[string]string
+// @Failure		401 {object} map[string]string
+// @Router		/candidates/matches [get]
 func (h *Handler) MatchCandidates(c *gin.Context) {
 	jobPostingID := c.Query("jobId")
 	if jobPostingID == "" {

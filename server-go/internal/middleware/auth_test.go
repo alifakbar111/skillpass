@@ -4,8 +4,10 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"testing"
+	"time"
 
 	"github.com/gin-gonic/gin"
+	"github.com/golang-jwt/jwt/v5"
 )
 
 func TestAuthRequired(t *testing.T) {
@@ -37,6 +39,49 @@ func TestAuthRequired(t *testing.T) {
 		c, _ := gin.CreateTestContext(w)
 		c.Request = httptest.NewRequest("GET", "/", nil)
 		c.Request.Header.Set("Authorization", "Token abc123")
+
+		AuthRequired("secret")(c)
+		if w.Code != http.StatusUnauthorized {
+			t.Fatalf("expected 401, got %d", w.Code)
+		}
+	})
+
+	t.Run("expired token", func(t *testing.T) {
+		w := httptest.NewRecorder()
+		c, _ := gin.CreateTestContext(w)
+		c.Request = httptest.NewRequest("GET", "/", nil)
+
+		claims := jwt.MapClaims{
+			"userId": "test-user",
+			"role":   "admin",
+			"exp":    time.Now().Add(-1 * time.Hour).Unix(),
+		}
+		token, _ := jwt.NewWithClaims(jwt.SigningMethodHS256, claims).SignedString([]byte("secret"))
+		c.Request.Header.Set("Authorization", "Bearer "+token)
+
+		AuthRequired("secret")(c)
+		if w.Code != http.StatusUnauthorized {
+			t.Fatalf("expected 401, got %d", w.Code)
+		}
+	})
+
+	t.Run("malformed token", func(t *testing.T) {
+		w := httptest.NewRecorder()
+		c, _ := gin.CreateTestContext(w)
+		c.Request = httptest.NewRequest("GET", "/", nil)
+		c.Request.Header.Set("Authorization", "Bearer this-is-not-a-valid-jwt-token-format")
+
+		AuthRequired("secret")(c)
+		if w.Code != http.StatusUnauthorized {
+			t.Fatalf("expected 401, got %d", w.Code)
+		}
+	})
+
+	t.Run("empty Bearer token", func(t *testing.T) {
+		w := httptest.NewRecorder()
+		c, _ := gin.CreateTestContext(w)
+		c.Request = httptest.NewRequest("GET", "/", nil)
+		c.Request.Header.Set("Authorization", "Bearer ")
 
 		AuthRequired("secret")(c)
 		if w.Code != http.StatusUnauthorized {
@@ -78,6 +123,18 @@ func TestRequireRole(t *testing.T) {
 		RequireRole("admin")(c)
 		if w.Code != http.StatusForbidden {
 			t.Fatalf("expected 403, got %d", w.Code)
+		}
+	})
+
+	t.Run("multiple allowed roles", func(t *testing.T) {
+		w := httptest.NewRecorder()
+		c, _ := gin.CreateTestContext(w)
+		c.Set("role", "admin")
+
+		RequireRole("admin")(c)
+		RequireRole("admin")(c)
+		if c.IsAborted() {
+			t.Fatal("should not abort when all middleware match")
 		}
 	})
 }

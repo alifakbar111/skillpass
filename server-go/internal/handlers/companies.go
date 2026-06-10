@@ -9,6 +9,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 	. "github.com/go-jet/jet/v2/postgres"
+	"github.com/go-jet/jet/v2/qrm"
 	"github.com/google/uuid"
 	"log/slog"
 
@@ -70,6 +71,16 @@ func companyFromModel(c model.Companies) CompanyResponse {
 	}
 }
 
+// GetProfile		godoc
+// @Summary		Get company profile
+// @Description	Get the authenticated company's profile
+// @Tags		companies
+// @Produce		json
+// @Security	BearerAuth
+// @Success		200 {object} map[string]interface{}
+// @Failure		401 {object} map[string]string
+// @Failure		404 {object} map[string]string
+// @Router		/company/profile [get]
 func (h *CompanyHandler) GetProfile(c *gin.Context) {
 	userIDVal, ok := c.Get("userId")
 	if !ok {
@@ -92,7 +103,7 @@ func (h *CompanyHandler) GetProfile(c *gin.Context) {
 
 	var company model.Companies
 	if err := stmt.QueryContext(c.Request.Context(), h.db, &company); err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
+		if errors.Is(err, sql.ErrNoRows) || errors.Is(err, qrm.ErrNoRows) {
 			c.JSON(http.StatusNotFound, gin.H{"error": "Company not found"})
 			return
 		}
@@ -104,6 +115,19 @@ func (h *CompanyHandler) GetProfile(c *gin.Context) {
 	c.JSON(http.StatusOK, companyFromModel(company))
 }
 
+// UpdateProfile	godoc
+// @Summary		Update company profile
+// @Description	Update the authenticated company's profile fields (company name, website, industry, description)
+// @Tags		companies
+// @Accept		json
+// @Produce		json
+// @Security	BearerAuth
+// @Param		body body UpdateCompanyRequest true "Company profile fields to update"
+// @Success		200 {object} map[string]interface{}
+// @Failure		400 {object} map[string]string
+// @Failure		401 {object} map[string]string
+// @Failure		404 {object} map[string]string
+// @Router		/company/profile [put]
 func (h *CompanyHandler) UpdateProfile(c *gin.Context) {
 	userIDVal, ok := c.Get("userId")
 	if !ok {
@@ -149,7 +173,7 @@ func (h *CompanyHandler) UpdateProfile(c *gin.Context) {
 
 	var company model.Companies
 	if err := stmt.QueryContext(c.Request.Context(), h.db, &company); err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
+		if errors.Is(err, sql.ErrNoRows) || errors.Is(err, qrm.ErrNoRows) {
 			c.JSON(http.StatusNotFound, gin.H{"error": "Company not found"})
 			return
 		}
@@ -161,6 +185,19 @@ func (h *CompanyHandler) UpdateProfile(c *gin.Context) {
 	c.JSON(http.StatusOK, companyFromModel(company))
 }
 
+// SubmitVerification	godoc
+// @Summary		Submit verification documents
+// @Description	Submit business verification documents for company approval
+// @Tags		companies
+// @Accept		json
+// @Produce		json
+// @Security	BearerAuth
+// @Param		body body VerificationRequest true "Verification documents"
+// @Success		200 {object} map[string]string
+// @Failure		400 {object} map[string]string
+// @Failure		401 {object} map[string]string
+// @Failure		404 {object} map[string]string
+// @Router		/company/verification [post]
 func (h *CompanyHandler) SubmitVerification(c *gin.Context) {
 	userIDVal, ok := c.Get("userId")
 	if !ok {
@@ -203,6 +240,15 @@ func (h *CompanyHandler) SubmitVerification(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"message": "Verification submitted", "status": "pending"})
 }
 
+// GetVerificationStatus	godoc
+// @Summary		Get verification status
+// @Description	Get the current verification status for the authenticated company
+// @Tags		companies
+// @Produce		json
+// @Security	BearerAuth
+// @Success		200 {object} map[string]string
+// @Failure		401 {object} map[string]string
+// @Router		/company/verification-status [get]
 func (h *CompanyHandler) GetVerificationStatus(c *gin.Context) {
 	userIDVal, ok := c.Get("userId")
 	if !ok {
@@ -226,7 +272,7 @@ func (h *CompanyHandler) GetVerificationStatus(c *gin.Context) {
 	var company model.Companies
 	err := stmt.QueryContext(c.Request.Context(), h.db, &company)
 	if err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
+		if errors.Is(err, sql.ErrNoRows) || errors.Is(err, qrm.ErrNoRows) {
 			c.JSON(http.StatusOK, gin.H{"verificationStatus": "none"})
 			return
 		}

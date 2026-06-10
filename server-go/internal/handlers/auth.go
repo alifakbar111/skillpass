@@ -145,6 +145,17 @@ func hashToken(token string) string {
 	return hex.EncodeToString(sum[:])
 }
 
+// Register		godoc
+// @Summary		Register a new user
+// @Description	Create a new user account (jobseeker or company). Sets a refresh token cookie and returns an access token.
+// @Tags		auth
+// @Accept		json
+// @Produce		json
+// @Param		body body RegisterRequest true "Registration details"
+// @Success		201 {object} LoginResponse
+// @Failure		400 {object} map[string]string
+// @Failure		409 {object} map[string]string
+// @Router		/auth/register [post]
 func (h *AuthHandler) Register(c *gin.Context) {
 	var req RegisterRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -244,6 +255,16 @@ func (h *AuthHandler) Register(c *gin.Context) {
 	})
 }
 
+// Login		godoc
+// @Summary		Login
+// @Description	Authenticate with email and password. Sets a refresh token cookie and returns an access token.
+// @Tags		auth
+// @Accept		json
+// @Produce		json
+// @Param		body body LoginRequest true "Login credentials"
+// @Success		200 {object} LoginResponse
+// @Failure		401 {object} map[string]string
+// @Router		/auth/login [post]
 func (h *AuthHandler) Login(c *gin.Context) {
 	var req LoginRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -292,6 +313,14 @@ func (h *AuthHandler) Login(c *gin.Context) {
 	})
 }
 
+// Refresh		godoc
+// @Summary		Refresh access token
+// @Description	Exchange a valid refresh token (from cookie) for a new access token. Rotates the refresh token.
+// @Tags		auth
+// @Produce		json
+// @Success		200 {object} map[string]string
+// @Failure		401 {object} map[string]string
+// @Router		/auth/refresh [post]
 func (h *AuthHandler) Refresh(c *gin.Context) {
 	cookie, err := c.Cookie(refreshCookie)
 	if err != nil || cookie == "" {
@@ -362,6 +391,14 @@ func (h *AuthHandler) Refresh(c *gin.Context) {
 	})
 }
 
+// Logout		godoc
+// @Summary		Logout
+// @Description	Revoke all refresh tokens for the authenticated user and clear the refresh cookie.
+// @Tags		auth
+// @Produce		json
+// @Security	BearerAuth
+// @Success		200 {object} map[string]string
+// @Router		/auth/logout [post]
 func (h *AuthHandler) Logout(c *gin.Context) {
 	userIDVal, exists := c.Get("userId")
 	if !exists {
