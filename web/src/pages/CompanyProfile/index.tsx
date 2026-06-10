@@ -1,18 +1,21 @@
 import { zodResolver } from '@hookform/resolvers/zod';
+import { useMutation, useQuery } from '@tanstack/react-query';
 import { X } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { FormInput, FormSelect, FormTextarea } from '../../components/ui/FormField';
 import { LoadingFallback, LoadingSpinner } from '../../components/ui/LoadingFallback';
+import { useIndustries } from '../../hooks/useIndustries';
 import { ApiError, api } from '../../lib/api';
 import { type CompanyProfileForm, companyProfileSchema } from '../../lib/schemas';
 
+type CompanyProfileData = { companyName: string; website?: string; industry: string; description?: string };
+
 export function CompanyProfile() {
-  const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState(false);
-  const [industries, setIndustries] = useState<Array<{ id: string; name: string }>>([]);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
+
+  const { data: industries = [] } = useIndustries();
 
   const {
     register,
@@ -23,49 +26,35 @@ export function CompanyProfile() {
     resolver: zodResolver(companyProfileSchema),
   });
 
-  useEffect(() => {
-    let cancelled = false;
-    api<Array<{ id: string; name: string }>>('/industries')
-      .then((data) => {
-        if (!cancelled) setIndustries(data);
-      })
-      .catch(() => {});
-    api<{ companyName: string; website?: string; industry: string; description?: string }>('/company/profile')
-      .then((data) => {
-        if (cancelled) return;
-        reset({
-          companyName: data.companyName,
-          website: data.website || '',
-          industry: data.industry,
-          description: data.description || '',
-        });
-      })
-      .catch((err) => {
-        if (!cancelled) {
-          setError(err instanceof ApiError ? (err.serverMessage ?? err.message) : 'Failed to load profile');
-        }
-      })
-      .finally(() => {
-        if (!cancelled) setLoading(false);
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [reset]);
+  const { data: companyProfile, isLoading: loading } = useQuery({
+    queryKey: ['company', 'profile'],
+    queryFn: () => api<CompanyProfileData>('/company/profile'),
+  });
 
-  const onSubmit = async (data: CompanyProfileForm) => {
-    setSaving(true);
-    setError(null);
-    setSuccess(false);
-    try {
-      await api('/company/profile', { method: 'PUT', body: JSON.stringify(data) });
-      setSuccess(true);
-    } catch (err) {
+  // Seed the form once the profile loads (react-hook-form reset moved out of .then()).
+  useEffect(() => {
+    if (!companyProfile) return;
+    reset({
+      companyName: companyProfile.companyName,
+      website: companyProfile.website || '',
+      industry: companyProfile.industry,
+      description: companyProfile.description || '',
+    });
+  }, [companyProfile, reset]);
+
+  const saveMutation = useMutation({
+    mutationFn: (data: CompanyProfileForm) => api('/company/profile', { method: 'PUT', body: JSON.stringify(data) }),
+    onMutate: () => {
+      setError(null);
+      setSuccess(false);
+    },
+    onSuccess: () => setSuccess(true),
+    onError: (err) => {
       setError(err instanceof ApiError ? (err.serverMessage ?? err.message) : 'Failed to save profile');
-    } finally {
-      setSaving(false);
-    }
-  };
+    },
+  });
+
+  const onSubmit = (data: CompanyProfileForm) => saveMutation.mutate(data);
 
   if (loading) return <LoadingFallback text="Loading company profile" />;
 
@@ -100,11 +89,11 @@ export function CompanyProfile() {
           label="Industry"
           registration={register('industry')}
           error={errors.industry}
-          options={industries.map((ind) => ({ value: ind.name, label: ind.name }))}
+          options={industries.map((ind) => ({ value: ind.Name, label: ind.Name }))}
         />
         <FormTextarea label="Description" registration={register('description')} error={errors.description} rows={4} />
-        <button type="submit" className="btn btn-primary" disabled={saving}>
-          {saving ? <LoadingSpinner /> : 'Save'}
+        <button type="submit" className="btn btn-primary" disabled={saveMutation.isPending}>
+          {saveMutation.isPending ? <LoadingSpinner /> : 'Save'}
         </button>
       </form>
     </div>

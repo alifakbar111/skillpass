@@ -2,17 +2,14 @@ import { useQuery } from '@tanstack/react-query';
 import { Briefcase } from 'lucide-react';
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
+import { useIndustries } from '../../hooks/useIndustries';
 import { ApiError, api } from '../../lib/api';
-import type { Industry } from '../CompanyJobs/type';
 import type { Job } from './type';
 
 export function PublicJobs() {
   const [industry, setIndustry] = useState('');
 
-  const { data: industries = [] } = useQuery({
-    queryKey: ['industries'],
-    queryFn: () => api<Industry[]>('/industries'),
-  });
+  const { data: industries = [] } = useIndustries();
 
   const { data: jobs = [], error } = useQuery({
     queryKey: ['jobs', { industry }],

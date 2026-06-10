@@ -1,21 +1,27 @@
 import { zodResolver } from '@hookform/resolvers/zod';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Pencil, Plus, X } from 'lucide-react';
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { Link } from 'react-router-dom';
 import { FormInput, FormSelect, FormTextarea } from '../../components/ui/FormField';
 import { LoadingSpinner } from '../../components/ui/LoadingFallback';
+import { useIndustries } from '../../hooks/useIndustries';
 import { ApiError, api } from '../../lib/api';
 import { EXPERIENCE_LEVEL_OPTIONS } from '../../lib/constants';
 import { type JobForm, jobSchema } from '../../lib/schemas';
-import type { Industry, Job } from './type';
+import type { Job } from './type';
 
 export function CompanyJobs() {
-  const [jobs, setJobs] = useState<Job[]>([]);
+  const queryClient = useQueryClient();
   const [showForm, setShowForm] = useState(false);
-  const [industries, setIndustries] = useState<Industry[]>([]);
-  const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  const { data: industries = [] } = useIndustries();
+  const { data: jobs = [] } = useQuery({
+    queryKey: ['jobs', 'me'],
+    queryFn: () => api<Job[]>('/jobs/me'),
+  });
 
   const {
     register,
@@ -36,27 +42,8 @@ export function CompanyJobs() {
     },
   });
 
-  useEffect(() => {
-    let cancelled = false;
-    api<Industry[]>('/industries')
-      .then((data) => {
-        if (!cancelled) setIndustries(data);
-      })
-      .catch(() => {});
-    api<Job[]>('/jobs/me')
-      .then((data) => {
-        if (!cancelled) setJobs(data);
-      })
-      .catch(() => {});
-    return () => {
-      cancelled = true;
-    };
-  }, []);
-
-  const createJob = async (data: JobForm) => {
-    setSaving(true);
-    setError(null);
-    try {
+  const createMutation = useMutation({
+    mutationFn: (data: JobForm) => {
       const tags = data.tags
         ? data.tags
             .split(',')
@@ -69,32 +56,38 @@ export function CompanyJobs() {
             .map((s) => s.trim())
             .filter(Boolean)
         : [];
-      await api('/jobs', {
+      return api('/jobs', {
         method: 'POST',
         body: JSON.stringify({ ...data, tags, requiredSkills }),
       });
-      const updated = await api<Job[]>('/jobs/me');
-      setJobs(updated);
+    },
+    onMutate: () => setError(null),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['jobs', 'me'] });
       setShowForm(false);
       reset();
-    } catch (err) {
+    },
+    onError: (err) => {
       setError(err instanceof ApiError ? (err.serverMessage ?? err.message) : 'Failed to create job');
-    } finally {
-      setSaving(false);
-    }
-  };
+    },
+  });
 
-  const closeJob = async (id: string) => {
-    try {
-      await api(`/jobs/${encodeURIComponent(id)}`, {
+  const closeMutation = useMutation({
+    mutationFn: (id: string) =>
+      api(`/jobs/${encodeURIComponent(id)}`, {
         method: 'PUT',
         body: JSON.stringify({ status: 'closed' }),
-      });
-      setJobs((prev) => prev.map((j) => (j.id === id ? { ...j, status: 'closed' } : j)));
-    } catch (err) {
+      }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['jobs', 'me'] });
+    },
+    onError: (err) => {
       setError(err instanceof ApiError ? (err.serverMessage ?? err.message) : 'Failed to close job');
-    }
-  };
+    },
+  });
+
+  const createJob = (data: JobForm) => createMutation.mutate(data);
+  const closeJob = (id: string) => closeMutation.mutate(id);
   return (
     <div className="max-w-3xl mx-auto p-4 space-y-4">
       <div className="flex justify-between items-center">
@@ -162,8 +155,8 @@ export function CompanyJobs() {
             />
           </div>
           <div className="flex gap-2">
-            <button type="submit" className="btn btn-primary" disabled={saving}>
-              {saving ? <LoadingSpinner /> : 'Post Job'}
+            <button type="submit" className="btn btn-primary" disabled={createMutation.isPending}>
+              {createMutation.isPending ? <LoadingSpinner /> : 'Post Job'}
             </button>
             <button type="button" className="btn" onClick={() => setShowForm(false)}>
               Cancel
