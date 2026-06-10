@@ -125,7 +125,9 @@ export function CompanySearch() {
           ) : (
             <div key={c.id} className="card bg-base-200 p-4">
               {content}
-              <p className="text-xs opacity-50 mt-2">Identity hidden by blind screening — move this candidate forward to reveal.</p>
+              <p className="text-xs opacity-50 mt-2">
+                Identity hidden by blind screening — move this candidate forward to reveal.
+              </p>
             </div>
           );
         })}

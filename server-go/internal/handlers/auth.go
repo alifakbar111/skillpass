@@ -16,6 +16,8 @@ import (
 	"github.com/google/uuid"
 
 	"skillpass-server-go/.gen/skillpass/public/model"
+	"skillpass-server-go/internal/authtoken"
+	"skillpass-server-go/internal/email"
 	"skillpass-server-go/internal/gen"
 	"skillpass-server-go/internal/lib"
 )
@@ -46,11 +48,12 @@ type RegisterRequest struct {
 }
 
 type UserResponse struct {
-	ID       string `json:"id"`
-	Email    string `json:"email"`
-	Username string `json:"username"`
-	Name     string `json:"name"`
-	Role     string `json:"role"`
+	ID         string `json:"id"`
+	Email      string `json:"email"`
+	Username   string `json:"username"`
+	Name       string `json:"name"`
+	Role       string `json:"role"`
+	IsVerified bool   `json:"isVerified"`
 }
 
 type LoginResponse struct {
@@ -61,10 +64,24 @@ type LoginResponse struct {
 type AuthHandler struct {
 	db        *sql.DB
 	jwtSecret string
+	emailer   email.Sender
+	tokens    *authtoken.Service
 }
 
 func NewAuthHandler(db *sql.DB, jwtSecret string) *AuthHandler {
 	return &AuthHandler{db: db, jwtSecret: jwtSecret}
+}
+
+// SetEmailer attaches an email sender for verification/reset mail.
+// Optional — when nil, those emails are skipped.
+func (h *AuthHandler) SetEmailer(e email.Sender) {
+	h.emailer = e
+}
+
+// SetTokenService attaches the verification/reset token service.
+// Optional — when nil, verification and reset flows are disabled.
+func (h *AuthHandler) SetTokenService(t *authtoken.Service) {
+	h.tokens = t
 }
 
 type tokenClaims struct {
@@ -243,14 +260,18 @@ func (h *AuthHandler) Register(c *gin.Context) {
 		return
 	}
 
+	// Best-effort: send the welcome + email-verification mail.
+	h.sendVerificationEmail(c.Request.Context(), user.ID.String(), user.Email, user.Name)
+
 	c.JSON(http.StatusCreated, LoginResponse{
 		AccessToken: accessToken,
 		User: UserResponse{
-			ID:       user.ID.String(),
-			Email:    user.Email,
-			Username: user.Username,
-			Name:     user.Name,
-			Role:     string(user.Role),
+			ID:         user.ID.String(),
+			Email:      user.Email,
+			Username:   user.Username,
+			Name:       user.Name,
+			Role:       string(user.Role),
+			IsVerified: false,
 		},
 	})
 }
@@ -274,7 +295,7 @@ func (h *AuthHandler) Login(c *gin.Context) {
 
 	stmt := SELECT(
 		gen.Users.ID, gen.Users.Email, gen.Users.Username, gen.Users.Name,
-		gen.Users.Role, gen.Users.PasswordHash,
+		gen.Users.Role, gen.Users.PasswordHash, gen.Users.IsVerified,
 	).FROM(
 		gen.Users,
 	).WHERE(
@@ -304,11 +325,12 @@ func (h *AuthHandler) Login(c *gin.Context) {
 	c.JSON(http.StatusOK, LoginResponse{
 		AccessToken: accessToken,
 		User: UserResponse{
-			ID:       user.ID.String(),
-			Email:    user.Email,
-			Username: user.Username,
-			Name:     user.Name,
-			Role:     string(user.Role),
+			ID:         user.ID.String(),
+			Email:      user.Email,
+			Username:   user.Username,
+			Name:       user.Name,
+			Role:       string(user.Role),
+			IsVerified: user.IsVerified,
 		},
 	})
 }

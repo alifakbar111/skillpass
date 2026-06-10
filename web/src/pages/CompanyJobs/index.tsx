@@ -93,7 +93,10 @@ export function CompanyJobs() {
 
   function parseArrayField(value?: string): string[] {
     return value
-      ? value.split(',').map((s) => s.trim()).filter(Boolean)
+      ? value
+          .split(',')
+          .map((s) => s.trim())
+          .filter(Boolean)
       : [];
   }
 

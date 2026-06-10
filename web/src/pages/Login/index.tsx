@@ -80,6 +80,11 @@ export function Login() {
               Register
             </Link>
           </p>
+          <p className="text-sm text-center mt-1">
+            <Link to="/auth/forgot-password" className="link text-muted">
+              Forgot your password?
+            </Link>
+          </p>
         </div>
       </div>
     </div>

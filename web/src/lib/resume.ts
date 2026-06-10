@@ -1,4 +1,4 @@
-import { api } from './api';
+import { api, apiUpload } from './api';
 
 export interface ParsedExperience {
   type: string;
@@ -23,4 +23,10 @@ export async function parseResume(text: string): Promise<ParsedResume> {
     method: 'POST',
     body: JSON.stringify({ text }),
   });
+}
+
+export async function uploadResume(file: File): Promise<ParsedResume> {
+  const form = new FormData();
+  form.append('file', file);
+  return apiUpload<ParsedResume>('/profiles/me/resume-upload', form);
 }

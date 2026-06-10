@@ -89,10 +89,7 @@ export function NotificationBell() {
       </button>
 
       {open && (
-        <div
-          id={menuId}
-          className="dropdown-content bg-base-100 rounded-box z-50 mt-3 w-80 p-2 shadow-md"
-        >
+        <div id={menuId} className="dropdown-content bg-base-100 rounded-box z-50 mt-3 w-80 p-2 shadow-md">
           <div className="flex justify-between items-center px-2 py-1">
             <span className="font-semibold text-sm">Notifications</span>
             {unread > 0 && (

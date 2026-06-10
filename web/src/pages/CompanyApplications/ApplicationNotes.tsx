@@ -79,7 +79,12 @@ export function ApplicationNotes({ applicationId }: { applicationId: string }) {
             if (e.key === 'Enter') handleSend();
           }}
         />
-        <button type="button" className="btn btn-sm btn-primary" onClick={handleSend} disabled={sending || !body.trim()}>
+        <button
+          type="button"
+          className="btn btn-sm btn-primary"
+          onClick={handleSend}
+          disabled={sending || !body.trim()}
+        >
           {sending ? <span className="loading loading-spinner loading-xs" /> : <Send size={14} />}
         </button>
       </div>

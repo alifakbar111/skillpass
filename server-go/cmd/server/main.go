@@ -24,9 +24,11 @@ import (
 
 	"skillpass-server-go/internal/analytics"
 	"skillpass-server-go/internal/application"
+	"skillpass-server-go/internal/authtoken"
 	"skillpass-server-go/internal/config"
 	"skillpass-server-go/internal/db"
 	_ "skillpass-server-go/docs"
+	"skillpass-server-go/internal/email"
 	"skillpass-server-go/internal/evaluation"
 	"skillpass-server-go/internal/handlers"
 	"skillpass-server-go/internal/lib"
@@ -34,6 +36,7 @@ import (
 	"skillpass-server-go/internal/middleware"
 	"skillpass-server-go/internal/notification"
 	"skillpass-server-go/internal/resume"
+	"skillpass-server-go/internal/storage"
 	"skillpass-server-go/internal/webhook"
 )
 
@@ -72,6 +75,18 @@ func main() {
 	search := handlers.NewSearchHandler(database)
 	admin := handlers.NewAdminHandler(database)
 
+	// Phase 4: email delivery + auth tokens + file storage
+	emailSender := email.NewSender()
+	tokenService := authtoken.NewService(database)
+	auth.SetEmailer(emailSender)
+	auth.SetTokenService(tokenService)
+
+	store := storage.NewStore()
+	uploads := handlers.NewUploadHandler(database, store)
+	if ls, ok := store.(*storage.LocalStore); ok {
+		r.Static("/uploads", ls.Dir())
+	}
+
 	// Phase 2: AI Evaluation & Matching
 	llmClient := lib.NewLLMClient()
 	evalService := evaluation.NewService(database, llmClient)
@@ -84,6 +99,7 @@ func main() {
 	appHandler := application.NewHandler(appService)
 
 	notifService := notification.NewService(database)
+	notifService.SetEmailer(emailSender)
 	notifHandler := notification.NewHandler(notifService)
 	appHandler.SetNotifier(notifService)
 
@@ -109,8 +125,16 @@ func main() {
 	api.POST("/auth/login", authRL.Middleware(), auth.Login)
 	api.POST("/auth/refresh", authRL.Middleware(), auth.Refresh)
 	api.POST("/auth/logout", middleware.AuthRequired(cfg.JWTSecret), auth.Logout)
+	api.GET("/auth/me", middleware.AuthRequired(cfg.JWTSecret), auth.Me)
+	api.GET("/auth/verify-email", auth.VerifyEmail)
+	api.POST("/auth/resend-verification", middleware.AuthRequired(cfg.JWTSecret), auth.ResendVerification)
+	api.POST("/auth/forgot-password", authRL.Middleware(), auth.ForgotPassword)
+	api.POST("/auth/reset-password", authRL.Middleware(), auth.ResetPassword)
 
 	api.GET("/profiles/:username", passport.GetProfile)
+
+	// Server-rendered Open Graph page for link crawlers (outside /api/v1).
+	r.GET("/p/:username", passport.GetOGPage)
 
 	authGroup := api.Group("/profiles")
 	authGroup.Use(middleware.AuthRequired(cfg.JWTSecret))
@@ -120,6 +144,8 @@ func main() {
 	authGroup.PUT("/me/experience/:id", profiles.UpdateExperience)
 	authGroup.DELETE("/me/experience/:id", profiles.DeleteExperience)
 	authGroup.POST("/me/resume-parse", resumeHandler.ParseResume)
+	authGroup.POST("/me/resume-upload", resumeHandler.UploadResume)
+	authGroup.POST("/me/avatar", uploads.UploadAvatar)
 	authGroup.GET("/me/analytics", analyticsHandler.JobseekerAnalytics)
 
 	companyGroup := api.Group("/company")

@@ -18,5 +18,7 @@ export interface Profile {
   about?: string;
   yearsOfExperience?: number;
   slug: string;
+  name?: string;
+  avatarUrl?: string | null;
   experiences: Experience[];
 }

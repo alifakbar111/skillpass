@@ -1,22 +1,25 @@
-import { Check, Sparkles, Wand2 } from 'lucide-react';
-import { useState } from 'react';
+import { Check, FileUp, Sparkles, Wand2 } from 'lucide-react';
+import { useRef, useState } from 'react';
 import { LoadingSpinner } from '../../components/ui/LoadingFallback';
 import { ApiError, api } from '../../lib/api';
-import { type ParsedExperience, type ParsedResume, parseResume } from '../../lib/resume';
+import { type ParsedExperience, type ParsedResume, parseResume, uploadResume } from '../../lib/resume';
 import type { Experience } from './type';
 
 interface Props {
   onExperienceAdded: (exp: Experience) => void;
+  /** Controlled open state so onboarding can surface the importer. */
+  open: boolean;
+  onToggle: (open: boolean) => void;
 }
 
-export function ResumeImport({ onExperienceAdded }: Props) {
-  const [open, setOpen] = useState(false);
+export function ResumeImport({ onExperienceAdded, open, onToggle }: Props) {
   const [text, setText] = useState('');
   const [parsing, setParsing] = useState(false);
   const [parsed, setParsed] = useState<ParsedResume | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [addedIdx, setAddedIdx] = useState<Set<number>>(new Set());
   const [savingIdx, setSavingIdx] = useState<number | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   async function handleParse() {
     if (text.trim().length < 30 || parsing) return;
@@ -31,6 +34,23 @@ export function ResumeImport({ onExperienceAdded }: Props) {
       setError(err instanceof ApiError ? (err.serverMessage ?? err.message) : 'Failed to parse resume');
     } finally {
       setParsing(false);
+    }
+  }
+
+  async function handleFileUpload(file: File) {
+    if (parsing) return;
+    setParsing(true);
+    setError(null);
+    setParsed(null);
+    setAddedIdx(new Set());
+    try {
+      const result = await uploadResume(file);
+      setParsed(result);
+    } catch (err) {
+      setError(err instanceof ApiError ? (err.serverMessage ?? err.message) : 'Failed to read PDF');
+    } finally {
+      setParsing(false);
+      if (fileInputRef.current) fileInputRef.current.value = '';
     }
   }
 
@@ -78,7 +98,7 @@ export function ResumeImport({ onExperienceAdded }: Props) {
           <Sparkles size={18} className="text-primary" aria-hidden="true" />
           <h2 className="font-semibold">Import from Resume</h2>
         </div>
-        <button type="button" className="btn btn-ghost btn-sm" onClick={() => setOpen((o) => !o)}>
+        <button type="button" className="btn btn-ghost btn-sm" onClick={() => onToggle(!open)}>
           {open ? 'Hide' : 'Open'}
         </button>
       </div>
@@ -86,9 +106,28 @@ export function ResumeImport({ onExperienceAdded }: Props) {
       {open && (
         <div className="mt-3 space-y-3">
           <p className="text-sm opacity-70">
-            Paste your resume text and let AI extract your experiences. Review each entry before adding it to your
-            profile.
+            Upload your resume PDF or paste its text — AI extracts your experiences. Review each entry before adding it
+            to your profile.
           </p>
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept="application/pdf"
+            className="hidden"
+            onChange={(e) => {
+              const file = e.target.files?.[0];
+              if (file) handleFileUpload(file);
+            }}
+          />
+          <button
+            type="button"
+            className="btn btn-outline btn-sm gap-1"
+            onClick={() => fileInputRef.current?.click()}
+            disabled={parsing}
+          >
+            <FileUp size={16} aria-hidden="true" /> Upload PDF
+          </button>
+          <div className="divider text-xs opacity-50 my-1">or paste text</div>
           <textarea
             className="textarea textarea-bordered w-full h-40 font-mono text-xs"
             placeholder="Paste your resume text here…"

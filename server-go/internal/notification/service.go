@@ -4,20 +4,48 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+	"log/slog"
 	"time"
 
 	"github.com/google/uuid"
+
+	"skillpass-server-go/internal/email"
 )
 
 // Service handles notification persistence and delivery using raw SQL.
 // Raw SQL is used (rather than go-jet) so the notifications table does not
 // require regenerating go-jet types.
 type Service struct {
-	db *sql.DB
+	db      *sql.DB
+	emailer email.Sender
 }
 
 func NewService(db *sql.DB) *Service {
 	return &Service{db: db}
+}
+
+// SetEmailer attaches an email sender so in-app notifications also reach the
+// user's inbox. Optional — when nil, notifications stay in-app only.
+func (s *Service) SetEmailer(e email.Sender) {
+	s.emailer = e
+}
+
+// sendEmail delivers msg to the user's email address, best-effort: lookup or
+// delivery failures are logged and never propagate to the caller.
+func (s *Service) sendEmail(ctx context.Context, userID uuid.UUID, msg email.Message) {
+	if s.emailer == nil {
+		return
+	}
+	var to string
+	if err := s.db.QueryRowContext(ctx,
+		`SELECT email FROM users WHERE id = $1`, userID,
+	).Scan(&to); err != nil {
+		slog.Warn("email lookup failed for notification", "userID", userID, "error", err)
+		return
+	}
+	if err := s.emailer.Send(ctx, to, msg.Subject, msg.HTML, msg.Text); err != nil {
+		slog.Warn("notification email delivery failed", "to", to, "error", err)
+	}
 }
 
 type Notification struct {
@@ -79,7 +107,12 @@ func (s *Service) NotifyCompanyOfApplication(ctx context.Context, jobPostingID, 
 
 	title := "New application"
 	body := fmt.Sprintf("%s applied to %q.", candidateName, jobTitle)
-	return s.Create(ctx, companyUserID.String(), "application_received", title, body, "/company/applications")
+	if err := s.Create(ctx, companyUserID.String(), "application_received", title, body, "/company/applications"); err != nil {
+		return err
+	}
+	s.sendEmail(ctx, companyUserID,
+		email.ApplicationReceivedEmail(jobTitle, candidateName, email.AppBaseURL()+"/company/applications"))
+	return nil
 }
 
 // NotifyJobseekerOfStatus notifies the jobseeker that their application status changed.
@@ -100,7 +133,12 @@ func (s *Service) NotifyJobseekerOfStatus(ctx context.Context, applicationID, st
 
 	title := "Application update"
 	body := fmt.Sprintf("Your application for %q is now %q.", jobTitle, status)
-	return s.Create(ctx, jobseekerUserID.String(), "application_status", title, body, "/jobseeker/applications")
+	if err := s.Create(ctx, jobseekerUserID.String(), "application_status", title, body, "/jobseeker/applications"); err != nil {
+		return err
+	}
+	s.sendEmail(ctx, jobseekerUserID,
+		email.StatusUpdateEmail(jobTitle, status, email.AppBaseURL()+"/jobseeker/applications"))
+	return nil
 }
 
 // NotifyJobseekerOfNote notifies the jobseeker that the company left a note on their application.
@@ -121,7 +159,12 @@ func (s *Service) NotifyJobseekerOfNote(ctx context.Context, applicationID strin
 
 	title := "New message"
 	body := fmt.Sprintf("The company left a note on your application for %q.", jobTitle)
-	return s.Create(ctx, jobseekerUserID.String(), "application_note", title, body, "/jobseeker/applications")
+	if err := s.Create(ctx, jobseekerUserID.String(), "application_note", title, body, "/jobseeker/applications"); err != nil {
+		return err
+	}
+	s.sendEmail(ctx, jobseekerUserID,
+		email.NoteEmail(jobTitle, email.AppBaseURL()+"/jobseeker/applications"))
+	return nil
 }
 
 // ListForUser returns recent notifications plus the unread count.

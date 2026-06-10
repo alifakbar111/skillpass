@@ -53,8 +53,8 @@ export function WebhooksSection() {
         <h2 className="font-semibold">Webhooks</h2>
       </div>
       <p className="text-sm opacity-70 mb-3">
-        Get notified in your own tools when candidates apply. Events are POSTed as JSON, signed with HMAC-SHA256 in
-        the <code className="text-xs">X-SkillPass-Signature</code> header.
+        Get notified in your own tools when candidates apply. Events are POSTed as JSON, signed with HMAC-SHA256 in the{' '}
+        <code className="text-xs">X-SkillPass-Signature</code> header.
       </p>
 
       {error && <p className="text-error text-sm mb-2">{error}</p>}

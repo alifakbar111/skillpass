@@ -53,7 +53,9 @@ export function CompanyApplications() {
         method: 'PUT',
         body: JSON.stringify({ status: newStatus }),
       });
-      setApplications((prev) => prev.map((a) => (a.id === applicationId ? { ...a, status: updated.status, updatedAt: updated.updatedAt } : a)));
+      setApplications((prev) =>
+        prev.map((a) => (a.id === applicationId ? { ...a, status: updated.status, updatedAt: updated.updatedAt } : a)),
+      );
     } catch (err) {
       const msg = err instanceof ApiError ? (err.serverMessage ?? err.message) : 'Failed to update status';
       setError(msg);
@@ -121,9 +123,7 @@ export function CompanyApplications() {
                           </div>
                           <div>
                             <div className="font-medium">{app.candidateName}</div>
-                            {app.candidateHeadline && (
-                              <div className="text-xs opacity-60">{app.candidateHeadline}</div>
-                            )}
+                            {app.candidateHeadline && <div className="text-xs opacity-60">{app.candidateHeadline}</div>}
                           </div>
                         </div>
                       </td>
@@ -152,11 +152,7 @@ export function CompanyApplications() {
 
                           {app.status !== 'rejected' && app.status !== 'offered' && (
                             <div className="dropdown dropdown-end">
-                              <div
-                                tabIndex={0}
-                                role="button"
-                                className="btn btn-xs btn-outline"
-                              >
+                              <div tabIndex={0} role="button" className="btn btn-xs btn-outline">
                                 {updating === app.id ? (
                                   <span className="loading loading-spinner loading-xs" />
                                 ) : (

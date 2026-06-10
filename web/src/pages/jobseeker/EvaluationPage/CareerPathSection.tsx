@@ -57,8 +57,8 @@ export function CareerPathSection() {
 
       {!result && !error && (
         <p className="text-sm opacity-60">
-          AI-powered role recommendations based on your evaluation — see which roles you're ready for today and what
-          to build toward.
+          AI-powered role recommendations based on your evaluation — see which roles you're ready for today and what to
+          build toward.
         </p>
       )}
 

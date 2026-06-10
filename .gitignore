@@ -18,3 +18,6 @@ server-go/migrations/.applied/
 web/src/**/*.js
 web/src/**/*.js.map
 !web/src/**/*.config.js
+# Local file uploads (avatars) in dev
+server-go/uploads/
+uploads/

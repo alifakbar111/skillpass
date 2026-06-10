@@ -139,10 +139,56 @@ export async function api<T = unknown>(path: string, options: RequestInit = {}):
   }
 }
 
+// apiUpload sends multipart form data (file uploads). The browser sets the
+// Content-Type boundary itself — do not set it manually.
+export async function apiUpload<T = unknown>(path: string, form: FormData): Promise<T> {
+  const headers = new Headers();
+  const accessToken = getAccessToken();
+  if (accessToken) headers.set('Authorization', `Bearer ${accessToken}`);
+
+  let res = await fetchJson(`${BASE_URL}${path}`, {
+    method: 'POST',
+    body: form,
+    headers,
+    credentials: 'include',
+  });
+
+  if (res.status === 401) {
+    const newToken = await refreshAccessToken();
+    if (newToken) {
+      headers.set('Authorization', `Bearer ${newToken}`);
+      res = await fetchJson(`${BASE_URL}${path}`, {
+        method: 'POST',
+        body: form,
+        headers,
+        credentials: 'include',
+      });
+    }
+  }
+
+  if (!res.ok) {
+    if (res.status === 401) {
+      clearTokens();
+    }
+    throwApiError(res.status, res.body);
+  }
+
+  return JSON.parse(res.body) as T;
+}
+
+export interface AuthUser {
+  id: string;
+  email: string;
+  username: string;
+  name: string;
+  role: 'jobseeker' | 'company' | 'admin';
+  isVerified: boolean;
+}
+
 export interface LoginResponse {
   accessToken: string;
   refreshToken?: string;
-  user: { id: string; email: string; username: string; name: string; role: 'jobseeker' | 'company' };
+  user: AuthUser;
 }
 
 export async function login(email: string, password: string): Promise<LoginResponse> {

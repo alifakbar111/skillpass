@@ -2,6 +2,8 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { Plus, Trash2, X } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { useForm } from 'react-hook-form';
+import { AvatarUploader } from '../../components/jobseeker/AvatarUploader';
+import { JobseekerOnboarding } from '../../components/onboarding/JobseekerOnboarding';
 import { FormInput, FormSelect, FormTextarea } from '../../components/ui/FormField';
 import { LoadingFallback, LoadingSpinner } from '../../components/ui/LoadingFallback';
 import { ApiError, api } from '../../lib/api';
@@ -23,6 +25,7 @@ export function JobseekerProfile() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [showExpForm, setShowExpForm] = useState(false);
+  const [importOpen, setImportOpen] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const profileForm = useForm<ProfileForm>({
@@ -52,6 +55,8 @@ export function JobseekerProfile() {
       .then((data) => {
         if (cancelled) return;
         setProfile(data);
+        // Surface the AI importer as step one for brand-new profiles.
+        if (data.experiences.length === 0) setImportOpen(true);
         profileForm.reset({
           headline: data.headline || '',
           about: data.about || '',
@@ -149,8 +154,25 @@ export function JobseekerProfile() {
         </div>
       )}
 
+      {profile && (
+        <JobseekerOnboarding
+          hasHeadline={Boolean(profile.headline)}
+          experienceCount={profile.experiences.length}
+          onAddExperience={() => setImportOpen(true)}
+        />
+      )}
+
       <form onSubmit={profileForm.handleSubmit(saveProfile)} className="card bg-base-200 p-6 space-y-4">
-        <h2 className="font-semibold">Profile Details</h2>
+        <div className="flex items-center justify-between">
+          <h2 className="font-semibold">Profile Details</h2>
+          {profile && (
+            <AvatarUploader
+              name={profile.name ?? ''}
+              avatarUrl={profile.avatarUrl}
+              onUploaded={(url) => setProfile((prev) => (prev ? { ...prev, avatarUrl: url } : prev))}
+            />
+          )}
+        </div>
         <FormInput
           label="Headline"
           registration={profileForm.register('headline')}
@@ -176,6 +198,8 @@ export function JobseekerProfile() {
       </form>
 
       <ResumeImport
+        open={importOpen}
+        onToggle={setImportOpen}
         onExperienceAdded={(added) =>
           setProfile((prev) => (prev ? { ...prev, experiences: [...prev.experiences, added] } : prev))
         }

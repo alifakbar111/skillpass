@@ -36,7 +36,8 @@ export function Register() {
     setLoading(true);
     try {
       await authRegister(data);
-      navigate('/');
+      // Land new users on their first onboarding step instead of the homepage.
+      navigate(data.role === 'company' ? '/company/verification' : '/jobseeker/profile');
     } catch (err) {
       if (err instanceof ApiError) {
         setError(err.serverMessage ?? err.message);
