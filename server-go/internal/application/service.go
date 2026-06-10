@@ -268,6 +268,75 @@ func (s *Service) UpdateStatus(ctx context.Context, applicationID, companyID, st
 	}, nil
 }
 
+// CompanyApplicationResult extends ApplicationResult with candidate info for company views.
+type CompanyApplicationResult struct {
+	ID           string `json:"id"`
+	JobseekerID  string `json:"jobseekerId"`
+	JobPostingID string `json:"jobPostingId"`
+	Status       string `json:"status"`
+	CreatedAt    string `json:"createdAt"`
+	UpdatedAt    string `json:"updatedAt"`
+	JobTitle     string `json:"jobTitle"`
+	CandidateName    string `json:"candidateName"`
+	CandidateEmail   string `json:"candidateEmail"`
+	CandidateSlug    string `json:"candidateSlug"`
+	CandidateHeadline string `json:"candidateHeadline,omitempty"`
+}
+
+func (s *Service) ListForCompany(ctx context.Context, companyID string) ([]CompanyApplicationResult, error) {
+	stmt := SELECT(
+		gen.Applications.AllColumns,
+		gen.JobPostings.Title,
+		gen.Users.Name,
+		gen.Users.Email,
+		gen.JobseekerProfiles.Slug,
+		gen.JobseekerProfiles.Headline,
+	).FROM(
+		gen.Applications.
+			INNER_JOIN(gen.JobPostings, gen.JobPostings.ID.EQ(gen.Applications.JobPostingID)).
+			INNER_JOIN(gen.JobseekerProfiles, gen.JobseekerProfiles.ID.EQ(gen.Applications.JobseekerID)).
+			INNER_JOIN(gen.Users, gen.Users.ID.EQ(gen.JobseekerProfiles.UserID)),
+	).WHERE(
+		gen.JobPostings.CompanyID.EQ(UUID(uuid.MustParse(companyID))),
+	).ORDER_BY(
+		gen.Applications.CreatedAt.DESC(),
+	)
+
+	var rows []struct {
+		model.Applications
+		Title    string
+		Name     string
+		Email    string
+		Slug     string
+		Headline *string
+	}
+	if err := stmt.QueryContext(ctx, s.db, &rows); err != nil {
+		return nil, fmt.Errorf("list company applications: %w", err)
+	}
+
+	results := make([]CompanyApplicationResult, len(rows))
+	for i, r := range rows {
+		headline := ""
+		if r.Headline != nil {
+			headline = *r.Headline
+		}
+		results[i] = CompanyApplicationResult{
+			ID:                r.ID.String(),
+			JobseekerID:       r.JobseekerID.String(),
+			JobPostingID:      r.JobPostingID.String(),
+			Status:            string(r.Status),
+			CreatedAt:         r.CreatedAt.Format(time.RFC3339),
+			UpdatedAt:         r.UpdatedAt.Format(time.RFC3339),
+			JobTitle:          r.Title,
+			CandidateName:     r.Name,
+			CandidateEmail:    r.Email,
+			CandidateSlug:     r.Slug,
+			CandidateHeadline: headline,
+		}
+	}
+	return results, nil
+}
+
 func (s *Service) LookupJobseekerProfileID(ctx context.Context, userID string) (string, error) {
 	var profileID uuid.UUID
 	err := s.db.QueryRowContext(ctx,

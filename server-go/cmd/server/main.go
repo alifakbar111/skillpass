@@ -69,7 +69,7 @@ func main() {
 	admin := handlers.NewAdminHandler(database)
 
 	// Phase 2: AI Evaluation & Matching
-	llmClient := lib.NewOpenAIClient()
+	llmClient := lib.NewLLMClient()
 	evalService := evaluation.NewService(database, llmClient)
 	evalHandler := evaluation.NewHandler(database, evalService)
 
@@ -150,7 +150,13 @@ func main() {
 	appGroup.Use(middleware.AuthRequired(cfg.JWTSecret), middleware.RequireRole("jobseeker"))
 	appGroup.GET("/me", appHandler.ListMyApplications)
 
-	// ── Application status update (company) ──
+	// ── Company application management (verified company) ──
+	companyAppGroup := api.Group("/company")
+	for _, m := range verifiedCompany {
+		companyAppGroup.Use(m)
+	}
+	companyAppGroup.GET("/applications", appHandler.ListCompanyApplications)
+
 	appStatusGroup := api.Group("/applications")
 	for _, m := range verifiedCompany {
 		appStatusGroup.Use(m)

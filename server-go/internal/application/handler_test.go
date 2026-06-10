@@ -219,3 +219,71 @@ func TestApplicationFlow(t *testing.T) {
 		}
 	})
 }
+
+func TestListCompanyApplications(t *testing.T) {
+	db := testutil.SetupTestDB()
+
+	cu, cID, _ := testutil.CreateCompanyUser(db, "calist@ex.com", "calist", "pass123", "List Co", true)
+	jID, _ := testutil.CreateJob(db, cID, "Go Developer", "Technology", true)
+	ctok := testutil.GenerateToken(cu.String(), "company", 15*time.Minute)
+
+	// Create a jobseeker and apply
+	_, pID, _ := testutil.CreateJobseeker(db, "jslist@ex.com", "jslist", "pass123", "JS List")
+	testutil.CreateApplication(db, pID, jID, "applied")
+
+	svc := NewService(db)
+	h := NewHandler(svc)
+
+	router := gin.New()
+	cg := router.Group("/api/v1/company")
+	cg.Use(middleware.AuthRequired(testutil.TestJWTSecret), middleware.RequireRole("company"), middleware.RequireVerifiedCompany(db))
+	cg.GET("/applications", h.ListCompanyApplications)
+
+	t.Run("list company applications", func(t *testing.T) {
+		w := httptest.NewRecorder()
+		req := httptest.NewRequest("GET", "/api/v1/company/applications", nil)
+		req.Header.Set("Authorization", "Bearer "+ctok)
+		router.ServeHTTP(w, req)
+		if w.Code != http.StatusOK {
+			t.Fatalf("expected 200, got %d: %s", w.Code, w.Body.String())
+		}
+		var resp []CompanyApplicationResult
+		json.Unmarshal(w.Body.Bytes(), &resp)
+		if len(resp) != 1 {
+			t.Fatalf("expected 1 application, got %d", len(resp))
+		}
+		if resp[0].CandidateName != "JS List" {
+			t.Fatalf("expected candidate name 'JS List', got %q", resp[0].CandidateName)
+		}
+		if resp[0].JobTitle != "Go Developer" {
+			t.Fatalf("expected job title 'Go Developer', got %q", resp[0].JobTitle)
+		}
+	})
+
+	t.Run("list company applications empty", func(t *testing.T) {
+		cu2, _, _ := testutil.CreateCompanyUser(db, "empty2@ex.com", "empty2", "pass123", "Empty Co", true)
+		ctok2 := testutil.GenerateToken(cu2.String(), "company", 15*time.Minute)
+
+		w := httptest.NewRecorder()
+		req := httptest.NewRequest("GET", "/api/v1/company/applications", nil)
+		req.Header.Set("Authorization", "Bearer "+ctok2)
+		router.ServeHTTP(w, req)
+		if w.Code != http.StatusOK {
+			t.Fatalf("expected 200, got %d: %s", w.Code, w.Body.String())
+		}
+		var resp []CompanyApplicationResult
+		json.Unmarshal(w.Body.Bytes(), &resp)
+		if len(resp) != 0 {
+			t.Fatalf("expected 0 applications, got %d", len(resp))
+		}
+	})
+
+	t.Run("list company applications requires auth", func(t *testing.T) {
+		w := httptest.NewRecorder()
+		req := httptest.NewRequest("GET", "/api/v1/company/applications", nil)
+		router.ServeHTTP(w, req)
+		if w.Code != http.StatusUnauthorized {
+			t.Fatalf("expected 401, got %d", w.Code)
+		}
+	})
+}
