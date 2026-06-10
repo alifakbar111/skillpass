@@ -48,8 +48,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setUser(null);
       }
     };
+    const onAuthLogout = () => setUser(null);
     window.addEventListener('storage', onStorage);
-    return () => window.removeEventListener('storage', onStorage);
+    window.addEventListener('auth:logout', onAuthLogout);
+    return () => {
+      window.removeEventListener('storage', onStorage);
+      window.removeEventListener('auth:logout', onAuthLogout);
+    };
   }, []);
 
   useEffect(() => {
