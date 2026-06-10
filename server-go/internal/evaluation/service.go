@@ -336,6 +336,86 @@ func (s *Service) GetLatest(ctx context.Context, profileID string) (*EvaluationR
 	}, nil
 }
 
+// SuggestedRole is one career path recommendation.
+type SuggestedRole struct {
+	Title     string `json:"title"`
+	Reason    string `json:"reason"`
+	Readiness string `json:"readiness"` // "ready", "stretch", "long-term"
+}
+
+// DevelopmentStep is a concrete action toward the suggested roles.
+type DevelopmentStep struct {
+	Area   string `json:"area"`
+	Action string `json:"action"`
+}
+
+// CareerPathResult is the LLM-generated career guidance payload.
+type CareerPathResult struct {
+	CurrentPosition string            `json:"currentPosition"`
+	SuggestedRoles  []SuggestedRole   `json:"suggestedRoles"`
+	Steps           []DevelopmentStep `json:"steps"`
+}
+
+// CareerPath asks the LLM for role recommendations based on the profile and its
+// latest evaluation. Returns sql.ErrNoRows if no evaluation exists yet.
+func (s *Service) CareerPath(ctx context.Context, profileID string) (*CareerPathResult, error) {
+	eval, err := s.GetLatest(ctx, profileID)
+	if err != nil {
+		return nil, err // sql.ErrNoRows passes through for the handler
+	}
+
+	profileData, err := s.loadFullProfile(ctx, profileID)
+	if err != nil {
+		return nil, fmt.Errorf("load profile: %w", err)
+	}
+
+	skillSummary := make([]string, 0, len(eval.SkillScores))
+	for _, ss := range eval.SkillScores {
+		skillSummary = append(skillSummary, fmt.Sprintf("%s (%s, %d)", ss.Skill, ss.Category, ss.Score))
+	}
+
+	systemPrompt := `You are a career advisor AI. Based on the candidate's profile and skill evaluation, return a JSON object with:
+- currentPosition (string): a one-line read of where they are in their career
+- suggestedRoles (array of exactly 3 items): {title: string, reason: string, readiness: one of "ready", "stretch", "long-term"}
+- steps (array of 3-5 items): {area: string, action: string} — concrete, specific development actions
+
+Rules:
+- Ground every suggestion in the actual skills and experience provided; do not invent experience.
+- "ready" = could apply today; "stretch" = 6-12 months of focused growth; "long-term" = a multi-year trajectory.
+- Return ONLY the JSON object.`
+
+	userPrompt := fmt.Sprintf(`Candidate profile:
+
+Headline: %s
+Years of experience: %d
+Overall evaluation score: %d
+
+Skill scores: %s
+
+Experience entries:
+%s
+
+Suggest career paths as JSON per the system prompt schema.`,
+		nullStr(profileData.Headline),
+		nullInt(profileData.YearsOfExperience),
+		eval.OverallScore,
+		strings.Join(skillSummary, ", "),
+		formatExperiences(profileData.Experiences))
+
+	var result CareerPathResult
+	if err := s.llm.Chat(ctx, systemPrompt, userPrompt, &result); err != nil {
+		return nil, fmt.Errorf("llm career path: %w", err)
+	}
+
+	if result.SuggestedRoles == nil {
+		result.SuggestedRoles = []SuggestedRole{}
+	}
+	if result.Steps == nil {
+		result.Steps = []DevelopmentStep{}
+	}
+	return &result, nil
+}
+
 func nullStr(s *string) string {
 	if s == nil {
 		return ""

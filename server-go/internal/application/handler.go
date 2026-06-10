@@ -16,12 +16,20 @@ import (
 type Notifier interface {
 	NotifyCompanyOfApplication(ctx context.Context, jobPostingID, jobseekerProfileID string) error
 	NotifyJobseekerOfStatus(ctx context.Context, applicationID, status string) error
+	NotifyJobseekerOfNote(ctx context.Context, applicationID string) error
+}
+
+// WebhookDispatcher posts events to externally registered webhooks.
+// Implemented by webhook.Service; optional like Notifier.
+type WebhookDispatcher interface {
+	DispatchApplicationReceived(ctx context.Context, jobPostingID, jobseekerProfileID string) error
 }
 
 // Handler uses gin context to handle application requests.
 type Handler struct {
-	service  *Service
-	notifier Notifier
+	service    *Service
+	notifier   Notifier
+	dispatcher WebhookDispatcher
 }
 
 func NewHandler(service *Service) *Handler {
@@ -32,6 +40,12 @@ func NewHandler(service *Service) *Handler {
 // Optional — when nil, no notifications are emitted.
 func (h *Handler) SetNotifier(n Notifier) {
 	h.notifier = n
+}
+
+// SetWebhookDispatcher attaches a dispatcher that posts events to company webhooks.
+// Optional — when nil, no webhooks are fired.
+func (h *Handler) SetWebhookDispatcher(d WebhookDispatcher) {
+	h.dispatcher = d
 }
 
 func getUserID(c *gin.Context) (string, bool) {
@@ -106,6 +120,13 @@ func (h *Handler) Apply(c *gin.Context) {
 	if h.notifier != nil {
 		if err := h.notifier.NotifyCompanyOfApplication(c.Request.Context(), jobPostingID, profileID); err != nil {
 			slog.Warn("failed to notify company of application", "error", err)
+		}
+	}
+
+	// Best-effort: fire company webhooks (delivery itself is async).
+	if h.dispatcher != nil {
+		if err := h.dispatcher.DispatchApplicationReceived(c.Request.Context(), jobPostingID, profileID); err != nil {
+			slog.Warn("failed to dispatch application webhook", "error", err)
 		}
 	}
 
@@ -237,7 +258,7 @@ func (h *Handler) AddMessage(c *gin.Context) {
 
 	// Best-effort: notify the jobseeker of the new note.
 	if h.notifier != nil {
-		if err := h.notifier.NotifyJobseekerOfStatus(c.Request.Context(), applicationID, "updated with a note"); err != nil {
+		if err := h.notifier.NotifyJobseekerOfNote(c.Request.Context(), applicationID); err != nil {
 			slog.Warn("failed to notify jobseeker of note", "error", err)
 		}
 	}

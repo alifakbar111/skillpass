@@ -22,6 +22,7 @@ import (
 	swaggerFiles "github.com/swaggo/files"
 	ginSwagger "github.com/swaggo/gin-swagger"
 
+	"skillpass-server-go/internal/analytics"
 	"skillpass-server-go/internal/application"
 	"skillpass-server-go/internal/config"
 	"skillpass-server-go/internal/db"
@@ -33,6 +34,7 @@ import (
 	"skillpass-server-go/internal/middleware"
 	"skillpass-server-go/internal/notification"
 	"skillpass-server-go/internal/resume"
+	"skillpass-server-go/internal/webhook"
 )
 
 func main() {
@@ -85,6 +87,13 @@ func main() {
 	notifHandler := notification.NewHandler(notifService)
 	appHandler.SetNotifier(notifService)
 
+	webhookService := webhook.NewService(database)
+	webhookHandler := webhook.NewHandler(webhookService)
+	appHandler.SetWebhookDispatcher(webhookService)
+
+	analyticsService := analytics.NewService(database)
+	analyticsHandler := analytics.NewHandler(database, analyticsService)
+
 	matchService := matching.NewService(database)
 	matchHandler := matching.NewHandler(matchService)
 
@@ -111,6 +120,7 @@ func main() {
 	authGroup.PUT("/me/experience/:id", profiles.UpdateExperience)
 	authGroup.DELETE("/me/experience/:id", profiles.DeleteExperience)
 	authGroup.POST("/me/resume-parse", resumeHandler.ParseResume)
+	authGroup.GET("/me/analytics", analyticsHandler.JobseekerAnalytics)
 
 	companyGroup := api.Group("/company")
 	companyGroup.Use(middleware.AuthRequired(cfg.JWTSecret), middleware.RequireRole("company"))
@@ -150,6 +160,7 @@ func main() {
 	evalGroup.Use(middleware.AuthRequired(cfg.JWTSecret), middleware.RequireRole("jobseeker"))
 	evalGroup.POST("/me", evalHandler.PostEvaluate)
 	evalGroup.GET("/me/results", evalHandler.GetLatestEvaluation)
+	evalGroup.POST("/me/career-path", evalHandler.PostCareerPath)
 
 	// ── Application routes (jobseeker applies) ──
 	jobApplyGroup := api.Group("/jobs")
@@ -166,6 +177,10 @@ func main() {
 		companyAppGroup.Use(m)
 	}
 	companyAppGroup.GET("/applications", appHandler.ListCompanyApplications)
+	companyAppGroup.GET("/analytics", analyticsHandler.CompanyAnalytics)
+	companyAppGroup.GET("/webhooks", webhookHandler.List)
+	companyAppGroup.POST("/webhooks", webhookHandler.Create)
+	companyAppGroup.DELETE("/webhooks/:id", webhookHandler.Delete)
 
 	appStatusGroup := api.Group("/applications")
 	for _, m := range verifiedCompany {
@@ -186,6 +201,7 @@ func main() {
 	matchesJobseekerGroup := api.Group("/jobs")
 	matchesJobseekerGroup.Use(middleware.AuthRequired(cfg.JWTSecret), middleware.RequireRole("jobseeker"))
 	matchesJobseekerGroup.GET("/matches", matchHandler.MatchJobs)
+	matchesJobseekerGroup.GET("/:id/skills-gap", matchHandler.SkillsGap)
 
 	matchesCompanyGroup := api.Group("/candidates")
 	for _, m := range verifiedCompany {

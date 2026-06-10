@@ -292,6 +292,86 @@ func (s *Service) MatchCandidates(ctx context.Context, jobPostingID string) ([]C
 	return results, nil
 }
 
+// SkillsGap compares a jobseeker's evaluated skills against a job's required skills.
+type SkillsGap struct {
+	JobPostingID  string   `json:"jobPostingId"`
+	JobTitle      string   `json:"jobTitle"`
+	MatchedSkills []string `json:"matchedSkills"`
+	MissingSkills []string `json:"missingSkills"`
+	MatchPercent  float64  `json:"matchPercent"`
+	HasEvaluation bool     `json:"hasEvaluation"`
+}
+
+// ComputeSkillsGap returns which of the job's required skills the candidate has
+// (per their latest AI evaluation) and which are missing.
+func (s *Service) ComputeSkillsGap(ctx context.Context, profileID, jobPostingID string) (*SkillsGap, error) {
+	jobStmt := SELECT(
+		gen.JobPostings.ID,
+		gen.JobPostings.Title,
+		gen.JobPostings.RequiredSkills,
+	).FROM(
+		gen.JobPostings,
+	).WHERE(
+		gen.JobPostings.ID.EQ(UUID(uuid.MustParse(jobPostingID))),
+	)
+
+	var jobs []struct {
+		ID             uuid.UUID
+		Title          string
+		RequiredSkills *pq.StringArray
+	}
+	if err := jobStmt.QueryContext(ctx, s.db, &jobs); err != nil {
+		return nil, fmt.Errorf("query job: %w", err)
+	}
+	if len(jobs) == 0 {
+		return nil, sql.ErrNoRows
+	}
+	job := jobs[0]
+
+	gap := &SkillsGap{
+		JobPostingID:  job.ID.String(),
+		JobTitle:      job.Title,
+		MatchedSkills: []string{},
+		MissingSkills: []string{},
+	}
+
+	jobSkills := []string{}
+	if job.RequiredSkills != nil {
+		jobSkills = []string(*job.RequiredSkills)
+	}
+	if len(jobSkills) == 0 {
+		gap.MatchPercent = 100
+		gap.HasEvaluation = true
+		return gap, nil
+	}
+
+	candidateSet := map[string]bool{}
+	eval, err := s.getLatestEvaluation(ctx, profileID)
+	if err != nil {
+		if !errors.Is(err, sql.ErrNoRows) {
+			return nil, fmt.Errorf("get evaluation: %w", err)
+		}
+		// No evaluation yet — everything counts as missing.
+		gap.MissingSkills = jobSkills
+		return gap, nil
+	}
+	gap.HasEvaluation = true
+	for _, name := range extractSkillNames(eval) {
+		candidateSet[name] = true
+	}
+
+	for _, skill := range jobSkills {
+		if candidateSet[strings.ToLower(skill)] {
+			gap.MatchedSkills = append(gap.MatchedSkills, skill)
+		} else {
+			gap.MissingSkills = append(gap.MissingSkills, skill)
+		}
+	}
+	gap.MatchPercent = float64(len(gap.MatchedSkills)) / float64(len(jobSkills)) * 100
+
+	return gap, nil
+}
+
 // IsBlindMode reports whether the company has blind screening enabled.
 func (s *Service) IsBlindMode(ctx context.Context, companyID string) bool {
 	var blind bool

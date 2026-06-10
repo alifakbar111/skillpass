@@ -74,6 +74,9 @@ export function Navbar() {
                 <Link to="/company/applications" className="btn btn-ghost btn-sm">
                   Applications
                 </Link>
+                <Link to="/company/analytics" className="btn btn-ghost btn-sm">
+                  Analytics
+                </Link>
               </>
             )}
             {user.role === 'admin' && (

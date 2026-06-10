@@ -1,6 +1,8 @@
 package matching
 
 import (
+	"database/sql"
+	"errors"
 	"log/slog"
 	"net/http"
 
@@ -64,6 +66,60 @@ func (h *Handler) MatchJobs(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, matches)
+}
+
+// SkillsGap		godoc
+// @Summary		Skills gap for a job
+// @Description	Compare the authenticated jobseeker's evaluated skills against a job's required skills
+// @Tags		matching
+// @Produce		json
+// @Security	BearerAuth
+// @Param		id path string true "Job posting UUID"
+// @Success		200 {object} matching.SkillsGap
+// @Failure		401 {object} map[string]string
+// @Failure		404 {object} map[string]string
+// @Router		/jobs/{id}/skills-gap [get]
+func (h *Handler) SkillsGap(c *gin.Context) {
+	userID, ok := c.Get("userId")
+	if !ok {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "Unauthorized"})
+		return
+	}
+	userIDStr := userID.(string)
+
+	jobPostingID := c.Param("id")
+	if _, err := uuid.Parse(jobPostingID); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid job posting ID"})
+		return
+	}
+
+	profileStmt := SELECT(
+		gen.JobseekerProfiles.ID,
+	).FROM(
+		gen.JobseekerProfiles,
+	).WHERE(
+		gen.JobseekerProfiles.UserID.EQ(UUID(uuid.MustParse(userIDStr))),
+	)
+
+	var profile struct{ ID uuid.UUID }
+	if err := profileStmt.QueryContext(c.Request.Context(), h.service.db, &profile); err != nil {
+		slog.Error("profile lookup failed", "error", err)
+		c.JSON(http.StatusNotFound, gin.H{"error": "Profile not found"})
+		return
+	}
+
+	gap, err := h.service.ComputeSkillsGap(c.Request.Context(), profile.ID.String(), jobPostingID)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			c.JSON(http.StatusNotFound, gin.H{"error": "Job not found"})
+			return
+		}
+		slog.Error("skills gap failed", "error", err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to compute skills gap"})
+		return
+	}
+
+	c.JSON(http.StatusOK, gap)
 }
 
 // MatchCandidates		godoc

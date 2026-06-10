@@ -6,6 +6,7 @@ import { FormInput, FormSelect, FormTextarea } from '../../components/ui/FormFie
 import { LoadingFallback, LoadingSpinner } from '../../components/ui/LoadingFallback';
 import { ApiError, api } from '../../lib/api';
 import { type CompanyProfileForm, companyProfileSchema } from '../../lib/schemas';
+import { WebhooksSection } from './WebhooksSection';
 
 export function CompanyProfile() {
   const [loading, setLoading] = useState(true);
@@ -146,6 +147,8 @@ export function CompanyProfile() {
           />
         </label>
       </div>
+
+      <WebhooksSection />
     </div>
   );
 }

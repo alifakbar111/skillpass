@@ -22,10 +22,23 @@ export interface CandidateMatch {
   matchReason: string;
 }
 
+export interface SkillsGap {
+  jobPostingId: string;
+  jobTitle: string;
+  matchedSkills: string[];
+  missingSkills: string[];
+  matchPercent: number;
+  hasEvaluation: boolean;
+}
+
 export async function getJobMatches(): Promise<JobMatch[]> {
   return api<JobMatch[]>('/jobs/matches');
 }
 
 export async function getCandidateMatches(jobId: string): Promise<CandidateMatch[]> {
   return api<CandidateMatch[]>(`/candidates/matches?jobId=${encodeURIComponent(jobId)}`);
+}
+
+export async function getSkillsGap(jobId: string): Promise<SkillsGap> {
+  return api<SkillsGap>(`/jobs/${encodeURIComponent(jobId)}/skills-gap`);
 }

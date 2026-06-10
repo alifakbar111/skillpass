@@ -103,6 +103,27 @@ func (s *Service) NotifyJobseekerOfStatus(ctx context.Context, applicationID, st
 	return s.Create(ctx, jobseekerUserID.String(), "application_status", title, body, "/jobseeker/applications")
 }
 
+// NotifyJobseekerOfNote notifies the jobseeker that the company left a note on their application.
+func (s *Service) NotifyJobseekerOfNote(ctx context.Context, applicationID string) error {
+	var jobseekerUserID uuid.UUID
+	var jobTitle string
+	err := s.db.QueryRowContext(ctx,
+		`SELECT jp.user_id, j.title
+		 FROM applications a
+		 JOIN jobseeker_profiles jp ON jp.id = a.jobseeker_id
+		 JOIN job_postings j ON j.id = a.job_posting_id
+		 WHERE a.id = $1`,
+		applicationID,
+	).Scan(&jobseekerUserID, &jobTitle)
+	if err != nil {
+		return fmt.Errorf("lookup jobseeker user: %w", err)
+	}
+
+	title := "New message"
+	body := fmt.Sprintf("The company left a note on your application for %q.", jobTitle)
+	return s.Create(ctx, jobseekerUserID.String(), "application_note", title, body, "/jobseeker/applications")
+}
+
 // ListForUser returns recent notifications plus the unread count.
 func (s *Service) ListForUser(ctx context.Context, userID string, limit int) (*ListResult, error) {
 	if limit <= 0 || limit > 100 {
