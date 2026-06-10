@@ -3,32 +3,17 @@ import { Pencil, Plus, X } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { Link } from 'react-router-dom';
-import { FormInput, FormSelect, FormTextarea } from '../components/ui/FormField';
-import { LoadingSpinner } from '../components/ui/LoadingFallback';
-import { ApiError, api } from '../lib/api';
-import { type JobForm, jobSchema } from '../lib/schemas';
-
-interface Job {
-  id: string;
-  title: string;
-  industry: string;
-  location?: string;
-  experienceLevel?: string;
-  status: string;
-  createdAt: string;
-}
-
-const EXPERIENCE_LEVELS = [
-  { value: 'entry', label: 'Entry' },
-  { value: 'mid', label: 'Mid' },
-  { value: 'senior', label: 'Senior' },
-  { value: 'lead', label: 'Lead' },
-];
+import { FormInput, FormSelect, FormTextarea } from '../../components/ui/FormField';
+import { LoadingSpinner } from '../../components/ui/LoadingFallback';
+import { ApiError, api } from '../../lib/api';
+import { EXPERIENCE_LEVEL_OPTIONS } from '../../lib/constants';
+import { type JobForm, jobSchema } from '../../lib/schemas';
+import type { Industry, Job } from './type';
 
 export function CompanyJobs() {
   const [jobs, setJobs] = useState<Job[]>([]);
   const [showForm, setShowForm] = useState(false);
-  const [industries, setIndustries] = useState<Array<{ id: string; name: string }>>([]);
+  const [industries, setIndustries] = useState<Industry[]>([]);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -53,7 +38,7 @@ export function CompanyJobs() {
 
   useEffect(() => {
     let cancelled = false;
-    api<Array<{ id: string; name: string }>>('/industries')
+    api<Industry[]>('/industries')
       .then((data) => {
         if (!cancelled) setIndustries(data);
       })
@@ -110,7 +95,6 @@ export function CompanyJobs() {
       setError(err instanceof ApiError ? (err.serverMessage ?? err.message) : 'Failed to close job');
     }
   };
-
   return (
     <div className="max-w-3xl mx-auto p-4 space-y-4">
       <div className="flex justify-between items-center">
@@ -143,13 +127,13 @@ export function CompanyJobs() {
             label="Industry"
             registration={register('industry')}
             error={errors.industry}
-            options={industries.map((ind) => ({ value: ind.name, label: ind.name }))}
+            options={industries.map((ind) => ({ value: ind.Name, label: ind.Name }))}
           />
           <FormSelect
             label="Experience Level"
             registration={register('experienceLevel')}
             error={errors.experienceLevel}
-            options={EXPERIENCE_LEVELS}
+            options={EXPERIENCE_LEVEL_OPTIONS}
           />
           <FormInput
             label="Tags (comma-separated)"

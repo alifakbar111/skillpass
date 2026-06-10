@@ -2,10 +2,10 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { X } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { useForm } from 'react-hook-form';
-import { FormInput, FormSelect, FormTextarea } from '../components/ui/FormField';
-import { LoadingFallback, LoadingSpinner } from '../components/ui/LoadingFallback';
-import { ApiError, api } from '../lib/api';
-import { type CompanyProfileForm, companyProfileSchema } from '../lib/schemas';
+import { FormInput, FormSelect, FormTextarea } from '../../components/ui/FormField';
+import { LoadingFallback, LoadingSpinner } from '../../components/ui/LoadingFallback';
+import { ApiError, api } from '../../lib/api';
+import { type CompanyProfileForm, companyProfileSchema } from '../../lib/schemas';
 
 export function CompanyProfile() {
   const [loading, setLoading] = useState(true);

@@ -1,9 +1,9 @@
 import { useEffect, useState } from 'react';
-import { ApplicationKanban } from '../../components/jobseeker/ApplicationKanban';
-import { LoadingFallback } from '../../components/ui/LoadingFallback';
-import { useAuth } from '../../hooks/useAuth';
-import type { Application } from '../../lib/application';
-import { getMyApplications } from '../../lib/application';
+import { ApplicationKanban } from '../../../components/jobseeker/ApplicationKanban';
+import { LoadingFallback } from '../../../components/ui/LoadingFallback';
+import { useAuth } from '../../../hooks/useAuth';
+import type { Application } from '../../../lib/application';
+import { getMyApplications } from '../../../lib/application';
 
 export function ApplicationsPage() {
   const { user } = useAuth();

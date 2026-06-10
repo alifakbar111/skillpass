@@ -2,11 +2,11 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { Link, useNavigate } from 'react-router-dom';
-import { FormInput, FormTextarea } from '../components/ui/FormField';
-import { LoadingSpinner } from '../components/ui/LoadingFallback';
-import { useAuth } from '../hooks/useAuth';
-import { ApiError } from '../lib/api';
-import { type RegisterForm, registerSchema } from '../lib/schemas';
+import { FormInput, FormTextarea } from '../../components/ui/FormField';
+import { LoadingSpinner } from '../../components/ui/LoadingFallback';
+import { useAuth } from '../../hooks/useAuth';
+import { ApiError } from '../../lib/api';
+import { type RegisterForm, registerSchema } from '../../lib/schemas';
 
 export function Register() {
   const { register: authRegister } = useAuth();
@@ -50,7 +50,7 @@ export function Register() {
 
   return (
     <div className="hero min-h-[60vh]">
-      <div className="hero-content w-full max-w-sm">
+      <div className="hero-content w-full max-w-xl">
         <div className="card bg-base-200 w-full p-6">
           <h1 className="text-2xl font-bold mb-6 text-center">Create Account</h1>
           <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">

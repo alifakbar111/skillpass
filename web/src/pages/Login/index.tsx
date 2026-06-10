@@ -2,11 +2,11 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { Link, useNavigate } from 'react-router-dom';
-import { FormInput } from '../components/ui/FormField';
-import { LoadingSpinner } from '../components/ui/LoadingFallback';
-import { useAuth } from '../hooks/useAuth';
-import { ApiError } from '../lib/api';
-import { type LoginForm, loginSchema } from '../lib/schemas';
+import { FormInput } from '../../components/ui/FormField';
+import { LoadingSpinner } from '../../components/ui/LoadingFallback';
+import { useAuth } from '../../hooks/useAuth';
+import { ApiError } from '../../lib/api';
+import { type LoginForm, loginSchema } from '../../lib/schemas';
 
 export function Login() {
   const { login } = useAuth();

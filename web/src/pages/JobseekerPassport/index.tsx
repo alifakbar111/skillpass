@@ -1,30 +1,13 @@
 import { ExternalLink, Sparkles, X } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { EvaluationScoreBadge } from '../components/jobseeker/EvaluationScoreBadge';
-import { LoadingFallback } from '../components/ui/LoadingFallback';
-import { useAuth } from '../hooks/useAuth';
-import { ApiError, api } from '../lib/api';
-import type { EvaluationResult } from '../lib/evaluation';
-import { getLatestEvaluation } from '../lib/evaluation';
-
-interface PassportData {
-  name: string;
-  avatarUrl?: string;
-  headline?: string;
-  about?: string;
-  yearsOfExperience?: number;
-  experiences: Array<{
-    type: string;
-    title: string;
-    organization: string;
-    startDate: string;
-    endDate?: string;
-    isCurrent: boolean;
-    description?: string;
-    skillsUsed?: string[];
-  }>;
-}
+import { EvaluationScoreBadge } from '../../components/jobseeker/EvaluationScoreBadge';
+import { LoadingFallback } from '../../components/ui/LoadingFallback';
+import { useAuth } from '../../hooks/useAuth';
+import { ApiError, api } from '../../lib/api';
+import type { EvaluationResult } from '../../lib/evaluation';
+import { getLatestEvaluation } from '../../lib/evaluation';
+import type { PassportData } from './type';
 
 export function JobseekerPassport() {
   const { user } = useAuth();

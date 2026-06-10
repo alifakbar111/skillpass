@@ -1,18 +1,8 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { LoadingSpinner } from '../components/ui/LoadingFallback';
-import { ApiError, api } from '../lib/api';
-
-interface Candidate {
-  id: string;
-  name: string;
-  avatarUrl?: string;
-  headline?: string;
-  about?: string;
-  yearsOfExperience?: number;
-  slug: string;
-  skills: string[];
-}
+import { LoadingSpinner } from '../../components/ui/LoadingFallback';
+import { ApiError, api } from '../../lib/api';
+import type { Candidate } from './type';
 
 export function CompanySearch() {
   const [candidates, setCandidates] = useState<Candidate[]>([]);

@@ -2,10 +2,10 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { X } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { useForm } from 'react-hook-form';
-import { FormInput, FormTextarea } from '../components/ui/FormField';
-import { LoadingSpinner } from '../components/ui/LoadingFallback';
-import { ApiError, api } from '../lib/api';
-import { type VerificationForm, verificationSchema } from '../lib/schemas';
+import { FormInput, FormTextarea } from '../../components/ui/FormField';
+import { LoadingSpinner } from '../../components/ui/LoadingFallback';
+import { ApiError, api } from '../../lib/api';
+import { type VerificationForm, verificationSchema } from '../../lib/schemas';
 
 export function CompanyVerification() {
   const [status, setStatus] = useState<string | null>(null);

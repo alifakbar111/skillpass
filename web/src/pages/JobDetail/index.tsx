@@ -1,22 +1,9 @@
 import { Briefcase, Calendar, DollarSign, MapPin } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
-import { LoadingFallback } from '../components/ui/LoadingFallback';
-import { ApiError, api } from '../lib/api';
-
-interface Job {
-  id: string;
-  title: string;
-  description: string;
-  industry: string;
-  tags?: string[];
-  requiredSkills?: string[];
-  experienceLevel?: string;
-  location?: string;
-  salaryRange?: string;
-  status: string;
-  createdAt: string;
-}
+import { LoadingFallback } from '../../components/ui/LoadingFallback';
+import { ApiError, api } from '../../lib/api';
+import type { Job } from './type';
 
 export function JobDetail() {
   const { id } = useParams();

@@ -1,3 +1,4 @@
+import { EXPERIENCE_VALUES } from '../constants';
 import { z } from 'zod';
 
 export const loginSchema = z.object({
@@ -102,7 +103,7 @@ export const jobSchema = z.object({
   industry: z.string().min(1, 'Industry is required'),
   tags: z.string().optional(),
   requiredSkills: z.string().optional(),
-  experienceLevel: z.enum(['entry', 'mid', 'senior', 'lead']),
+  experienceLevel: z.enum(EXPERIENCE_VALUES),
   location: z.string().optional(),
   salaryRange: z.string().optional(),
 });

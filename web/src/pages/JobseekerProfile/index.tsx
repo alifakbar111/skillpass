@@ -2,33 +2,11 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { Plus, Trash2, X } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { useForm } from 'react-hook-form';
-import { FormInput, FormSelect, FormTextarea } from '../components/ui/FormField';
-import { LoadingFallback, LoadingSpinner } from '../components/ui/LoadingFallback';
-import { ApiError, api } from '../lib/api';
-import { type ExperienceForm, experienceSchema, type ProfileForm, profileSchema } from '../lib/schemas';
-
-interface Experience {
-  id: string;
-  type: string;
-  title: string;
-  organization: string;
-  startDate: string;
-  endDate?: string;
-  isCurrent: boolean;
-  description?: string;
-  industry?: string;
-  skillsUsed?: string[];
-  url?: string;
-}
-
-interface Profile {
-  id: string;
-  headline?: string;
-  about?: string;
-  yearsOfExperience?: number;
-  slug: string;
-  experiences: Experience[];
-}
+import { FormInput, FormSelect, FormTextarea } from '../../components/ui/FormField';
+import { LoadingFallback, LoadingSpinner } from '../../components/ui/LoadingFallback';
+import { ApiError, api } from '../../lib/api';
+import { type ExperienceForm, experienceSchema, type ProfileForm, profileSchema } from '../../lib/schemas';
+import type { Experience, Profile } from './type';
 
 const EXPERIENCE_TYPES = [
   { value: 'employment', label: 'Employment' },

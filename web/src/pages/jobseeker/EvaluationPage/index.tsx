@@ -1,11 +1,11 @@
 import { Sparkles, X } from 'lucide-react';
 import { useCallback, useEffect, useState } from 'react';
-import { EvaluationScoreBadge } from '../../components/jobseeker/EvaluationScoreBadge';
-import { SkillScoresChart } from '../../components/jobseeker/SkillScoresChart';
-import { LoadingFallback } from '../../components/ui/LoadingFallback';
-import { useAuth } from '../../hooks/useAuth';
-import { ApiError } from '../../lib/api';
-import { type EvaluationResult, getLatestEvaluation, triggerEvaluation } from '../../lib/evaluation';
+import { EvaluationScoreBadge } from '../../../components/jobseeker/EvaluationScoreBadge';
+import { SkillScoresChart } from '../../../components/jobseeker/SkillScoresChart';
+import { LoadingFallback } from '../../../components/ui/LoadingFallback';
+import { useAuth } from '../../../hooks/useAuth';
+import { ApiError } from '../../../lib/api';
+import { type EvaluationResult, getLatestEvaluation, triggerEvaluation } from '../../../lib/evaluation';
 
 export function EvaluationPage() {
   const { user } = useAuth();

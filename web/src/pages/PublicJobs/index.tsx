@@ -1,18 +1,8 @@
 import { Briefcase } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { ApiError, api } from '../lib/api';
-
-interface Job {
-  id: string;
-  title: string;
-  companyName?: string;
-  industry: string;
-  location?: string;
-  experienceLevel?: string;
-  salaryRange?: string;
-  createdAt: string;
-}
+import { ApiError, api } from '../../lib/api';
+import type { Job } from './type';
 
 export function PublicJobs() {
   const [jobs, setJobs] = useState<Job[]>([]);

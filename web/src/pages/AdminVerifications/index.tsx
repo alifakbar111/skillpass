@@ -1,16 +1,7 @@
 import { Check, X } from 'lucide-react';
 import { useEffect, useState } from 'react';
-import { ApiError, api } from '../lib/api';
-
-interface Company {
-  id: string;
-  companyName: string;
-  website?: string;
-  industry: string;
-  description?: string;
-  verificationDocs?: Record<string, string>;
-  createdAt: string;
-}
+import { ApiError, api } from '../../lib/api';
+import type { Company } from './type';
 
 export function AdminVerifications() {
   const [pending, setPending] = useState<Company[]>([]);
