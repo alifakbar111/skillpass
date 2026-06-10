@@ -36,8 +36,19 @@ func getCompanyID(c *gin.Context) (string, bool) {
 	return s, ok && s != ""
 }
 
-// Apply applies the authenticated jobseeker to a job posting.
-// POST /api/v1/jobs/:id/apply
+// Apply		godoc
+// @Summary		Apply to a job
+// @Description	Apply the authenticated jobseeker to a job posting
+// @Tags		applications
+// @Produce		json
+// @Security	BearerAuth
+// @Param		id path string true "Job posting UUID"
+// @Success		201 {object} application.ApplicationResult
+// @Failure		400 {object} map[string]string
+// @Failure		401 {object} map[string]string
+// @Failure		404 {object} map[string]string
+// @Failure		409 {object} map[string]string
+// @Router		/jobs/{id}/apply [post]
 func (h *Handler) Apply(c *gin.Context) {
 	userIDStr, ok := getUserID(c)
 	if !ok {
@@ -78,8 +89,16 @@ func (h *Handler) Apply(c *gin.Context) {
 	c.JSON(http.StatusCreated, result)
 }
 
-// ListMyApplications returns the jobseeker's applications (kanban data).
-// GET /api/v1/applications/me
+// ListMyApplications	godoc
+// @Summary		List my applications
+// @Description	Get all applications for the authenticated jobseeker (kanban-style data with job title and company name)
+// @Tags		applications
+// @Produce		json
+// @Security	BearerAuth
+// @Success		200 {array} application.ApplicationResult
+// @Failure		401 {object} map[string]string
+// @Failure		404 {object} map[string]string
+// @Router		/applications/me [get]
 func (h *Handler) ListMyApplications(c *gin.Context) {
 	userIDStr, ok := getUserID(c)
 	if !ok {
@@ -108,8 +127,20 @@ func (h *Handler) ListMyApplications(c *gin.Context) {
 	c.JSON(http.StatusOK, applications)
 }
 
-// UpdateStatus updates an application's status (company action).
-// PUT /api/v1/applications/:id/status
+// UpdateStatus		godoc
+// @Summary		Update application status
+// @Description	Update an application's status (reviewed, interviewed, offered, rejected). Company action for verified companies.
+// @Tags		applications
+// @Accept		json
+// @Produce		json
+// @Security	BearerAuth
+// @Param		id path string true "Application UUID"
+// @Param		body body object{status=string} true "New status value"
+// @Success		200 {object} application.ApplicationResult
+// @Failure		400 {object} map[string]string
+// @Failure		403 {object} map[string]string
+// @Failure		404 {object} map[string]string
+// @Router		/applications/{id}/status [put]
 func (h *Handler) UpdateStatus(c *gin.Context) {
 	companyID, ok := getCompanyID(c)
 	if !ok {

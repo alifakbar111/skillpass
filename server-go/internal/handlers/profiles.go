@@ -2,12 +2,15 @@ package handlers
 
 import (
 	"database/sql"
+	"errors"
 	"net/http"
 	"regexp"
 
 	"github.com/gin-gonic/gin"
 	. "github.com/go-jet/jet/v2/postgres"
+	"github.com/go-jet/jet/v2/qrm"
 	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5/pgconn"
 
 	"skillpass-server-go/.gen/skillpass/public/model"
 	"skillpass-server-go/internal/gen"
@@ -17,7 +20,7 @@ type UpdateProfileRequest struct {
 	Headline          *string `json:"headline"`
 	About             *string `json:"about"`
 	YearsOfExperience *int    `json:"yearsOfExperience"`
-	Slug              *string `json:"slug" binding:"omitempty,min=3,max=64,slug_format"`
+	Slug              *string `json:"slug" binding:"omitempty,min=3,max=64"`
 }
 
 type CreateExperienceRequest struct {
@@ -157,6 +160,16 @@ func int32ToIntPtr(v *int32) *int {
 	return &val
 }
 
+// GetMyProfile	godoc
+// @Summary		Get own profile
+// @Description	Get the authenticated jobseeker's full profile (including experiences)
+// @Tags		profiles
+// @Produce		json
+// @Security	BearerAuth
+// @Success		200 {object} ProfileResponse
+// @Failure		401 {object} map[string]string
+// @Failure		404 {object} map[string]string
+// @Router		/profiles/me [get]
 func (h *ProfileHandler) GetMyProfile(c *gin.Context) {
 	userIDVal, ok := c.Get("userId")
 	if !ok {
@@ -251,6 +264,20 @@ func (h *ProfileHandler) GetMyProfile(c *gin.Context) {
 	})
 }
 
+// UpdateMyProfile	godoc
+// @Summary		Update own profile
+// @Description	Update the authenticated jobseeker's profile fields (headline, about, years of experience, slug)
+// @Tags		profiles
+// @Accept		json
+// @Produce		json
+// @Security	BearerAuth
+// @Param		body body UpdateProfileRequest true "Profile fields to update"
+// @Success		200 {object} map[string]interface{}
+// @Failure		400 {object} map[string]string
+// @Failure		401 {object} map[string]string
+// @Failure		404 {object} map[string]string
+// @Failure		409 {object} map[string]string
+// @Router		/profiles/me [put]
 func (h *ProfileHandler) UpdateMyProfile(c *gin.Context) {
 	userIDVal, ok := c.Get("userId")
 	if !ok {
@@ -302,6 +329,15 @@ func (h *ProfileHandler) UpdateMyProfile(c *gin.Context) {
 	var profiles []model.JobseekerProfiles
 	err := stmt.QueryContext(c.Request.Context(), h.db, &profiles)
 	if err != nil {
+		if errors.Is(err, qrm.ErrNoRows) {
+			c.JSON(http.StatusNotFound, gin.H{"error": "Profile not found"})
+			return
+		}
+		var pgErr *pgconn.PgError
+		if errors.As(err, &pgErr) && pgErr.Code == "23505" {
+			c.JSON(http.StatusConflict, gin.H{"error": "Slug already taken"})
+			return
+		}
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to update profile"})
 		return
 	}
@@ -321,6 +357,18 @@ func (h *ProfileHandler) UpdateMyProfile(c *gin.Context) {
 	})
 }
 
+// CreateExperience	godoc
+// @Summary		Add experience entry
+// @Description	Add a new employment, gig, education, certification, project, or volunteering entry to the profile
+// @Tags		profiles
+// @Accept		json
+// @Produce		json
+// @Security	BearerAuth
+// @Param		body body CreateExperienceRequest true "Experience details"
+// @Success		201 {object} Experience
+// @Failure		400 {object} map[string]string
+// @Failure		401 {object} map[string]string
+// @Router		/profiles/me/experience [post]
 func (h *ProfileHandler) CreateExperience(c *gin.Context) {
 	userIDVal, ok := c.Get("userId")
 	if !ok {
@@ -398,6 +446,20 @@ func (h *ProfileHandler) CreateExperience(c *gin.Context) {
 	c.JSON(http.StatusCreated, mapExperience(exp))
 }
 
+// UpdateExperience	godoc
+// @Summary		Update an experience entry
+// @Description	Update specific fields of an experience entry owned by the authenticated jobseeker
+// @Tags		profiles
+// @Accept		json
+// @Produce		json
+// @Security	BearerAuth
+// @Param		id path string true "Experience entry UUID"
+// @Param		body body UpdateExperienceRequest true "Fields to update"
+// @Success		200 {object} Experience
+// @Failure		400 {object} map[string]string
+// @Failure		401 {object} map[string]string
+// @Failure		404 {object} map[string]string
+// @Router		/profiles/me/experience/{id} [put]
 func (h *ProfileHandler) UpdateExperience(c *gin.Context) {
 	userIDVal, ok := c.Get("userId")
 	if !ok {
@@ -517,6 +579,18 @@ func (h *ProfileHandler) UpdateExperience(c *gin.Context) {
 	c.JSON(http.StatusOK, mapExperience(exps[0]))
 }
 
+// DeleteExperience	godoc
+// @Summary		Delete an experience entry
+// @Description	Delete an experience entry owned by the authenticated jobseeker
+// @Tags		profiles
+// @Produce		json
+// @Security	BearerAuth
+// @Param		id path string true "Experience entry UUID"
+// @Success		200 {object} map[string]string
+// @Failure		400 {object} map[string]string
+// @Failure		401 {object} map[string]string
+// @Failure		404 {object} map[string]string
+// @Router		/profiles/me/experience/{id} [delete]
 func (h *ProfileHandler) DeleteExperience(c *gin.Context) {
 	userIDVal, ok := c.Get("userId")
 	if !ok {

@@ -110,3 +110,43 @@ func TestGetTagsFilterByIndustry(t *testing.T) {
 		t.Fatalf("expected 1 tag filtered by industry, got %d", len(resp))
 	}
 }
+
+func TestGetTags_InvalidIndustryID(t *testing.T) {
+	db := testutil.SetupTestDB()
+
+	router := gin.New()
+	router.Use(gin.Recovery())
+	h := NewReferenceHandler(db)
+	router.GET("/api/v1/tags", h.GetTags)
+
+	t.Run("invalid industry ID format", func(t *testing.T) {
+		w := httptest.NewRecorder()
+		req := httptest.NewRequest("GET", "/api/v1/tags?industry=not-a-uuid", nil)
+		router.ServeHTTP(w, req)
+		if w.Code != http.StatusInternalServerError {
+			t.Fatalf("expected 500, got %d: %s", w.Code, w.Body.String())
+		}
+	})
+}
+
+func TestGetTags_NonExistentIndustry(t *testing.T) {
+	db := testutil.SetupTestDB()
+
+	router := gin.New()
+	h := NewReferenceHandler(db)
+	router.GET("/api/v1/tags", h.GetTags)
+
+	t.Run("non-existent industry returns empty", func(t *testing.T) {
+		w := httptest.NewRecorder()
+		req := httptest.NewRequest("GET", "/api/v1/tags?industry=00000000-0000-0000-0000-000000000000", nil)
+		router.ServeHTTP(w, req)
+		if w.Code != http.StatusOK {
+			t.Fatalf("expected 200, got %d: %s", w.Code, w.Body.String())
+		}
+		var resp []interface{}
+		json.Unmarshal(w.Body.Bytes(), &resp)
+		if len(resp) != 0 {
+			t.Fatalf("expected empty array, got %d items", len(resp))
+		}
+	})
+}

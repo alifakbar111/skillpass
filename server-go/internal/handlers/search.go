@@ -35,6 +35,19 @@ const (
 	searchMaxPool      = 1000
 )
 
+// SearchCandidates	godoc
+// @Summary		Search candidates
+// @Description	Search for jobseeker candidates by keyword, skills, and industry. Requires verified company auth.
+// @Tags		search
+// @Produce		json
+// @Security	BearerAuth
+// @Param		q query string false "Text search query (matches name, headline, about)"
+// @Param		skills query string false "Comma-separated skill filter"
+// @Param		industry query string false "Industry name filter"
+// @Param		limit query int false "Max results (default 50, max 200)"
+// @Param		offset query int false "Result offset for pagination"
+// @Success		200 {array} CandidateResult
+// @Router		/search/candidates [get]
 func (h *SearchHandler) SearchCandidates(c *gin.Context) {
 	q := strings.TrimSpace(c.Query("q"))
 	skillsFilter := strings.TrimSpace(c.Query("skills"))

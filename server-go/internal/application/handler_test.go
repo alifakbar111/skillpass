@@ -102,6 +102,100 @@ func TestApplicationFlow(t *testing.T) {
 		}
 	})
 
+	t.Run("apply without auth", func(t *testing.T) {
+		w := httptest.NewRecorder()
+		req := httptest.NewRequest("POST", fmt.Sprintf("/api/v1/jobs/%s/apply", jID.String()), nil)
+		router.ServeHTTP(w, req)
+		if w.Code != http.StatusUnauthorized {
+			t.Fatalf("expected 401, got %d: %s", w.Code, w.Body.String())
+		}
+	})
+
+	t.Run("apply wrong role", func(t *testing.T) {
+		w := httptest.NewRecorder()
+		req := httptest.NewRequest("POST", fmt.Sprintf("/api/v1/jobs/%s/apply", jID.String()), nil)
+		req.Header.Set("Authorization", "Bearer "+ctok)
+		router.ServeHTTP(w, req)
+		if w.Code != http.StatusForbidden {
+			t.Fatalf("expected 403, got %d: %s", w.Code, w.Body.String())
+		}
+	})
+
+	t.Run("list my apps empty", func(t *testing.T) {
+		u2, _, _ := testutil.CreateJobseeker(db, "empty@ex.com", "empty", "pass123", "Empty")
+		t2 := testutil.GenerateToken(u2.String(), "jobseeker", 15*time.Minute)
+		w := httptest.NewRecorder()
+		req := httptest.NewRequest("GET", "/api/v1/applications/me", nil)
+		req.Header.Set("Authorization", "Bearer "+t2)
+		router.ServeHTTP(w, req)
+		if w.Code != http.StatusOK {
+			t.Fatalf("expected 200, got %d: %s", w.Code, w.Body.String())
+		}
+		var resp []ApplicationResult
+		json.Unmarshal(w.Body.Bytes(), &resp)
+		if len(resp) != 0 {
+			t.Fatalf("expected 0, got %d", len(resp))
+		}
+	})
+
+	t.Run("update status invalid value", func(t *testing.T) {
+		w := httptest.NewRecorder()
+		req := httptest.NewRequest("GET", "/api/v1/applications/me", nil)
+		req.Header.Set("Authorization", "Bearer "+tok)
+		router.ServeHTTP(w, req)
+		var apps []ApplicationResult
+		json.Unmarshal(w.Body.Bytes(), &apps)
+		if len(apps) == 0 {
+			t.Fatal("no apps")
+		}
+		appID := apps[0].ID
+
+		w2 := httptest.NewRecorder()
+		req2 := httptest.NewRequest("PUT", fmt.Sprintf("/api/v1/applications/%s/status", appID), bytes.NewBufferString(`{"status":"bad_status"}`))
+		req2.Header.Set("Content-Type", "application/json")
+		req2.Header.Set("Authorization", "Bearer "+ctok)
+		router.ServeHTTP(w2, req2)
+		if w2.Code != http.StatusBadRequest {
+			t.Fatalf("expected 400, got %d: %s", w2.Code, w2.Body.String())
+		}
+	})
+
+	t.Run("update status nonexistent", func(t *testing.T) {
+		w := httptest.NewRecorder()
+		req := httptest.NewRequest("PUT", "/api/v1/applications/00000000-0000-0000-0000-000000000000/status", bytes.NewBufferString(`{"status":"reviewed"}`))
+		req.Header.Set("Content-Type", "application/json")
+		req.Header.Set("Authorization", "Bearer "+ctok)
+		router.ServeHTTP(w, req)
+		if w.Code != http.StatusNotFound {
+			t.Fatalf("expected 404, got %d: %s", w.Code, w.Body.String())
+		}
+	})
+
+	t.Run("update status wrong company", func(t *testing.T) {
+		w := httptest.NewRecorder()
+		req := httptest.NewRequest("GET", "/api/v1/applications/me", nil)
+		req.Header.Set("Authorization", "Bearer "+tok)
+		router.ServeHTTP(w, req)
+		var apps []ApplicationResult
+		json.Unmarshal(w.Body.Bytes(), &apps)
+		if len(apps) == 0 {
+			t.Fatal("no apps")
+		}
+		appID := apps[0].ID
+
+		cu2, _, _ := testutil.CreateCompanyUser(db, "aco2@ex.com", "aco2", "pass123", "App Co 2", true)
+		ctok2 := testutil.GenerateToken(cu2.String(), "company", 15*time.Minute)
+
+		w2 := httptest.NewRecorder()
+		req2 := httptest.NewRequest("PUT", fmt.Sprintf("/api/v1/applications/%s/status", appID), bytes.NewBufferString(`{"status":"reviewed"}`))
+		req2.Header.Set("Content-Type", "application/json")
+		req2.Header.Set("Authorization", "Bearer "+ctok2)
+		router.ServeHTTP(w2, req2)
+		if w2.Code != http.StatusForbidden {
+			t.Fatalf("expected 403, got %d: %s", w2.Code, w2.Body.String())
+		}
+	})
+
 	t.Run("update status", func(t *testing.T) {
 		// Get app ID from listing
 		w := httptest.NewRecorder()

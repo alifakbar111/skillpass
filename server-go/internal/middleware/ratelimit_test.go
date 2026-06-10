@@ -48,6 +48,47 @@ func TestRateLimiterDifferentIPs(t *testing.T) {
 	}
 }
 
+func TestRateLimiterExceeded(t *testing.T) {
+	rl := NewRateLimiter(100, 2) // 100 rps, burst of 2
+
+	if !rl.Allow("10.0.0.1") {
+		t.Fatal("request 1 should be allowed")
+	}
+	if !rl.Allow("10.0.0.1") {
+		t.Fatal("request 2 should be allowed (within burst)")
+	}
+	if rl.Allow("10.0.0.1") {
+		t.Fatal("request 3 should be rate limited (burst exceeded)")
+	}
+}
+
+func TestRateLimiter429(t *testing.T) {
+	rl := NewRateLimiter(100, 1) // burst of 1
+
+	router := gin.New()
+	router.GET("/test", rl.Middleware(), func(c *gin.Context) {
+		c.JSON(http.StatusOK, gin.H{"status": "ok"})
+	})
+
+	// First request should succeed
+	w1 := httptest.NewRecorder()
+	req1 := httptest.NewRequest("GET", "/test", nil)
+	req1.Header.Set("X-Forwarded-For", "10.0.0.1")
+	router.ServeHTTP(w1, req1)
+	if w1.Code != http.StatusOK {
+		t.Fatalf("expected 200, got %d", w1.Code)
+	}
+
+	// Second request should be rate limited (burst exhausted)
+	w2 := httptest.NewRecorder()
+	req2 := httptest.NewRequest("GET", "/test", nil)
+	req2.Header.Set("X-Forwarded-For", "10.0.0.1")
+	router.ServeHTTP(w2, req2)
+	if w2.Code != http.StatusTooManyRequests {
+		t.Fatalf("expected 429, got %d", w2.Code)
+	}
+}
+
 func TestClientIP(t *testing.T) {
 	t.Run("uses X-Forwarded-For", func(t *testing.T) {
 		w := httptest.NewRecorder()

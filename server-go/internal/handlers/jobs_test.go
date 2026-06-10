@@ -61,6 +61,101 @@ func TestListJobs(t *testing.T) {
 			t.Fatalf("expected 0, got %d", len(resp))
 		}
 	})
+
+	t.Run("pagination", func(t *testing.T) {
+		testutil.CreateJob(db, cID, "Extra 1", "Tech", true)
+		testutil.CreateJob(db, cID, "Extra 2", "Tech", true)
+		testutil.CreateJob(db, cID, "Extra 3", "Tech", true)
+		w := httptest.NewRecorder()
+		req := httptest.NewRequest("GET", "/api/v1/jobs?limit=2&offset=0", nil)
+		router.ServeHTTP(w, req)
+		if w.Code != http.StatusOK {
+			t.Fatalf("expected 200, got %d: %s", w.Code, w.Body.String())
+		}
+		var resp []JobResponse
+		json.Unmarshal(w.Body.Bytes(), &resp)
+		if len(resp) != 2 {
+			t.Fatalf("expected 2, got %d", len(resp))
+		}
+	})
+
+	t.Run("filter by experience_level", func(t *testing.T) {
+		eID, _ := testutil.CreateJob(db, cID, "Entry Job", "Tech", true)
+		db.Exec(`UPDATE job_postings SET experience_level = 'entry'::experience_level WHERE id = $1`, eID)
+		w := httptest.NewRecorder()
+		req := httptest.NewRequest("GET", "/api/v1/jobs?experience_level=entry", nil)
+		router.ServeHTTP(w, req)
+		if w.Code != http.StatusOK {
+			t.Fatalf("expected 200, got %d: %s", w.Code, w.Body.String())
+		}
+		var resp []JobResponse
+		json.Unmarshal(w.Body.Bytes(), &resp)
+		if len(resp) != 1 {
+			t.Fatalf("expected 1, got %d", len(resp))
+		}
+	})
+
+	t.Run("industry + experience_level", func(t *testing.T) {
+		mID, _ := testutil.CreateJob(db, cID, "Mid Tech", "Technology", true)
+		testutil.CreateJob(db, cID, "Mid Health", "Healthcare", true)
+		db.Exec(`UPDATE job_postings SET experience_level = 'mid'::experience_level WHERE id = $1`, mID)
+		db.Exec(`UPDATE job_postings SET experience_level = 'mid'::experience_level WHERE title = 'Mid Health'`)
+		w := httptest.NewRecorder()
+		req := httptest.NewRequest("GET", "/api/v1/jobs?industry=Technology&experience_level=mid", nil)
+		router.ServeHTTP(w, req)
+		if w.Code != http.StatusOK {
+			t.Fatalf("expected 200, got %d: %s", w.Code, w.Body.String())
+		}
+		var resp []JobResponse
+		json.Unmarshal(w.Body.Bytes(), &resp)
+		if len(resp) != 1 {
+			t.Fatalf("expected 1, got %d", len(resp))
+		}
+	})
+
+	t.Run("closed not listed", func(t *testing.T) {
+		w := httptest.NewRecorder()
+		req := httptest.NewRequest("GET", "/api/v1/jobs", nil)
+		router.ServeHTTP(w, req)
+		if w.Code != http.StatusOK {
+			t.Fatalf("expected 200, got %d: %s", w.Code, w.Body.String())
+		}
+		var resp []JobResponse
+		json.Unmarshal(w.Body.Bytes(), &resp)
+		for _, j := range resp {
+			if j.Status == "closed" {
+				t.Fatalf("found closed job in list: %s", j.ID)
+			}
+		}
+	})
+
+	t.Run("negative limit defaults", func(t *testing.T) {
+		w := httptest.NewRecorder()
+		req := httptest.NewRequest("GET", "/api/v1/jobs?limit=-1", nil)
+		router.ServeHTTP(w, req)
+		if w.Code != http.StatusOK {
+			t.Fatalf("expected 200, got %d", w.Code)
+		}
+		var resp []JobResponse
+		json.Unmarshal(w.Body.Bytes(), &resp)
+		if len(resp) == 0 {
+			t.Fatal("expected results with defaulted negative limit")
+		}
+	})
+
+	t.Run("offset beyond results", func(t *testing.T) {
+		w := httptest.NewRecorder()
+		req := httptest.NewRequest("GET", "/api/v1/jobs?offset=100", nil)
+		router.ServeHTTP(w, req)
+		if w.Code != http.StatusOK {
+			t.Fatalf("expected 200, got %d: %s", w.Code, w.Body.String())
+		}
+		var resp []JobResponse
+		json.Unmarshal(w.Body.Bytes(), &resp)
+		if len(resp) != 0 {
+			t.Fatalf("expected 0, got %d", len(resp))
+		}
+	})
 }
 
 func TestGetJob(t *testing.T) {
@@ -99,6 +194,21 @@ func TestGetJob(t *testing.T) {
 			t.Fatalf("expected 404, got %d: %s", w.Code, w.Body.String())
 		}
 	})
+
+	t.Run("closed job", func(t *testing.T) {
+		closedID, _ := testutil.CreateJob(db, cID, "Closed Job", "Tech", false)
+		w := httptest.NewRecorder()
+		req := httptest.NewRequest("GET", fmt.Sprintf("/api/v1/jobs/%s", closedID.String()), nil)
+		router.ServeHTTP(w, req)
+		if w.Code != http.StatusOK {
+			t.Fatalf("expected 200, got %d: %s", w.Code, w.Body.String())
+		}
+		var resp JobResponse
+		json.Unmarshal(w.Body.Bytes(), &resp)
+		if resp.Status != "closed" {
+			t.Fatalf("expected closed status, got %s", resp.Status)
+		}
+	})
 }
 
 func TestListMyJobs(t *testing.T) {
@@ -108,6 +218,10 @@ func TestListMyJobs(t *testing.T) {
 	testutil.CreateJob(db, cID, "Job 1", "Tech", true)
 	testutil.CreateJob(db, cID, "Job 2", "Tech", false)
 	tok := testutil.GenerateToken(uID.String(), "company", 15*time.Minute)
+	uID2, _, _ := testutil.CreateCompanyUser(db, "mj-empty@ex.com", "mj-empty", "pass123", "Empty Co", true)
+	tokNoJobs := testutil.GenerateToken(uID2.String(), "company", 15*time.Minute)
+	jsUID, _, _ := testutil.CreateJobseeker(db, "js-mj@ex.com", "js-mj", "pass123", "Job Seeker")
+	tokJobseeker := testutil.GenerateToken(jsUID.String(), "jobseeker", 15*time.Minute)
 
 	router := gin.New()
 	h := NewJobHandler(db)
@@ -129,6 +243,40 @@ func TestListMyJobs(t *testing.T) {
 			t.Fatalf("expected 2 jobs, got %d", len(resp))
 		}
 	})
+
+	t.Run("no jobs", func(t *testing.T) {
+		w := httptest.NewRecorder()
+		req := httptest.NewRequest("GET", "/api/v1/jobs/me", nil)
+		req.Header.Set("Authorization", "Bearer "+tokNoJobs)
+		router.ServeHTTP(w, req)
+		if w.Code != http.StatusOK {
+			t.Fatalf("expected 200, got %d: %s", w.Code, w.Body.String())
+		}
+		var resp []JobResponse
+		json.Unmarshal(w.Body.Bytes(), &resp)
+		if len(resp) != 0 {
+			t.Fatalf("expected 0 jobs, got %d", len(resp))
+		}
+	})
+
+	t.Run("no auth", func(t *testing.T) {
+		w := httptest.NewRecorder()
+		req := httptest.NewRequest("GET", "/api/v1/jobs/me", nil)
+		router.ServeHTTP(w, req)
+		if w.Code != http.StatusUnauthorized {
+			t.Fatalf("expected 401, got %d", w.Code)
+		}
+	})
+
+	t.Run("wrong role", func(t *testing.T) {
+		w := httptest.NewRecorder()
+		req := httptest.NewRequest("GET", "/api/v1/jobs/me", nil)
+		req.Header.Set("Authorization", "Bearer "+tokJobseeker)
+		router.ServeHTTP(w, req)
+		if w.Code != http.StatusForbidden {
+			t.Fatalf("expected 403, got %d", w.Code)
+		}
+	})
 }
 
 func TestCreateJob(t *testing.T) {
@@ -136,6 +284,8 @@ func TestCreateJob(t *testing.T) {
 
 	uID, _, _ := testutil.CreateCompanyUser(db, "cj@ex.com", "cj", "pass123", "CJ Co", true)
 	tok := testutil.GenerateToken(uID.String(), "company", 15*time.Minute)
+	uIDUnv, _, _ := testutil.CreateCompanyUser(db, "cj-unv@ex.com", "cj-unv", "pass123", "Unverified Co", false)
+	tokUnverified := testutil.GenerateToken(uIDUnv.String(), "company", 15*time.Minute)
 
 	router := gin.New()
 	h := NewJobHandler(db)
@@ -174,6 +324,59 @@ func TestCreateJob(t *testing.T) {
 			t.Fatalf("expected 401, got %d", w.Code)
 		}
 	})
+
+	t.Run("invalid experience level", func(t *testing.T) {
+		body := `{"title":"Bad","description":"desc","industry":"Tech","experienceLevel":"invalid"}`
+		w := httptest.NewRecorder()
+		req := httptest.NewRequest("POST", "/api/v1/jobs", bytes.NewBufferString(body))
+		req.Header.Set("Content-Type", "application/json")
+		req.Header.Set("Authorization", "Bearer "+tok)
+		router.ServeHTTP(w, req)
+		if w.Code != http.StatusBadRequest {
+			t.Fatalf("expected 400, got %d: %s", w.Code, w.Body.String())
+		}
+	})
+
+	t.Run("with optional fields", func(t *testing.T) {
+		body := `{"title":"Full","description":"desc","industry":"Technology","tags":["go","backend"],"requiredSkills":["Go","PSQL"],"experienceLevel":"senior","location":"Remote","salaryRange":"$100k"}`
+		w := httptest.NewRecorder()
+		req := httptest.NewRequest("POST", "/api/v1/jobs", bytes.NewBufferString(body))
+		req.Header.Set("Content-Type", "application/json")
+		req.Header.Set("Authorization", "Bearer "+tok)
+		router.ServeHTTP(w, req)
+		if w.Code != http.StatusCreated {
+			t.Fatalf("expected 201, got %d: %s", w.Code, w.Body.String())
+		}
+		var resp JobResponse
+		json.Unmarshal(w.Body.Bytes(), &resp)
+		if resp.ExperienceLevel == nil || *resp.ExperienceLevel != "senior" {
+			t.Fatalf("expected senior experience level")
+		}
+	})
+
+	t.Run("empty title", func(t *testing.T) {
+		body := `{"title":"","description":"desc","industry":"Tech"}`
+		w := httptest.NewRecorder()
+		req := httptest.NewRequest("POST", "/api/v1/jobs", bytes.NewBufferString(body))
+		req.Header.Set("Content-Type", "application/json")
+		req.Header.Set("Authorization", "Bearer "+tok)
+		router.ServeHTTP(w, req)
+		if w.Code != http.StatusBadRequest {
+			t.Fatalf("expected 400, got %d: %s", w.Code, w.Body.String())
+		}
+	})
+
+	t.Run("unverified company", func(t *testing.T) {
+		body := `{"title":"New","description":"desc","industry":"Tech"}`
+		w := httptest.NewRecorder()
+		req := httptest.NewRequest("POST", "/api/v1/jobs", bytes.NewBufferString(body))
+		req.Header.Set("Content-Type", "application/json")
+		req.Header.Set("Authorization", "Bearer "+tokUnverified)
+		router.ServeHTTP(w, req)
+		if w.Code != http.StatusForbidden {
+			t.Fatalf("expected 403, got %d: %s", w.Code, w.Body.String())
+		}
+	})
 }
 
 func TestUpdateJob(t *testing.T) {
@@ -182,6 +385,8 @@ func TestUpdateJob(t *testing.T) {
 	uID, cID, _ := testutil.CreateCompanyUser(db, "uj@ex.com", "uj", "pass123", "UJ Co", true)
 	jID, _ := testutil.CreateJob(db, cID, "Original", "Tech", true)
 	tok := testutil.GenerateToken(uID.String(), "company", 15*time.Minute)
+	uID2, _, _ := testutil.CreateCompanyUser(db, "uj-other@ex.com", "uj-other", "pass123", "Other Co", true)
+	tokOther := testutil.GenerateToken(uID2.String(), "company", 15*time.Minute)
 
 	router := gin.New()
 	h := NewJobHandler(db)
@@ -221,6 +426,57 @@ func TestUpdateJob(t *testing.T) {
 			t.Fatalf("expected 400, got %d: %s", w.Code, w.Body.String())
 		}
 	})
+
+	t.Run("update all fields", func(t *testing.T) {
+		body := `{"title":"New Title","description":"New Desc","industry":"Healthcare","tags":["new"],"requiredSkills":["X"],"experienceLevel":"lead","location":"Office","salaryRange":"$200k"}`
+		w := httptest.NewRecorder()
+		req := httptest.NewRequest("PUT", fmt.Sprintf("/api/v1/jobs/%s", jID.String()), bytes.NewBufferString(body))
+		req.Header.Set("Content-Type", "application/json")
+		req.Header.Set("Authorization", "Bearer "+tok)
+		router.ServeHTTP(w, req)
+		if w.Code != http.StatusOK {
+			t.Fatalf("expected 200, got %d: %s", w.Code, w.Body.String())
+		}
+	})
+
+	t.Run("no fields", func(t *testing.T) {
+		body := `{}`
+		w := httptest.NewRecorder()
+		req := httptest.NewRequest("PUT", fmt.Sprintf("/api/v1/jobs/%s", jID.String()), bytes.NewBufferString(body))
+		req.Header.Set("Content-Type", "application/json")
+		req.Header.Set("Authorization", "Bearer "+tok)
+		router.ServeHTTP(w, req)
+		if w.Code != http.StatusBadRequest {
+			t.Fatalf("expected 400, got %d: %s", w.Code, w.Body.String())
+		}
+	})
+
+	t.Run("wrong company", func(t *testing.T) {
+		w := httptest.NewRecorder()
+		req := httptest.NewRequest("PUT", fmt.Sprintf("/api/v1/jobs/%s", jID.String()), bytes.NewBufferString(`{"title":"X"}`))
+		req.Header.Set("Content-Type", "application/json")
+		req.Header.Set("Authorization", "Bearer "+tokOther)
+		router.ServeHTTP(w, req)
+		if w.Code != http.StatusNotFound {
+			t.Fatalf("expected 404, got %d: %s", w.Code, w.Body.String())
+		}
+	})
+
+	t.Run("status to closed", func(t *testing.T) {
+		w := httptest.NewRecorder()
+		req := httptest.NewRequest("PUT", fmt.Sprintf("/api/v1/jobs/%s", jID.String()), bytes.NewBufferString(`{"status":"closed"}`))
+		req.Header.Set("Content-Type", "application/json")
+		req.Header.Set("Authorization", "Bearer "+tok)
+		router.ServeHTTP(w, req)
+		if w.Code != http.StatusOK {
+			t.Fatalf("expected 200, got %d: %s", w.Code, w.Body.String())
+		}
+		var resp JobResponse
+		json.Unmarshal(w.Body.Bytes(), &resp)
+		if resp.Status != "closed" {
+			t.Fatalf("expected closed, got %s", resp.Status)
+		}
+	})
 }
 
 func TestDeleteJob(t *testing.T) {
@@ -229,6 +485,11 @@ func TestDeleteJob(t *testing.T) {
 	uID, cID, _ := testutil.CreateCompanyUser(db, "dj@ex.com", "dj", "pass123", "DJ Co", true)
 	jID, _ := testutil.CreateJob(db, cID, "To Delete", "Tech", true)
 	tok := testutil.GenerateToken(uID.String(), "company", 15*time.Minute)
+	jID2, _ := testutil.CreateJob(db, cID, "To Delete 2", "Tech", true)
+	uID2, _, _ := testutil.CreateCompanyUser(db, "dj-other@ex.com", "dj-other", "pass123", "Other Co", true)
+	tokOther := testutil.GenerateToken(uID2.String(), "company", 15*time.Minute)
+	jsUID, _, _ := testutil.CreateJobseeker(db, "js-dj@ex.com", "js-dj", "pass123", "Job Seeker")
+	tokJobseeker := testutil.GenerateToken(jsUID.String(), "jobseeker", 15*time.Minute)
 
 	router := gin.New()
 	h := NewJobHandler(db)
@@ -263,6 +524,35 @@ func TestDeleteJob(t *testing.T) {
 		router.ServeHTTP(w, req)
 		if w.Code != http.StatusBadRequest {
 			t.Fatalf("expected 400, got %d: %s", w.Code, w.Body.String())
+		}
+	})
+
+	t.Run("no auth", func(t *testing.T) {
+		w := httptest.NewRecorder()
+		req := httptest.NewRequest("DELETE", fmt.Sprintf("/api/v1/jobs/%s", jID2.String()), nil)
+		router.ServeHTTP(w, req)
+		if w.Code != http.StatusUnauthorized {
+			t.Fatalf("expected 401, got %d", w.Code)
+		}
+	})
+
+	t.Run("wrong company", func(t *testing.T) {
+		w := httptest.NewRecorder()
+		req := httptest.NewRequest("DELETE", fmt.Sprintf("/api/v1/jobs/%s", jID2.String()), nil)
+		req.Header.Set("Authorization", "Bearer "+tokOther)
+		router.ServeHTTP(w, req)
+		if w.Code != http.StatusNotFound {
+			t.Fatalf("expected 404, got %d: %s", w.Code, w.Body.String())
+		}
+	})
+
+	t.Run("wrong role", func(t *testing.T) {
+		w := httptest.NewRecorder()
+		req := httptest.NewRequest("DELETE", fmt.Sprintf("/api/v1/jobs/%s", jID2.String()), nil)
+		req.Header.Set("Authorization", "Bearer "+tokJobseeker)
+		router.ServeHTTP(w, req)
+		if w.Code != http.StatusForbidden {
+			t.Fatalf("expected 403, got %d", w.Code)
 		}
 	})
 }

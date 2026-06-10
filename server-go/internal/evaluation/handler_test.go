@@ -90,4 +90,28 @@ func TestPostEvaluate(t *testing.T) {
 			t.Fatalf("expected 401, got %d", w.Code)
 		}
 	})
+
+	t.Run("get latest no auth", func(t *testing.T) {
+		w := httptest.NewRecorder()
+		req := httptest.NewRequest("GET", "/api/v1/evaluate/me/results", nil)
+		router.ServeHTTP(w, req)
+		if w.Code != http.StatusUnauthorized {
+			t.Fatalf("expected 401, got %d", w.Code)
+		}
+	})
+
+	t.Run("post evaluate no profile", func(t *testing.T) {
+		uID, err := testutil.CreateUser(db, "noprofile@ex.com", "noprofile", "pass123", "No Profile", "jobseeker")
+		if err != nil {
+			t.Fatalf("create user: %v", err)
+		}
+		t3 := testutil.GenerateToken(uID.String(), "jobseeker", 15*time.Minute)
+		w := httptest.NewRecorder()
+		req := httptest.NewRequest("POST", "/api/v1/evaluate/me", nil)
+		req.Header.Set("Authorization", "Bearer "+t3)
+		router.ServeHTTP(w, req)
+		if w.Code != http.StatusNotFound {
+			t.Fatalf("expected 404, got %d: %s", w.Code, w.Body.String())
+		}
+	})
 }

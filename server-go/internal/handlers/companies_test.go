@@ -60,6 +60,38 @@ func TestGetCompanyProfile(t *testing.T) {
 			t.Fatalf("expected 403, got %d", w.Code)
 		}
 	})
+
+	t.Run("company not found", func(t *testing.T) {
+		uid, err := testutil.CreateUser(db, testutil.UniqueEmail("nocomp"), testutil.UniqueUsername("nocomp"), "pass123", "No Company", "company")
+		if err != nil {
+			t.Fatal(err)
+		}
+		nct := testutil.GenerateToken(uid.String(), "company", 15*time.Minute)
+		w := httptest.NewRecorder()
+		req := httptest.NewRequest("GET", "/api/v1/company/profile", nil)
+		req.Header.Set("Authorization", "Bearer "+nct)
+		router.ServeHTTP(w, req)
+		if w.Code != http.StatusNotFound {
+			t.Fatalf("expected 404, got %d: %s", w.Code, w.Body.String())
+		}
+	})
+
+	t.Run("malformed userId", func(t *testing.T) {
+		mtok := testutil.GenerateToken("not-a-valid-uuid", "company", 15*time.Minute)
+		recoveryRouter := gin.New()
+		recoveryRouter.Use(gin.Recovery())
+		rh := NewCompanyHandler(db)
+		rg := recoveryRouter.Group("/api/v1/company")
+		rg.Use(middleware.AuthRequired(testutil.TestJWTSecret), middleware.RequireRole("company"))
+		rg.GET("/profile", rh.GetProfile)
+		w := httptest.NewRecorder()
+		req := httptest.NewRequest("GET", "/api/v1/company/profile", nil)
+		req.Header.Set("Authorization", "Bearer "+mtok)
+		recoveryRouter.ServeHTTP(w, req)
+		if w.Code != http.StatusInternalServerError {
+			t.Fatalf("expected 500, got %d: %s", w.Code, w.Body.String())
+		}
+	})
 }
 
 func TestUpdateCompanyProfile(t *testing.T) {
@@ -100,6 +132,59 @@ func TestUpdateCompanyProfile(t *testing.T) {
 			t.Fatalf("expected 400, got %d: %s", w.Code, w.Body.String())
 		}
 	})
+
+	t.Run("invalid website", func(t *testing.T) {
+		w := httptest.NewRecorder()
+		req := httptest.NewRequest("PUT", "/api/v1/company/profile", bytes.NewBufferString(`{"website":"not-a-url"}`))
+		req.Header.Set("Content-Type", "application/json")
+		req.Header.Set("Authorization", "Bearer "+tok)
+		router.ServeHTTP(w, req)
+		if w.Code != http.StatusBadRequest {
+			t.Fatalf("expected 400, got %d: %s", w.Code, w.Body.String())
+		}
+	})
+
+	t.Run("update all fields", func(t *testing.T) {
+		w := httptest.NewRecorder()
+		body := `{"companyName":"Full Update Inc","website":"https://fullupdate.com","industry":"Healthcare","description":"A full update test"}`
+		req := httptest.NewRequest("PUT", "/api/v1/company/profile", bytes.NewBufferString(body))
+		req.Header.Set("Content-Type", "application/json")
+		req.Header.Set("Authorization", "Bearer "+tok)
+		router.ServeHTTP(w, req)
+		if w.Code != http.StatusOK {
+			t.Fatalf("expected 200, got %d: %s", w.Code, w.Body.String())
+		}
+		var resp CompanyResponse
+		json.Unmarshal(w.Body.Bytes(), &resp)
+		if resp.CompanyName != "Full Update Inc" {
+			t.Fatalf("expected 'Full Update Inc', got '%s'", resp.CompanyName)
+		}
+		if resp.Website == nil || *resp.Website != "https://fullupdate.com" {
+			t.Fatalf("expected 'https://fullupdate.com', got %v", resp.Website)
+		}
+		if resp.Industry != "Healthcare" {
+			t.Fatalf("expected 'Healthcare', got '%s'", resp.Industry)
+		}
+		if resp.Description == nil || *resp.Description != "A full update test" {
+			t.Fatalf("expected 'A full update test', got %v", resp.Description)
+		}
+	})
+
+	t.Run("company not found", func(t *testing.T) {
+		uid, err := testutil.CreateUser(db, testutil.UniqueEmail("nocompup"), testutil.UniqueUsername("nocompup"), "pass123", "No Company Up", "company")
+		if err != nil {
+			t.Fatal(err)
+		}
+		nct := testutil.GenerateToken(uid.String(), "company", 15*time.Minute)
+		w := httptest.NewRecorder()
+		req := httptest.NewRequest("PUT", "/api/v1/company/profile", bytes.NewBufferString(`{"companyName":"Should Fail"}`))
+		req.Header.Set("Content-Type", "application/json")
+		req.Header.Set("Authorization", "Bearer "+nct)
+		router.ServeHTTP(w, req)
+		if w.Code != http.StatusNotFound {
+			t.Fatalf("expected 404, got %d: %s", w.Code, w.Body.String())
+		}
+	})
 }
 
 func TestSubmitVerification(t *testing.T) {
@@ -134,6 +219,49 @@ func TestSubmitVerification(t *testing.T) {
 		router.ServeHTTP(w, req)
 		if w.Code != http.StatusBadRequest {
 			t.Fatalf("expected 400, got %d: %s", w.Code, w.Body.String())
+		}
+	})
+
+	t.Run("invalid website", func(t *testing.T) {
+		body := `{"businessRegistration":"BR-123","website":"not-a-url","address":"123 St","contact":"c@ex.com"}`
+		w := httptest.NewRecorder()
+		req := httptest.NewRequest("POST", "/api/v1/company/verification", bytes.NewBufferString(body))
+		req.Header.Set("Content-Type", "application/json")
+		req.Header.Set("Authorization", "Bearer "+tok)
+		router.ServeHTTP(w, req)
+		if w.Code != http.StatusBadRequest {
+			t.Fatalf("expected 400, got %d: %s", w.Code, w.Body.String())
+		}
+	})
+
+	t.Run("non-existent company", func(t *testing.T) {
+		uid, err := testutil.CreateUser(db, testutil.UniqueEmail("nover"), testutil.UniqueUsername("nover"), "pass123", "No Ver", "company")
+		if err != nil {
+			t.Fatal(err)
+		}
+		nct := testutil.GenerateToken(uid.String(), "company", 15*time.Minute)
+		body := `{"businessRegistration":"BR-999","website":"https://nover.com","address":"456 St","contact":"n@ex.com"}`
+		w := httptest.NewRecorder()
+		req := httptest.NewRequest("POST", "/api/v1/company/verification", bytes.NewBufferString(body))
+		req.Header.Set("Content-Type", "application/json")
+		req.Header.Set("Authorization", "Bearer "+nct)
+		router.ServeHTTP(w, req)
+		if w.Code != http.StatusNotFound {
+			t.Fatalf("expected 404, got %d: %s", w.Code, w.Body.String())
+		}
+	})
+
+	t.Run("already verified", func(t *testing.T) {
+		avU, _, _ := testutil.CreateCompanyUser(db, testutil.UniqueEmail("alreadyv"), testutil.UniqueUsername("alreadyv"), "pass123", "Already V", true)
+		avT := testutil.GenerateToken(avU.String(), "company", 15*time.Minute)
+		body := `{"businessRegistration":"BR-888","website":"https://alreadyv.com","address":"789 St","contact":"a@ex.com"}`
+		w := httptest.NewRecorder()
+		req := httptest.NewRequest("POST", "/api/v1/company/verification", bytes.NewBufferString(body))
+		req.Header.Set("Content-Type", "application/json")
+		req.Header.Set("Authorization", "Bearer "+avT)
+		router.ServeHTTP(w, req)
+		if w.Code != http.StatusOK {
+			t.Fatalf("expected 200, got %d: %s", w.Code, w.Body.String())
 		}
 	})
 }
@@ -173,6 +301,62 @@ func TestGetVerificationStatus(t *testing.T) {
 		json.Unmarshal(w.Body.Bytes(), &m)
 		if m["verificationStatus"] != "verified" {
 			t.Fatalf("expected 'verified', got '%s'", m["verificationStatus"])
+		}
+	})
+
+	t.Run("no company record", func(t *testing.T) {
+		uid, err := testutil.CreateUser(db, testutil.UniqueEmail("nostatus"), testutil.UniqueUsername("nostatus"), "pass123", "No Status", "company")
+		if err != nil {
+			t.Fatal(err)
+		}
+		nct := testutil.GenerateToken(uid.String(), "company", 15*time.Minute)
+		w := httptest.NewRecorder()
+		req := httptest.NewRequest("GET", "/api/v1/company/verification-status", nil)
+		req.Header.Set("Authorization", "Bearer "+nct)
+		router.ServeHTTP(w, req)
+		var m map[string]string
+		json.Unmarshal(w.Body.Bytes(), &m)
+		if m["verificationStatus"] != "none" {
+			t.Fatalf("expected 'none', got '%s'", m["verificationStatus"])
+		}
+	})
+}
+
+func TestUpdateCompanyAllFields(t *testing.T) {
+	db := testutil.SetupTestDB()
+
+	uID, _, _ := testutil.CreateCompanyUser(db, testutil.UniqueEmail("allfields"), testutil.UniqueUsername("allfields"), "pass123", "Original Name", false)
+	tok := testutil.GenerateToken(uID.String(), "company", 15*time.Minute)
+
+	router := gin.New()
+	h := NewCompanyHandler(db)
+	g := router.Group("/api/v1/company")
+	g.Use(middleware.AuthRequired(testutil.TestJWTSecret), middleware.RequireRole("company"))
+	g.PUT("/profile", h.UpdateProfile)
+
+	t.Run("update all fields at once", func(t *testing.T) {
+		body := `{"companyName":"Updated Corp","website":"https://updated.com","industry":"Finance","description":"An updated description"}`
+		w := httptest.NewRecorder()
+		req := httptest.NewRequest("PUT", "/api/v1/company/profile", bytes.NewBufferString(body))
+		req.Header.Set("Content-Type", "application/json")
+		req.Header.Set("Authorization", "Bearer "+tok)
+		router.ServeHTTP(w, req)
+		if w.Code != http.StatusOK {
+			t.Fatalf("expected 200, got %d: %s", w.Code, w.Body.String())
+		}
+		var resp CompanyResponse
+		json.Unmarshal(w.Body.Bytes(), &resp)
+		if resp.CompanyName != "Updated Corp" {
+			t.Fatalf("expected 'Updated Corp', got '%s'", resp.CompanyName)
+		}
+		if resp.Website == nil || *resp.Website != "https://updated.com" {
+			t.Fatalf("expected 'https://updated.com', got %v", resp.Website)
+		}
+		if resp.Industry != "Finance" {
+			t.Fatalf("expected 'Finance', got '%s'", resp.Industry)
+		}
+		if resp.Description == nil || *resp.Description != "An updated description" {
+			t.Fatalf("expected 'An updated description', got %v", resp.Description)
 		}
 	})
 }
