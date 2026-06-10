@@ -7,7 +7,9 @@ pre-commit:
 pre-push:
   commands:
     test-server:
-      run: go -C server-go test ./...
+      # -p 1 runs packages serially: tests share one Postgres DB and truncate
+      # tables for isolation, so parallel packages race each other.
+      run: go -C server-go test -p 1 ./...
     test-web:
       run: ls web/src/**/*.{test,spec}.{ts,tsx} 2>/dev/null | head -1 | grep -q . && bun --cwd web test || echo "No web tests found, skipping"
     vuln-go:

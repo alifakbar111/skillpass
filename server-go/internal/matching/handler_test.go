@@ -135,7 +135,15 @@ func TestMatching(t *testing.T) {
 		}
 		var resp []JobMatch
 		json.Unmarshal(w.Body.Bytes(), &resp)
-		t.Logf("got %d job matches", len(resp))
+		if len(resp) == 0 {
+			t.Fatal("expected at least 1 job match for evaluated candidate (Go) vs job requiring Go")
+		}
+		if resp[0].Title != "Go Dev" {
+			t.Fatalf("expected matched job 'Go Dev', got %q", resp[0].Title)
+		}
+		if resp[0].CompanyName != "Match Co" {
+			t.Fatalf("expected company 'Match Co', got %q", resp[0].CompanyName)
+		}
 	})
 
 	t.Run("match candidates for company", func(t *testing.T) {
@@ -148,7 +156,12 @@ func TestMatching(t *testing.T) {
 		}
 		var resp []CandidateMatch
 		json.Unmarshal(w.Body.Bytes(), &resp)
-		t.Logf("got %d candidate matches", len(resp))
+		if len(resp) == 0 {
+			t.Fatal("expected at least 1 candidate match (evaluated candidate has Go, job requires Go)")
+		}
+		if resp[0].Name != "Matchee" {
+			t.Fatalf("expected candidate 'Matchee', got %q", resp[0].Name)
+		}
 	})
 
 	t.Run("match candidates missing jobId", func(t *testing.T) {

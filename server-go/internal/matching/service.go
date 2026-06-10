@@ -58,10 +58,10 @@ type jobMatchRow struct {
 	ID              uuid.UUID
 	Title           string
 	Industry        string
-	RequiredSkills  *pq.StringArray
+	RequiredSkills  pq.StringArray
 	Location        *string
 	SalaryRange     *string
-	ExperienceLevel *model.ExperienceLevel
+	ExperienceLevel *string
 	CompanyName     string
 }
 
@@ -85,26 +85,31 @@ func (s *Service) MatchJobs(ctx context.Context, profileID string) ([]JobMatch, 
 		candidateMap[strings.ToLower(s)] = true
 	}
 
-	stmt := SELECT(
-		gen.JobPostings.ID,
-		gen.JobPostings.Title,
-		gen.JobPostings.Industry,
-		gen.JobPostings.RequiredSkills,
-		gen.JobPostings.Location,
-		gen.JobPostings.SalaryRange,
-		gen.JobPostings.ExperienceLevel,
-		gen.Companies.CompanyName,
-	).FROM(
-		gen.JobPostings.
-			INNER_JOIN(gen.Companies, gen.Companies.ID.EQ(gen.JobPostings.CompanyID)),
-	).WHERE(
-		gen.JobPostings.Status.EQ(gen.JobStatusOpen),
-	).ORDER_BY(
-		gen.JobPostings.CreatedAt.DESC(),
-	).LIMIT(200)
+	// Raw SQL: go-jet's qrm does not reliably scan joined columns and text[]
+	// arrays into ad-hoc slice destinations (rows silently come back empty).
+	jobRows, err := s.db.QueryContext(ctx, `
+		SELECT j.id, j.title, j.industry, COALESCE(j.required_skills, '{}'),
+		       j.location, j.salary_range, j.experience_level::text, c.company_name
+		FROM job_postings j
+		JOIN companies c ON c.id = j.company_id
+		WHERE j.status = 'open'
+		ORDER BY j.created_at DESC
+		LIMIT 200`)
+	if err != nil {
+		return nil, fmt.Errorf("query open jobs: %w", err)
+	}
+	defer jobRows.Close()
 
 	var rows []jobMatchRow
-	if err := stmt.QueryContext(ctx, s.db, &rows); err != nil {
+	for jobRows.Next() {
+		var r jobMatchRow
+		if err := jobRows.Scan(&r.ID, &r.Title, &r.Industry, &r.RequiredSkills,
+			&r.Location, &r.SalaryRange, &r.ExperienceLevel, &r.CompanyName); err != nil {
+			return nil, fmt.Errorf("scan job row: %w", err)
+		}
+		rows = append(rows, r)
+	}
+	if err := jobRows.Err(); err != nil {
 		return nil, err
 	}
 
@@ -115,11 +120,7 @@ func (s *Service) MatchJobs(ctx context.Context, profileID string) ([]JobMatch, 
 	var scoredJobs []scored
 
 	for _, row := range rows {
-		jobSkills := []string{}
-		if row.RequiredSkills != nil {
-			jobSkills = []string(*row.RequiredSkills)
-		}
-		score := computeMatchScoreWithMap(candidateMap, jobSkills)
+		score := computeMatchScoreWithMap(candidateMap, []string(row.RequiredSkills))
 		if score > 0 {
 			scoredJobs = append(scoredJobs, scored{row: row, score: score})
 		}
@@ -135,11 +136,6 @@ func (s *Service) MatchJobs(ctx context.Context, profileID string) ([]JobMatch, 
 
 	results := make([]JobMatch, len(scoredJobs))
 	for i, sj := range scoredJobs {
-		var expLevel *string
-		if sj.row.ExperienceLevel != nil {
-			v := string(*sj.row.ExperienceLevel)
-			expLevel = &v
-		}
 		results[i] = JobMatch{
 			JobPostingID:    sj.row.ID.String(),
 			Title:           sj.row.Title,
@@ -147,7 +143,7 @@ func (s *Service) MatchJobs(ctx context.Context, profileID string) ([]JobMatch, 
 			Industry:        sj.row.Industry,
 			Location:        sj.row.Location,
 			SalaryRange:     sj.row.SalaryRange,
-			ExperienceLevel: expLevel,
+			ExperienceLevel: sj.row.ExperienceLevel,
 			MatchScore:      sj.score,
 			MatchReason:     computeReason(sj.score),
 		}
@@ -157,31 +153,19 @@ func (s *Service) MatchJobs(ctx context.Context, profileID string) ([]JobMatch, 
 }
 
 func (s *Service) MatchCandidates(ctx context.Context, jobPostingID string) ([]CandidateMatch, error) {
-	jobStmt := SELECT(
-		gen.JobPostings.ID,
-		gen.JobPostings.Title,
-		gen.JobPostings.RequiredSkills,
-		gen.JobPostings.Industry,
-	).FROM(
-		gen.JobPostings,
-	).WHERE(
-		gen.JobPostings.ID.EQ(UUID(uuid.MustParse(jobPostingID))),
-	)
-
-	var job struct {
-		ID             uuid.UUID
-		Title          string
-		RequiredSkills *pq.StringArray
-		Industry       string
-	}
-	if err := jobStmt.QueryContext(ctx, s.db, &job); err != nil {
-		return nil, err
+	var jobSkillsArr pq.StringArray
+	err := s.db.QueryRowContext(ctx,
+		`SELECT COALESCE(required_skills, '{}') FROM job_postings WHERE id = $1`,
+		jobPostingID,
+	).Scan(&jobSkillsArr)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, nil
+		}
+		return nil, fmt.Errorf("query job: %w", err)
 	}
 
-	jobSkills := []string{}
-	if job.RequiredSkills != nil {
-		jobSkills = []string(*job.RequiredSkills)
-	}
+	jobSkills := []string(jobSkillsArr)
 	if len(jobSkills) == 0 {
 		return nil, nil
 	}
@@ -305,40 +289,27 @@ type SkillsGap struct {
 // ComputeSkillsGap returns which of the job's required skills the candidate has
 // (per their latest AI evaluation) and which are missing.
 func (s *Service) ComputeSkillsGap(ctx context.Context, profileID, jobPostingID string) (*SkillsGap, error) {
-	jobStmt := SELECT(
-		gen.JobPostings.ID,
-		gen.JobPostings.Title,
-		gen.JobPostings.RequiredSkills,
-	).FROM(
-		gen.JobPostings,
-	).WHERE(
-		gen.JobPostings.ID.EQ(UUID(uuid.MustParse(jobPostingID))),
-	)
-
-	var jobs []struct {
-		ID             uuid.UUID
-		Title          string
-		RequiredSkills *pq.StringArray
-	}
-	if err := jobStmt.QueryContext(ctx, s.db, &jobs); err != nil {
+	var jobTitle string
+	var jobSkillsArr pq.StringArray
+	err := s.db.QueryRowContext(ctx,
+		`SELECT title, COALESCE(required_skills, '{}') FROM job_postings WHERE id = $1`,
+		jobPostingID,
+	).Scan(&jobTitle, &jobSkillsArr)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, sql.ErrNoRows
+		}
 		return nil, fmt.Errorf("query job: %w", err)
 	}
-	if len(jobs) == 0 {
-		return nil, sql.ErrNoRows
-	}
-	job := jobs[0]
 
 	gap := &SkillsGap{
-		JobPostingID:  job.ID.String(),
-		JobTitle:      job.Title,
+		JobPostingID:  jobPostingID,
+		JobTitle:      jobTitle,
 		MatchedSkills: []string{},
 		MissingSkills: []string{},
 	}
 
-	jobSkills := []string{}
-	if job.RequiredSkills != nil {
-		jobSkills = []string(*job.RequiredSkills)
-	}
+	jobSkills := []string(jobSkillsArr)
 	if len(jobSkills) == 0 {
 		gap.MatchPercent = 100
 		gap.HasEvaluation = true
