@@ -60,6 +60,37 @@ func TestGetPublicProfile(t *testing.T) {
 	})
 }
 
+func TestPassportViewCount(t *testing.T) {
+	db := testutil.SetupTestDB()
+
+	_, _, err := testutil.CreateJobseeker(db, "views@example.com", "viewsuser", "password123", "Views User")
+	if err != nil {
+		t.Fatalf("create jobseeker: %v", err)
+	}
+
+	router := gin.New()
+	h := NewPassportHandler(db)
+	router.GET("/api/v1/profiles/:username", h.GetProfile)
+
+	get := func() PublicProfileResponse {
+		w := httptest.NewRecorder()
+		req := httptest.NewRequest("GET", "/api/v1/profiles/viewsuser", nil)
+		router.ServeHTTP(w, req)
+		var resp PublicProfileResponse
+		json.Unmarshal(w.Body.Bytes(), &resp)
+		return resp
+	}
+
+	first := get()
+	if first.ViewCount != 1 {
+		t.Fatalf("expected viewCount 1 after first view, got %d", first.ViewCount)
+	}
+	second := get()
+	if second.ViewCount != 2 {
+		t.Fatalf("expected viewCount 2 after second view, got %d", second.ViewCount)
+	}
+}
+
 func TestGetPublicProfile_NoExperiences(t *testing.T) {
 	db := testutil.SetupTestDB()
 

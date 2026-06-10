@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
@@ -13,6 +14,54 @@ import (
 	"skillpass-server-go/internal/middleware"
 	"skillpass-server-go/internal/testutil"
 )
+
+func TestBlindModeToggle(t *testing.T) {
+	db := testutil.SetupTestDB()
+
+	uID, cID, _ := testutil.CreateCompanyUser(db, "blind@ex.com", "blindco", "pass123", "Blind Corp", true)
+	tok := testutil.GenerateToken(uID.String(), "company", 15*time.Minute)
+
+	router := gin.New()
+	h := NewCompanyHandler(db)
+	g := router.Group("/api/v1/company")
+	g.Use(middleware.AuthRequired(testutil.TestJWTSecret), middleware.RequireRole("company"))
+	g.GET("/profile", h.GetProfile)
+	g.PUT("/profile", h.UpdateProfile)
+
+	t.Run("defaults to false", func(t *testing.T) {
+		w := httptest.NewRecorder()
+		req := httptest.NewRequest("GET", "/api/v1/company/profile", nil)
+		req.Header.Set("Authorization", "Bearer "+tok)
+		router.ServeHTTP(w, req)
+		var resp CompanyResponse
+		json.Unmarshal(w.Body.Bytes(), &resp)
+		if resp.BlindMode {
+			t.Fatal("expected blindMode false by default")
+		}
+	})
+
+	t.Run("enable via update", func(t *testing.T) {
+		w := httptest.NewRecorder()
+		req := httptest.NewRequest("PUT", "/api/v1/company/profile", bytes.NewBufferString(`{"blindMode":true}`))
+		req.Header.Set("Content-Type", "application/json")
+		req.Header.Set("Authorization", "Bearer "+tok)
+		router.ServeHTTP(w, req)
+		if w.Code != http.StatusOK {
+			t.Fatalf("expected 200, got %d: %s", w.Code, w.Body.String())
+		}
+		var resp CompanyResponse
+		json.Unmarshal(w.Body.Bytes(), &resp)
+		if !resp.BlindMode {
+			t.Fatal("expected blindMode true after update")
+		}
+	})
+
+	t.Run("helper reflects update", func(t *testing.T) {
+		if !CompanyBlindMode(context.Background(), db, cID.String()) {
+			t.Fatal("expected CompanyBlindMode true")
+		}
+	})
+}
 
 func TestGetCompanyProfile(t *testing.T) {
 	db := testutil.SetupTestDB()

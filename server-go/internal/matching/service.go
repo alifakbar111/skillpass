@@ -292,6 +292,17 @@ func (s *Service) MatchCandidates(ctx context.Context, jobPostingID string) ([]C
 	return results, nil
 }
 
+// IsBlindMode reports whether the company has blind screening enabled.
+func (s *Service) IsBlindMode(ctx context.Context, companyID string) bool {
+	var blind bool
+	if err := s.db.QueryRowContext(ctx,
+		`SELECT blind_mode FROM companies WHERE id = $1`, companyID,
+	).Scan(&blind); err != nil {
+		return false
+	}
+	return blind
+}
+
 func (s *Service) getLatestEvaluation(ctx context.Context, profileID string) (*model.AiEvaluations, error) {
 	stmt := SELECT(
 		gen.AiEvaluations.AllColumns,

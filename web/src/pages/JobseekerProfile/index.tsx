@@ -6,6 +6,7 @@ import { FormInput, FormSelect, FormTextarea } from '../../components/ui/FormFie
 import { LoadingFallback, LoadingSpinner } from '../../components/ui/LoadingFallback';
 import { ApiError, api } from '../../lib/api';
 import { type ExperienceForm, experienceSchema, type ProfileForm, profileSchema } from '../../lib/schemas';
+import { ResumeImport } from './ResumeImport';
 import type { Experience, Profile } from './type';
 
 const EXPERIENCE_TYPES = [
@@ -41,6 +42,7 @@ export function JobseekerProfile() {
       description: '',
       industry: '',
       skills: '',
+      url: '',
     },
   });
 
@@ -100,6 +102,7 @@ export function JobseekerProfile() {
           ...data,
           skillsUsed: skills,
           endDate: data.isCurrent ? undefined : data.endDate || undefined,
+          url: data.url || undefined,
         }),
       });
       setProfile((prev) => (prev ? { ...prev, experiences: [...prev.experiences, added] } : null));
@@ -114,6 +117,7 @@ export function JobseekerProfile() {
         description: '',
         industry: '',
         skills: '',
+        url: '',
       });
     } catch (err) {
       setError(err instanceof ApiError ? (err.serverMessage ?? err.message) : 'Failed to add experience');
@@ -171,6 +175,12 @@ export function JobseekerProfile() {
         </button>
       </form>
 
+      <ResumeImport
+        onExperienceAdded={(added) =>
+          setProfile((prev) => (prev ? { ...prev, experiences: [...prev.experiences, added] } : prev))
+        }
+      />
+
       <div className="card bg-base-200 p-4">
         <div className="flex justify-between items-center mb-3">
           <h2 className="font-semibold">Experience</h2>
@@ -223,6 +233,12 @@ export function JobseekerProfile() {
               registration={expForm.register('skills')}
               error={expForm.formState.errors.skills}
               placeholder="React, TypeScript, Node.js"
+            />
+            <FormInput
+              label="Evidence URL (optional)"
+              registration={expForm.register('url')}
+              error={expForm.formState.errors.url}
+              placeholder="https://github.com/you/project or certificate link"
             />
             <div className="flex gap-2">
               <button type="submit" className="btn btn-primary btn-sm">

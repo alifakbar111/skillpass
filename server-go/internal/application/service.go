@@ -470,7 +470,7 @@ func (s *Service) latestNotesFor(ctx context.Context, applicationIDs []string) (
 	rows, err := s.db.QueryContext(ctx,
 		`SELECT DISTINCT ON (application_id) application_id, body
 		 FROM application_messages
-		 WHERE application_id = ANY($1)
+		 WHERE application_id = ANY($1::uuid[])
 		 ORDER BY application_id, created_at DESC`,
 		pq.Array(applicationIDs),
 	)

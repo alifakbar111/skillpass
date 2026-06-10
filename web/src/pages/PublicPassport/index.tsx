@@ -1,3 +1,4 @@
+import { Eye, ExternalLink } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { LoadingFallback } from '../../components/ui/LoadingFallback';
@@ -48,6 +49,11 @@ export function PublicPassport() {
             {data.yearsOfExperience !== undefined && (
               <p className="text-sm text-muted">{data.yearsOfExperience} years of experience</p>
             )}
+            {data.viewCount !== undefined && (
+              <p className="text-xs text-muted flex items-center gap-1 mt-1">
+                <Eye size={12} aria-hidden="true" /> {data.viewCount} {data.viewCount === 1 ? 'view' : 'views'}
+              </p>
+            )}
           </div>
         </div>
         {data.about && <p className="text-muted-strong mb-4">{data.about}</p>}
@@ -73,6 +79,16 @@ export function PublicPassport() {
                     </span>
                   ))}
                 </div>
+              )}
+              {exp.url && (
+                <a
+                  href={exp.url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="link link-primary text-xs inline-flex items-center gap-1 mt-2"
+                >
+                  <ExternalLink size={12} aria-hidden="true" /> View evidence
+                </a>
               )}
             </div>
           ))}

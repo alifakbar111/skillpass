@@ -13,6 +13,8 @@ export function CompanyProfile() {
   const [industries, setIndustries] = useState<Array<{ id: string; name: string }>>([]);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
+  const [blindMode, setBlindMode] = useState(false);
+  const [blindSaving, setBlindSaving] = useState(false);
 
   const {
     register,
@@ -30,7 +32,9 @@ export function CompanyProfile() {
         if (!cancelled) setIndustries(data);
       })
       .catch(() => {});
-    api<{ companyName: string; website?: string; industry: string; description?: string }>('/company/profile')
+    api<{ companyName: string; website?: string; industry: string; description?: string; blindMode?: boolean }>(
+      '/company/profile',
+    )
       .then((data) => {
         if (cancelled) return;
         reset({
@@ -39,6 +43,7 @@ export function CompanyProfile() {
           industry: data.industry,
           description: data.description || '',
         });
+        setBlindMode(data.blindMode ?? false);
       })
       .catch((err) => {
         if (!cancelled) {
@@ -64,6 +69,21 @@ export function CompanyProfile() {
       setError(err instanceof ApiError ? (err.serverMessage ?? err.message) : 'Failed to save profile');
     } finally {
       setSaving(false);
+    }
+  };
+
+  const toggleBlindMode = async (next: boolean) => {
+    setBlindSaving(true);
+    setError(null);
+    const prev = blindMode;
+    setBlindMode(next);
+    try {
+      await api('/company/profile', { method: 'PUT', body: JSON.stringify({ blindMode: next }) });
+    } catch (err) {
+      setBlindMode(prev);
+      setError(err instanceof ApiError ? (err.serverMessage ?? err.message) : 'Failed to update blind mode');
+    } finally {
+      setBlindSaving(false);
     }
   };
 
@@ -107,6 +127,25 @@ export function CompanyProfile() {
           {saving ? <LoadingSpinner /> : 'Save'}
         </button>
       </form>
+
+      <div className="card bg-base-200 p-4 mt-4">
+        <label className="flex items-start justify-between gap-4 cursor-pointer">
+          <div>
+            <span className="font-semibold">Blind screening</span>
+            <p className="text-sm opacity-70 mt-1">
+              Hide candidate names, photos, and bios in search and matches to reduce bias. Identities stay masked until
+              you move a candidate forward.
+            </p>
+          </div>
+          <input
+            type="checkbox"
+            className="toggle toggle-primary"
+            checked={blindMode}
+            disabled={blindSaving}
+            onChange={(e) => toggleBlindMode(e.target.checked)}
+          />
+        </label>
+      </div>
     </div>
   );
 }

@@ -86,6 +86,7 @@ export const experienceSchema = z.object({
   description: z.string().optional(),
   industry: z.string().optional(),
   skills: z.string().optional(),
+  url: z.string().url('Invalid URL').or(z.literal('')).optional(),
 });
 export type ExperienceForm = z.infer<typeof experienceSchema>;
 

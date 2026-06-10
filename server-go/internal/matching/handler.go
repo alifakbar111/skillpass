@@ -95,5 +95,20 @@ func (h *Handler) MatchCandidates(c *gin.Context) {
 		matches = []CandidateMatch{}
 	}
 
+	// Blind hiring mode: mask candidate identities for companies that opted in.
+	if companyIDVal, ok := c.Get("companyId"); ok {
+		if companyID, ok := companyIDVal.(string); ok && companyID != "" {
+			if h.service.IsBlindMode(c.Request.Context(), companyID) {
+				for i := range matches {
+					short := matches[i].ProfileID
+					if len(short) > 8 {
+						short = short[:8]
+					}
+					matches[i].Name = "Candidate " + short
+				}
+			}
+		}
+	}
+
 	c.JSON(http.StatusOK, matches)
 }

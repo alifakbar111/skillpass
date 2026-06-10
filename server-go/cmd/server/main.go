@@ -32,6 +32,7 @@ import (
 	"skillpass-server-go/internal/matching"
 	"skillpass-server-go/internal/middleware"
 	"skillpass-server-go/internal/notification"
+	"skillpass-server-go/internal/resume"
 )
 
 func main() {
@@ -74,6 +75,9 @@ func main() {
 	evalService := evaluation.NewService(database, llmClient)
 	evalHandler := evaluation.NewHandler(database, evalService)
 
+	resumeService := resume.NewService(llmClient)
+	resumeHandler := resume.NewHandler(resumeService)
+
 	appService := application.NewService(database)
 	appHandler := application.NewHandler(appService)
 
@@ -106,6 +110,7 @@ func main() {
 	authGroup.POST("/me/experience", profiles.CreateExperience)
 	authGroup.PUT("/me/experience/:id", profiles.UpdateExperience)
 	authGroup.DELETE("/me/experience/:id", profiles.DeleteExperience)
+	authGroup.POST("/me/resume-parse", resumeHandler.ParseResume)
 
 	companyGroup := api.Group("/company")
 	companyGroup.Use(middleware.AuthRequired(cfg.JWTSecret), middleware.RequireRole("company"))

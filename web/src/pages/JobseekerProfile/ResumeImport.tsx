@@ -1,0 +1,184 @@
+import { Check, Sparkles, Wand2 } from 'lucide-react';
+import { useState } from 'react';
+import { LoadingSpinner } from '../../components/ui/LoadingFallback';
+import { ApiError, api } from '../../lib/api';
+import { type ParsedExperience, type ParsedResume, parseResume } from '../../lib/resume';
+import type { Experience } from './type';
+
+interface Props {
+  onExperienceAdded: (exp: Experience) => void;
+}
+
+export function ResumeImport({ onExperienceAdded }: Props) {
+  const [open, setOpen] = useState(false);
+  const [text, setText] = useState('');
+  const [parsing, setParsing] = useState(false);
+  const [parsed, setParsed] = useState<ParsedResume | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [addedIdx, setAddedIdx] = useState<Set<number>>(new Set());
+  const [savingIdx, setSavingIdx] = useState<number | null>(null);
+
+  async function handleParse() {
+    if (text.trim().length < 30 || parsing) return;
+    setParsing(true);
+    setError(null);
+    setParsed(null);
+    setAddedIdx(new Set());
+    try {
+      const result = await parseResume(text);
+      setParsed(result);
+    } catch (err) {
+      setError(err instanceof ApiError ? (err.serverMessage ?? err.message) : 'Failed to parse resume');
+    } finally {
+      setParsing(false);
+    }
+  }
+
+  async function addOne(exp: ParsedExperience, idx: number) {
+    setSavingIdx(idx);
+    setError(null);
+    try {
+      const added = await api<Experience>('/profiles/me/experience', {
+        method: 'POST',
+        body: JSON.stringify({
+          type: exp.type,
+          title: exp.title,
+          organization: exp.organization,
+          startDate: exp.startDate,
+          endDate: exp.isCurrent ? undefined : exp.endDate || undefined,
+          isCurrent: exp.isCurrent,
+          description: exp.description || undefined,
+          skillsUsed: exp.skillsUsed ?? [],
+        }),
+      });
+      onExperienceAdded(added);
+      setAddedIdx((prev) => new Set(prev).add(idx));
+    } catch (err) {
+      setError(err instanceof ApiError ? (err.serverMessage ?? err.message) : 'Failed to add entry');
+    } finally {
+      setSavingIdx(null);
+    }
+  }
+
+  async function addAll() {
+    if (!parsed) return;
+    for (let i = 0; i < parsed.experiences.length; i++) {
+      if (!addedIdx.has(i)) {
+        // Sequential to keep ordering and avoid rate spikes.
+        // eslint-disable-next-line no-await-in-loop
+        await addOne(parsed.experiences[i], i);
+      }
+    }
+  }
+
+  return (
+    <div className="card bg-base-200 p-4">
+      <div className="flex justify-between items-center">
+        <div className="flex items-center gap-2">
+          <Sparkles size={18} className="text-primary" aria-hidden="true" />
+          <h2 className="font-semibold">Import from Resume</h2>
+        </div>
+        <button type="button" className="btn btn-ghost btn-sm" onClick={() => setOpen((o) => !o)}>
+          {open ? 'Hide' : 'Open'}
+        </button>
+      </div>
+
+      {open && (
+        <div className="mt-3 space-y-3">
+          <p className="text-sm opacity-70">
+            Paste your resume text and let AI extract your experiences. Review each entry before adding it to your
+            profile.
+          </p>
+          <textarea
+            className="textarea textarea-bordered w-full h-40 font-mono text-xs"
+            placeholder="Paste your resume text here…"
+            value={text}
+            onChange={(e) => setText(e.target.value)}
+          />
+          <button
+            type="button"
+            className="btn btn-primary btn-sm gap-1"
+            onClick={handleParse}
+            disabled={parsing || text.trim().length < 30}
+          >
+            {parsing ? <LoadingSpinner size="sm" /> : <Wand2 size={16} />} Parse Resume
+          </button>
+
+          {error && <p className="text-error text-sm">{error}</p>}
+
+          {parsed && (
+            <div className="space-y-3 mt-2">
+              {(parsed.headline || parsed.about) && (
+                <div className="bg-base-100 rounded-box p-3 text-sm">
+                  {parsed.headline && (
+                    <p>
+                      <span className="opacity-50">Suggested headline: </span>
+                      {parsed.headline}
+                    </p>
+                  )}
+                  {parsed.about && (
+                    <p className="mt-1">
+                      <span className="opacity-50">Summary: </span>
+                      {parsed.about}
+                    </p>
+                  )}
+                </div>
+              )}
+
+              <div className="flex justify-between items-center">
+                <h3 className="font-medium text-sm">
+                  Found {parsed.experiences.length} {parsed.experiences.length === 1 ? 'entry' : 'entries'}
+                </h3>
+                {parsed.experiences.length > 0 && (
+                  <button type="button" className="btn btn-outline btn-xs" onClick={addAll}>
+                    Add all
+                  </button>
+                )}
+              </div>
+
+              <div className="space-y-2">
+                {parsed.experiences.map((exp, idx) => (
+                  <div
+                    key={`${exp.title}-${exp.organization}-${idx}`}
+                    className="bg-base-100 rounded-box p-3 flex justify-between items-start gap-3"
+                  >
+                    <div className="min-w-0">
+                      <p className="font-medium text-sm">{exp.title}</p>
+                      <p className="text-xs opacity-60">
+                        {exp.organization} · {exp.startDate}
+                        {exp.isCurrent ? ' - Present' : exp.endDate ? ` - ${exp.endDate}` : ''} · {exp.type}
+                      </p>
+                      {exp.skillsUsed?.length > 0 && (
+                        <div className="flex flex-wrap gap-1 mt-1">
+                          {exp.skillsUsed.slice(0, 6).map((s) => (
+                            <span key={s} className="badge badge-xs badge-ghost">
+                              {s}
+                            </span>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                    {addedIdx.has(idx) ? (
+                      <span className="badge badge-success gap-1">
+                        <Check size={12} /> Added
+                      </span>
+                    ) : (
+                      <button
+                        type="button"
+                        className="btn btn-primary btn-xs"
+                        onClick={() => addOne(exp, idx)}
+                        disabled={savingIdx === idx}
+                      >
+                        {savingIdx === idx ? <span className="loading loading-spinner loading-xs" /> : 'Add'}
+                      </button>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}

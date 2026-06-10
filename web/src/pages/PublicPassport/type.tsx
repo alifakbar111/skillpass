@@ -4,6 +4,7 @@ export interface PassportData {
   headline?: string;
   about?: string;
   yearsOfExperience?: number;
+  viewCount?: number;
   experiences: Array<{
     type: string;
     title: string;
@@ -13,5 +14,6 @@ export interface PassportData {
     isCurrent: boolean;
     description?: string;
     skillsUsed?: string[];
+    url?: string;
   }>;
 }

@@ -1,4 +1,4 @@
-import { ExternalLink, Sparkles, X } from 'lucide-react';
+import { Eye, ExternalLink, Sparkles, X } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { EvaluationScoreBadge } from '../../components/jobseeker/EvaluationScoreBadge';
@@ -89,6 +89,11 @@ export function JobseekerPassport() {
             {data.yearsOfExperience !== undefined && (
               <p className="text-sm text-muted">{data.yearsOfExperience} years of experience</p>
             )}
+            {data.viewCount !== undefined && (
+              <p className="text-xs text-muted flex items-center gap-1 mt-1">
+                <Eye size={12} aria-hidden="true" /> {data.viewCount} passport {data.viewCount === 1 ? 'view' : 'views'}
+              </p>
+            )}
           </div>
         </div>
         {data.about && <p className="text-muted-strong mb-4">{data.about}</p>}
@@ -149,6 +154,16 @@ export function JobseekerPassport() {
                     </span>
                   ))}
                 </div>
+              )}
+              {exp.url && (
+                <a
+                  href={exp.url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="link link-primary text-xs inline-flex items-center gap-1 mt-2"
+                >
+                  <ExternalLink size={12} aria-hidden="true" /> View evidence
+                </a>
               )}
             </div>
           ))}
