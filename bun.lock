@@ -5,8 +5,8 @@
     "": {
       "name": "skillpass",
       "devDependencies": {
-        "@biomejs/biome": "^2.4.15",
-        "concurrently": "^9.1.0",
+        "@biomejs/biome": "^2.4.16",
+        "concurrently": "^9.2.1",
         "lefthook": "^2.1.9",
       },
     },
