@@ -1,14 +1,19 @@
-import { Briefcase, Calendar, DollarSign, MapPin } from 'lucide-react';
+import { Briefcase, Calendar, CheckCircle, DollarSign, MapPin, Send } from 'lucide-react';
 import { useEffect, useState } from 'react';
-import { useParams } from 'react-router-dom';
+import { Link, useParams } from 'react-router-dom';
 import { LoadingFallback } from '../../components/ui/LoadingFallback';
+import { useAuth } from '../../hooks/useAuth';
 import { ApiError, api } from '../../lib/api';
+import { applyToJob } from '../../lib/application';
 import type { Job } from './type';
 
 export function JobDetail() {
   const { id } = useParams();
+  const { user } = useAuth();
   const [job, setJob] = useState<Job | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [applyState, setApplyState] = useState<'idle' | 'loading' | 'applied' | 'duplicate' | 'error'>('idle');
+  const [applyError, setApplyError] = useState<string | null>(null);
 
   useEffect(() => {
     if (!id) return;
@@ -27,6 +32,23 @@ export function JobDetail() {
       cancelled = true;
     };
   }, [id]);
+
+  async function handleApply() {
+    if (!id || applyState === 'loading') return;
+    setApplyState('loading');
+    setApplyError(null);
+    try {
+      await applyToJob(id);
+      setApplyState('applied');
+    } catch (err) {
+      if (err instanceof ApiError && err.status === 409) {
+        setApplyState('duplicate');
+      } else {
+        setApplyState('error');
+        setApplyError(err instanceof ApiError ? (err.serverMessage ?? err.message) : 'Failed to apply');
+      }
+    }
+  }
 
   if (error) return <p className="text-center p-8 text-error">{error}</p>;
   if (!job) return <LoadingFallback text="Loading job details" />;
@@ -81,6 +103,51 @@ export function JobDetail() {
                 </span>
               ))}
             </div>
+          </div>
+        )}
+
+        {job.status === 'open' && (
+          <div className="mt-6 pt-4 border-t border-base-300">
+            {!user && (
+              <Link to="/auth/login" className="btn btn-primary w-full">
+                Login to Apply
+              </Link>
+            )}
+
+            {user?.role === 'jobseeker' && applyState === 'idle' && (
+              <button type="button" className="btn btn-primary w-full" onClick={handleApply}>
+                <Send size={16} /> Apply Now
+              </button>
+            )}
+
+            {user?.role === 'jobseeker' && applyState === 'loading' && (
+              <button type="button" className="btn btn-primary w-full" disabled>
+                <span className="loading loading-spinner loading-sm" /> Applying...
+              </button>
+            )}
+
+            {user?.role === 'jobseeker' && applyState === 'applied' && (
+              <div className="alert alert-success">
+                <CheckCircle size={16} />
+                <span>Application submitted! Track it in your applications dashboard.</span>
+              </div>
+            )}
+
+            {user?.role === 'jobseeker' && applyState === 'duplicate' && (
+              <div className="alert alert-info">
+                <CheckCircle size={16} />
+                <span>You've already applied to this job.</span>
+              </div>
+            )}
+
+            {user?.role === 'jobseeker' && applyState === 'error' && (
+              <div className="alert alert-error">
+                <span>{applyError ?? 'Something went wrong. Please try again.'}</span>
+                <button type="button" className="btn btn-sm btn-ghost" onClick={handleApply}>
+                  Retry
+                </button>
+              </div>
+            )}
           </div>
         )}
       </div>

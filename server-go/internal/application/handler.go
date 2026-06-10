@@ -127,6 +127,37 @@ func (h *Handler) ListMyApplications(c *gin.Context) {
 	c.JSON(http.StatusOK, applications)
 }
 
+// ListCompanyApplications	godoc
+// @Summary		List applications for company's jobs
+// @Description	Get all applications for jobs owned by the authenticated verified company
+// @Tags		applications
+// @Produce		json
+// @Security	BearerAuth
+// @Success		200 {array} application.CompanyApplicationResult
+// @Failure		401 {object} map[string]string
+// @Failure		403 {object} map[string]string
+// @Router		/company/applications [get]
+func (h *Handler) ListCompanyApplications(c *gin.Context) {
+	companyID, ok := getCompanyID(c)
+	if !ok {
+		c.JSON(http.StatusForbidden, gin.H{"error": "Company access required"})
+		return
+	}
+
+	applications, err := h.service.ListForCompany(c.Request.Context(), companyID)
+	if err != nil {
+		slog.Error("failed to list company applications", "companyID", companyID, "error", err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to list applications"})
+		return
+	}
+
+	if applications == nil {
+		applications = []CompanyApplicationResult{}
+	}
+
+	c.JSON(http.StatusOK, applications)
+}
+
 // UpdateStatus		godoc
 // @Summary		Update application status
 // @Description	Update an application's status (reviewed, interviewed, offered, rejected). Company action for verified companies.
