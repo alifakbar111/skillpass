@@ -8,6 +8,7 @@ import {
   clearTokens,
   isAuthError,
 } from '../lib/api';
+import { queryClient } from '../lib/queryClient';
 
 interface User {
   id: string;
@@ -45,10 +46,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     const onStorage = (e: StorageEvent) => {
       if (e.key === 'accessToken' && !e.newValue) {
+        queryClient.clear();
         setUser(null);
       }
     };
-    const onAuthLogout = () => setUser(null);
+    const onAuthLogout = () => {
+      queryClient.clear();
+      setUser(null);
+    };
     window.addEventListener('storage', onStorage);
     window.addEventListener('auth:logout', onAuthLogout);
     return () => {
@@ -101,6 +106,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const logout = useCallback(async () => {
     await apiLogout();
+    queryClient.clear();
     setUser(null);
   }, []);
 

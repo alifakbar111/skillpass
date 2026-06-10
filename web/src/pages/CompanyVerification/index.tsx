@@ -1,6 +1,7 @@
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { X } from 'lucide-react';
+import { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { FormInput, FormTextarea } from '../../components/ui/FormField';
 import { LoadingSpinner } from '../../components/ui/LoadingFallback';
@@ -9,6 +10,7 @@ import { type VerificationForm, verificationSchema } from '../../lib/schemas';
 
 export function CompanyVerification() {
   const queryClient = useQueryClient();
+  const [queryErrorDismissed, setQueryErrorDismissed] = useState(false);
 
   const {
     register,
@@ -39,15 +41,16 @@ export function CompanyVerification() {
 
   const onSubmit = (formData: VerificationForm) => submitMutation.mutate(formData);
 
-  const error = queryError
-    ? queryError instanceof ApiError
-      ? (queryError.serverMessage ?? queryError.message)
-      : 'Failed to load verification status'
-    : submitMutation.error
-      ? submitMutation.error instanceof ApiError
-        ? (submitMutation.error.serverMessage ?? submitMutation.error.message)
-        : 'Submission failed'
-      : null;
+  const error =
+    queryError && !queryErrorDismissed
+      ? queryError instanceof ApiError
+        ? (queryError.serverMessage ?? queryError.message)
+        : 'Failed to load verification status'
+      : submitMutation.error
+        ? submitMutation.error instanceof ApiError
+          ? (submitMutation.error.serverMessage ?? submitMutation.error.message)
+          : 'Submission failed'
+        : null;
 
   if (isLoading) {
     return (
@@ -62,7 +65,15 @@ export function CompanyVerification() {
       <div className="max-w-lg mx-auto p-4">
         <div className="alert alert-error">
           <span>{error}</span>
-          <button type="button" title="close" className="btn btn-ghost btn-xs" onClick={() => submitMutation.reset()}>
+          <button
+            type="button"
+            title="close"
+            className="btn btn-ghost btn-xs"
+            onClick={() => {
+              setQueryErrorDismissed(true);
+              submitMutation.reset();
+            }}
+          >
             <X size={14} />
           </button>
         </div>
