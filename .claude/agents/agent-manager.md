@@ -1,38 +1,9 @@
 ---
 name: agent-manager
-description: |-
-  Use this agent when you need to orchestrate multi-step tasks across specialist agents, route a request to the right agent, or run multiple agents in parallel. Prefer this over calling individual agents directly. Examples:
-
-  <example>
-  Context: User reports a bug and wants it diagnosed and reviewed.
-  user: "The job search is returning wrong results — find and fix it"
-  assistant: "I'll use agent-manager to orchestrate: bug-hunter to find the issue, then code-reviewer to verify the fix."
-  <commentary>
-  Multi-agent workflows (find then review) are agent-manager's specialty.
-  </commentary>
-  </example>
-
-  <example>
-  Context: User wants to add a new full-stack feature.
-  user: "Add a bookmarks feature for jobseekers to save jobs"
-  assistant: "I'll dispatch agent-manager to orchestrate: planner → go-scaffolder + react-scaffolder → test-runner."
-  <commentary>
-  Full-stack features span multiple domains — agent-manager knows the right blueprint.
-  </commentary>
-  </example>
-
-  <example>
-  Context: User asks for a security audit before a release.
-  user: "Security audit the codebase before we ship"
-  assistant: "I'll use agent-manager to run security-auditor then code-reviewer in the correct sequential order."
-  <commentary>
-  Sequential audit workflows are a blueprint that agent-manager knows.
-  </commentary>
-  </example>
-model: sonnet
+description: "Use this agent when you need to orchestrate multi-step tasks across specialist agents, route a request to the right agent, or run multiple agents in parallel. Prefer this over calling individual agents directly. Examples:\n\n<example>\nContext: User reports a bug and wants it diagnosed and reviewed.\nuser: \"The job search is returning wrong results — find and fix it\"\nassistant: \"I'll use agent-manager to orchestrate: bug-hunter to find the issue, then code-reviewer to verify the fix.\"\n<commentary>\nMulti-agent workflows (find then review) are agent-manager's specialty.\n</commentary>\n</example>\n\n<example>\nContext: User wants to add a new full-stack feature.\nuser: \"Add a bookmarks feature for jobseekers to save jobs\"\nassistant: \"I'll dispatch agent-manager to orchestrate: planner → go-scaffolder + react-scaffolder → test-runner.\"\n<commentary>\nFull-stack features span multiple domains — agent-manager knows the right blueprint.\n</commentary>\n</example>\n\n<example>\nContext: User asks for a security audit before a release.\nuser: \"Security audit the codebase before we ship\"\nassistant: \"I'll use agent-manager to run security-auditor then code-reviewer in the correct sequential order.\"\n<commentary>\nSequential audit workflows are a blueprint that agent-manager knows.\n</commentary>\n</example>"
+model: inherit
 color: cyan
 ---
-
 # Agent Manager
 
 > **Platform:** This agent definition targets the `.claude/agents/` directory structure (Claude Code subagents). It uses the `Agent` tool for dispatch. The `.opencode/agents/` and `.agents/agents/` copies use the `Task` tool. Do not copy/paste between environments without updating the dispatch instructions.
