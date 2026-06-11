@@ -106,3 +106,8 @@ Before running `bun run dev`, you must:
 - **No tests written yet**
 - Web: `vitest` (happy-dom, @testing-library/react)
 - Go server: use Go's `testing` package with `httptest`
+
+## Git commits
+- Commit messages must be a single line only — no body, no trailers
+- Never add "Co-Authored-By" (or any other) trailers
+- Simple but meaningful, conventional commits style (e.g. `fix(web): ...`, `feat(server): ...`)
