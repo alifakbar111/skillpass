@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"errors"
 	"net/http"
+	"net/url"
 	"regexp"
 
 	"github.com/gin-gonic/gin"
@@ -357,6 +358,19 @@ func (h *ProfileHandler) UpdateMyProfile(c *gin.Context) {
 	})
 }
 
+// isValidExperienceURL validates that the URL uses http or https scheme only.
+// This prevents stored XSS via javascript: or data: URLs in experience links.
+func isValidExperienceURL(raw *string) bool {
+	if raw == nil || *raw == "" {
+		return true
+	}
+	u, err := url.Parse(*raw)
+	if err != nil {
+		return false
+	}
+	return u.Scheme == "http" || u.Scheme == "https"
+}
+
 // CreateExperience	godoc
 // @Summary		Add experience entry
 // @Description	Add a new employment, gig, education, certification, project, or volunteering entry to the profile
@@ -393,6 +407,11 @@ func (h *ProfileHandler) CreateExperience(c *gin.Context) {
 	}
 	if req.EndDate != nil && *req.EndDate != "" && !isValidDate(*req.EndDate) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "endDate must be YYYY-MM"})
+		return
+	}
+
+	if !isValidExperienceURL(req.URL) {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "URL must use http or https scheme"})
 		return
 	}
 
@@ -509,6 +528,11 @@ func (h *ProfileHandler) UpdateExperience(c *gin.Context) {
 	}
 	if req.EndDate != nil && *req.EndDate != "" && !isValidDate(*req.EndDate) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "endDate must be YYYY-MM"})
+		return
+	}
+
+	if !isValidExperienceURL(req.URL) {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "URL must use http or https scheme"})
 		return
 	}
 

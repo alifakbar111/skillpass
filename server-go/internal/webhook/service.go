@@ -11,6 +11,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"log/slog"
+	"net"
 	"net/http"
 	"net/url"
 	"time"
@@ -60,6 +61,22 @@ func validateURL(raw string) error {
 	}
 	if u.Host == "" {
 		return fmt.Errorf("URL must have a host")
+	}
+	// Resolve the hostname and reject private, loopback, and link-local addresses
+	// to prevent SSRF attacks against internal network services.
+	host := u.Hostname()
+	ips, err := net.LookupHost(host)
+	if err != nil {
+		return fmt.Errorf("unable to resolve host: %q", host)
+	}
+	for _, ipStr := range ips {
+		ip := net.ParseIP(ipStr)
+		if ip == nil {
+			continue
+		}
+		if ip.IsPrivate() || ip.IsLoopback() || ip.IsLinkLocalUnicast() || ip.IsLinkLocalMulticast() {
+			return fmt.Errorf("URL must not point to a private or internal network address")
+		}
 	}
 	return nil
 }
