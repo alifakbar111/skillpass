@@ -273,7 +273,7 @@ func (h *ProfileHandler) GetMyProfile(c *gin.Context) {
 // @Produce		json
 // @Security	BearerAuth
 // @Param		body body UpdateProfileRequest true "Profile fields to update"
-// @Success		200 {object} map[string]interface{}
+// @Success		200 {object} UpdateProfileResponse
 // @Failure		400 {object} map[string]string
 // @Failure		401 {object} map[string]string
 // @Failure		404 {object} map[string]string
@@ -348,13 +348,13 @@ func (h *ProfileHandler) UpdateMyProfile(c *gin.Context) {
 	}
 	profile := profiles[0]
 
-	c.JSON(http.StatusOK, gin.H{
-		"id":                profile.ID.String(),
-		"userId":            profile.UserID.String(),
-		"headline":          profile.Headline,
-		"about":             profile.About,
-		"yearsOfExperience": int32ToIntPtr(profile.YearsOfExperience),
-		"slug":              profile.Slug,
+	c.JSON(http.StatusOK, UpdateProfileResponse{
+		ID:                profile.ID.String(),
+		UserID:            profile.UserID.String(),
+		Headline:          profile.Headline,
+		About:             profile.About,
+		YearsOfExperience: int32ToIntPtr(profile.YearsOfExperience),
+		Slug:              profile.Slug,
 	})
 }
 
@@ -610,7 +610,7 @@ func (h *ProfileHandler) UpdateExperience(c *gin.Context) {
 // @Produce		json
 // @Security	BearerAuth
 // @Param		id path string true "Experience entry UUID"
-// @Success		200 {object} map[string]string
+// @Success		200 {object} MessageResponse
 // @Failure		400 {object} map[string]string
 // @Failure		401 {object} map[string]string
 // @Failure		404 {object} map[string]string
@@ -669,5 +669,5 @@ func (h *ProfileHandler) DeleteExperience(c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{"message": "Deleted"})
+	c.JSON(http.StatusOK, MessageResponse{Message: "Deleted"})
 }

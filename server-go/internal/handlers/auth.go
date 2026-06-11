@@ -340,7 +340,7 @@ func (h *AuthHandler) Login(c *gin.Context) {
 // @Description	Exchange a valid refresh token (from cookie) for a new access token. Rotates the refresh token.
 // @Tags		auth
 // @Produce		json
-// @Success		200 {object} map[string]string
+// @Success		200 {object} RefreshResponse
 // @Failure		401 {object} map[string]string
 // @Router		/auth/refresh [post]
 func (h *AuthHandler) Refresh(c *gin.Context) {
@@ -408,9 +408,7 @@ func (h *AuthHandler) Refresh(c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{
-		"accessToken": accessToken,
-	})
+	c.JSON(http.StatusOK, RefreshResponse{AccessToken: accessToken})
 }
 
 // Logout		godoc
@@ -419,19 +417,19 @@ func (h *AuthHandler) Refresh(c *gin.Context) {
 // @Tags		auth
 // @Produce		json
 // @Security	BearerAuth
-// @Success		200 {object} map[string]string
+// @Success		200 {object} MessageResponse
 // @Router		/auth/logout [post]
 func (h *AuthHandler) Logout(c *gin.Context) {
 	userIDVal, exists := c.Get("userId")
 	if !exists {
 		clearRefreshCookie(c)
-		c.JSON(http.StatusOK, gin.H{"message": "Logged out"})
+		c.JSON(http.StatusOK, MessageResponse{Message: "Logged out"})
 		return
 	}
 	userIDStr, ok := userIDVal.(string)
 	if !ok {
 		clearRefreshCookie(c)
-		c.JSON(http.StatusOK, gin.H{"message": "Logged out"})
+		c.JSON(http.StatusOK, MessageResponse{Message: "Logged out"})
 		return
 	}
 
@@ -440,7 +438,7 @@ func (h *AuthHandler) Logout(c *gin.Context) {
 		return
 	}
 	clearRefreshCookie(c)
-	c.JSON(http.StatusOK, gin.H{"message": "Logged out"})
+	c.JSON(http.StatusOK, MessageResponse{Message: "Logged out"})
 }
 
 func parseRefreshToken(tokenStr, secret string) (*tokenClaims, error) {

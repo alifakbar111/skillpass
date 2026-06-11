@@ -427,7 +427,7 @@ func (h *JobHandler) UpdateJob(c *gin.Context) {
 // @Produce		json
 // @Security	BearerAuth
 // @Param		id path string true "Job posting UUID"
-// @Success		200 {object} map[string]string
+// @Success		200 {object} MessageResponse
 // @Failure		404 {object} map[string]string
 // @Router		/jobs/{id} [delete]
 func (h *JobHandler) DeleteJob(c *gin.Context) {
@@ -465,5 +465,5 @@ func (h *JobHandler) DeleteJob(c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{"message": "Deleted"})
+	c.JSON(http.StatusOK, MessageResponse{Message: "Deleted"})
 }

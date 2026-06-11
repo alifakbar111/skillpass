@@ -226,7 +226,7 @@ func (h *CompanyHandler) UpdateProfile(c *gin.Context) {
 // @Produce		json
 // @Security	BearerAuth
 // @Param		body body VerificationRequest true "Verification documents"
-// @Success		200 {object} map[string]string
+// @Success		200 {object} VerificationSubmittedResponse
 // @Failure		400 {object} map[string]string
 // @Failure		401 {object} map[string]string
 // @Failure		404 {object} map[string]string
@@ -270,7 +270,7 @@ func (h *CompanyHandler) SubmitVerification(c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{"message": "Verification submitted", "status": "pending"})
+	c.JSON(http.StatusOK, VerificationSubmittedResponse{Message: "Verification submitted", Status: "pending"})
 }
 
 // GetVerificationStatus	godoc
@@ -279,7 +279,7 @@ func (h *CompanyHandler) SubmitVerification(c *gin.Context) {
 // @Tags		companies
 // @Produce		json
 // @Security	BearerAuth
-// @Success		200 {object} map[string]string
+// @Success		200 {object} VerificationStatusResponse
 // @Failure		401 {object} map[string]string
 // @Router		/company/verification-status [get]
 func (h *CompanyHandler) GetVerificationStatus(c *gin.Context) {
@@ -306,7 +306,7 @@ func (h *CompanyHandler) GetVerificationStatus(c *gin.Context) {
 	err := stmt.QueryContext(c.Request.Context(), h.db, &company)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) || errors.Is(err, qrm.ErrNoRows) {
-			c.JSON(http.StatusOK, gin.H{"verificationStatus": "none"})
+			c.JSON(http.StatusOK, VerificationStatusResponse{VerificationStatus: "none"})
 			return
 		}
 		slog.Error("failed to load verification status", "error", err)
@@ -314,5 +314,5 @@ func (h *CompanyHandler) GetVerificationStatus(c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{"verificationStatus": string(company.VerificationStatus)})
+	c.JSON(http.StatusOK, VerificationStatusResponse{VerificationStatus: string(company.VerificationStatus)})
 }
