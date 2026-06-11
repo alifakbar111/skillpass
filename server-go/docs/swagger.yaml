@@ -1,0 +1,2526 @@
+basePath: /api/v1
+definitions:
+  ApplicationResult:
+    properties:
+      companyName:
+        type: string
+      createdAt:
+        type: string
+      id:
+        type: string
+      jobPostingId:
+        type: string
+      jobTitle:
+        description: Joined fields
+        type: string
+      jobseekerId:
+        type: string
+      latestNote:
+        type: string
+      status:
+        type: string
+      updatedAt:
+        type: string
+    type: object
+  CandidateMatch:
+    properties:
+      headline:
+        type: string
+      matchReason:
+        type: string
+      matchScore:
+        type: number
+      name:
+        type: string
+      overallScore:
+        type: integer
+      profileId:
+        type: string
+      topSkills:
+        items:
+          type: string
+        type: array
+    type: object
+  CandidateResult:
+    properties:
+      about:
+        type: string
+      avatarUrl:
+        type: string
+      headline:
+        type: string
+      id:
+        type: string
+      name:
+        type: string
+      skills:
+        items:
+          type: string
+        type: array
+      slug:
+        type: string
+      yearsOfExperience:
+        type: integer
+    type: object
+  CreateExperienceRequest:
+    properties:
+      description:
+        type: string
+      endDate:
+        type: string
+      industry:
+        type: string
+      isCurrent:
+        type: boolean
+      organization:
+        type: string
+      skillsUsed:
+        items:
+          type: string
+        type: array
+      startDate:
+        type: string
+      title:
+        type: string
+      type:
+        enum:
+        - employment
+        - gig
+        - education
+        - certification
+        - project
+        - volunteering
+        type: string
+      url:
+        type: string
+    required:
+    - organization
+    - startDate
+    - title
+    - type
+    type: object
+  CreateJobRequest:
+    properties:
+      description:
+        type: string
+      experienceLevel:
+        enum:
+        - entry
+        - mid
+        - senior
+        - lead
+        type: string
+      industry:
+        type: string
+      location:
+        type: string
+      requiredSkills:
+        items:
+          type: string
+        type: array
+      salaryRange:
+        type: string
+      tags:
+        items:
+          type: string
+        type: array
+      title:
+        type: string
+    required:
+    - description
+    - industry
+    - title
+    type: object
+  EvaluationResponse:
+    properties:
+      createdAt:
+        type: string
+      id:
+        type: string
+      overallScore:
+        type: integer
+      skillScores:
+        items:
+          $ref: '#/definitions/SkillScoreItem'
+        type: array
+      strengths:
+        items:
+          $ref: '#/definitions/SkillNote'
+        type: array
+      suggestions:
+        items:
+          $ref: '#/definitions/Suggestion'
+        type: array
+      weaknesses:
+        items:
+          $ref: '#/definitions/SkillNote'
+        type: array
+    type: object
+  Experience:
+    properties:
+      description:
+        type: string
+      endDate:
+        type: string
+      id:
+        type: string
+      industry:
+        type: string
+      isCurrent:
+        type: boolean
+      organization:
+        type: string
+      profileId:
+        type: string
+      skillsUsed:
+        items:
+          type: string
+        type: array
+      startDate:
+        type: string
+      title:
+        type: string
+      type:
+        type: string
+      url:
+        type: string
+    type: object
+  IndustryResponse:
+    properties:
+      description:
+        type: string
+      id:
+        type: string
+      name:
+        type: string
+    type: object
+  JobMatch:
+    properties:
+      companyName:
+        type: string
+      experienceLevel:
+        type: string
+      industry:
+        type: string
+      jobPostingId:
+        type: string
+      location:
+        type: string
+      matchReason:
+        type: string
+      matchScore:
+        type: number
+      salaryRange:
+        type: string
+      title:
+        type: string
+    type: object
+  JobResponse:
+    properties:
+      companyId:
+        type: string
+      createdAt:
+        type: string
+      description:
+        type: string
+      experienceLevel:
+        type: string
+      id:
+        type: string
+      industry:
+        type: string
+      location:
+        type: string
+      requiredSkills:
+        items:
+          type: string
+        type: array
+      salaryRange:
+        type: string
+      status:
+        type: string
+      tags:
+        items:
+          type: string
+        type: array
+      title:
+        type: string
+    type: object
+  LoginRequest:
+    properties:
+      email:
+        type: string
+      password:
+        type: string
+    type: object
+  LoginResponse:
+    properties:
+      accessToken:
+        type: string
+      user:
+        $ref: '#/definitions/UserResponse'
+    type: object
+  MessageResponse:
+    properties:
+      message:
+        type: string
+    type: object
+  ProfileResponse:
+    properties:
+      about:
+        type: string
+      avatarUrl:
+        type: string
+      email:
+        type: string
+      experiences:
+        items:
+          $ref: '#/definitions/Experience'
+        type: array
+      headline:
+        type: string
+      id:
+        type: string
+      name:
+        type: string
+      role:
+        type: string
+      slug:
+        type: string
+      userId:
+        type: string
+      username:
+        type: string
+      yearsOfExperience:
+        type: integer
+    type: object
+  PublicProfileResponse:
+    properties:
+      about:
+        type: string
+      avatarUrl:
+        type: string
+      experiences:
+        items:
+          $ref: '#/definitions/Experience'
+        type: array
+      headline:
+        type: string
+      name:
+        type: string
+      viewCount:
+        type: integer
+      yearsOfExperience:
+        type: integer
+    type: object
+  RefreshResponse:
+    properties:
+      accessToken:
+        type: string
+    type: object
+  RegisterRequest:
+    properties:
+      address:
+        type: string
+      businessRegistration:
+        type: string
+      companyName:
+        type: string
+      contact:
+        type: string
+      email:
+        type: string
+      name:
+        type: string
+      password:
+        maxLength: 128
+        minLength: 8
+        type: string
+      role:
+        enum:
+        - jobseeker
+        - company
+        type: string
+      username:
+        maxLength: 32
+        minLength: 3
+        type: string
+      website:
+        type: string
+    required:
+    - email
+    - password
+    - role
+    - username
+    type: object
+  SkillNote:
+    properties:
+      note:
+        type: string
+      score:
+        type: integer
+      skill:
+        type: string
+    type: object
+  SkillScoreItem:
+    properties:
+      category:
+        type: string
+      score:
+        type: integer
+      skill:
+        type: string
+    type: object
+  Suggestion:
+    properties:
+      area:
+        type: string
+      tip:
+        type: string
+    type: object
+  TagResponse:
+    properties:
+      id:
+        type: string
+      industryCategoryId:
+        type: string
+      name:
+        type: string
+    type: object
+  UpdateCompanyRequest:
+    properties:
+      blindMode:
+        type: boolean
+      companyName:
+        minLength: 1
+        type: string
+      description:
+        type: string
+      industry:
+        minLength: 1
+        type: string
+      website:
+        type: string
+    type: object
+  UpdateExperienceRequest:
+    properties:
+      description:
+        type: string
+      endDate:
+        type: string
+      industry:
+        type: string
+      isCurrent:
+        type: boolean
+      organization:
+        type: string
+      skillsUsed:
+        items:
+          type: string
+        type: array
+      startDate:
+        type: string
+      title:
+        type: string
+      type:
+        enum:
+        - employment
+        - gig
+        - education
+        - certification
+        - project
+        - volunteering
+        type: string
+      url:
+        type: string
+    type: object
+  UpdateJobRequest:
+    properties:
+      description:
+        minLength: 1
+        type: string
+      experienceLevel:
+        enum:
+        - entry
+        - mid
+        - senior
+        - lead
+        type: string
+      industry:
+        minLength: 1
+        type: string
+      location:
+        type: string
+      requiredSkills:
+        items:
+          type: string
+        type: array
+      salaryRange:
+        type: string
+      status:
+        enum:
+        - open
+        - closed
+        type: string
+      tags:
+        items:
+          type: string
+        type: array
+      title:
+        minLength: 1
+        type: string
+    type: object
+  UpdateProfileRequest:
+    properties:
+      about:
+        type: string
+      headline:
+        type: string
+      slug:
+        maxLength: 64
+        minLength: 3
+        type: string
+      yearsOfExperience:
+        type: integer
+    type: object
+  UpdateProfileResponse:
+    properties:
+      about:
+        type: string
+      headline:
+        type: string
+      id:
+        type: string
+      slug:
+        type: string
+      userId:
+        type: string
+      yearsOfExperience:
+        type: integer
+    type: object
+  UserResponse:
+    properties:
+      email:
+        type: string
+      id:
+        type: string
+      isVerified:
+        type: boolean
+      name:
+        type: string
+      role:
+        type: string
+      username:
+        type: string
+    type: object
+  VerificationActionRequest:
+    properties:
+      action:
+        enum:
+        - approve
+        - reject
+        type: string
+      reason:
+        type: string
+    required:
+    - action
+    type: object
+  VerificationRequest:
+    properties:
+      address:
+        type: string
+      businessRegistration:
+        type: string
+      contact:
+        type: string
+      website:
+        type: string
+    required:
+    - address
+    - businessRegistration
+    - contact
+    - website
+    type: object
+  VerificationStatusResponse:
+    properties:
+      verificationStatus:
+        type: string
+    type: object
+  VerificationSubmittedResponse:
+    properties:
+      message:
+        type: string
+      status:
+        type: string
+    type: object
+  internal_analytics.CompanyAnalytics:
+    properties:
+      applicationsByStatus:
+        items:
+          $ref: '#/definitions/internal_analytics.StatusCount'
+        type: array
+      avgDaysToDecision:
+        type: number
+      jobs:
+        items:
+          $ref: '#/definitions/internal_analytics.JobFunnel'
+        type: array
+      openJobs:
+        type: integer
+      totalApplications:
+        type: integer
+      totalJobs:
+        type: integer
+    type: object
+  internal_analytics.JobFunnel:
+    properties:
+      byStatus:
+        items:
+          $ref: '#/definitions/internal_analytics.StatusCount'
+        type: array
+      jobPostingId:
+        type: string
+      status:
+        type: string
+      title:
+        type: string
+      total:
+        type: integer
+    type: object
+  internal_analytics.JobseekerAnalytics:
+    properties:
+      applicationsByStatus:
+        items:
+          $ref: '#/definitions/internal_analytics.StatusCount'
+        type: array
+      passportViews:
+        type: integer
+      responseRate:
+        type: number
+      totalApplications:
+        type: integer
+    type: object
+  internal_analytics.StatusCount:
+    properties:
+      count:
+        type: integer
+      status:
+        type: string
+    type: object
+  internal_application.CompanyApplicationResult:
+    properties:
+      candidateEmail:
+        type: string
+      candidateHeadline:
+        type: string
+      candidateName:
+        type: string
+      candidateSlug:
+        type: string
+      createdAt:
+        type: string
+      id:
+        type: string
+      jobPostingId:
+        type: string
+      jobTitle:
+        type: string
+      jobseekerId:
+        type: string
+      latestNote:
+        type: string
+      status:
+        type: string
+      updatedAt:
+        type: string
+    type: object
+  internal_application.Message:
+    properties:
+      body:
+        type: string
+      createdAt:
+        type: string
+      id:
+        type: string
+      senderName:
+        type: string
+    type: object
+  internal_evaluation.CareerPathResult:
+    properties:
+      currentPosition:
+        type: string
+      steps:
+        items:
+          $ref: '#/definitions/internal_evaluation.DevelopmentStep'
+        type: array
+      suggestedRoles:
+        items:
+          $ref: '#/definitions/internal_evaluation.SuggestedRole'
+        type: array
+    type: object
+  internal_evaluation.DevelopmentStep:
+    properties:
+      action:
+        type: string
+      area:
+        type: string
+    type: object
+  internal_evaluation.SuggestedRole:
+    properties:
+      readiness:
+        description: '"ready", "stretch", "long-term"'
+        type: string
+      reason:
+        type: string
+      title:
+        type: string
+    type: object
+  internal_matching.SkillsGap:
+    properties:
+      hasEvaluation:
+        type: boolean
+      jobPostingId:
+        type: string
+      jobTitle:
+        type: string
+      matchPercent:
+        type: number
+      matchedSkills:
+        items:
+          type: string
+        type: array
+      missingSkills:
+        items:
+          type: string
+        type: array
+    type: object
+  internal_notification.ListResult:
+    properties:
+      notifications:
+        items:
+          $ref: '#/definitions/internal_notification.Notification'
+        type: array
+      unreadCount:
+        type: integer
+    type: object
+  internal_notification.Notification:
+    properties:
+      body:
+        type: string
+      createdAt:
+        type: string
+      id:
+        type: string
+      link:
+        type: string
+      readAt:
+        type: string
+      title:
+        type: string
+      type:
+        type: string
+      userId:
+        type: string
+    type: object
+  internal_resume.ParsedExperience:
+    properties:
+      description:
+        type: string
+      endDate:
+        type: string
+      isCurrent:
+        type: boolean
+      organization:
+        type: string
+      skillsUsed:
+        items:
+          type: string
+        type: array
+      startDate:
+        type: string
+      title:
+        type: string
+      type:
+        type: string
+    type: object
+  internal_resume.ParsedResume:
+    properties:
+      about:
+        type: string
+      experiences:
+        items:
+          $ref: '#/definitions/internal_resume.ParsedExperience'
+        type: array
+      headline:
+        type: string
+      yearsOfExperience:
+        type: integer
+    type: object
+  internal_webhook.Webhook:
+    properties:
+      active:
+        type: boolean
+      createdAt:
+        type: string
+      id:
+        type: string
+      secret:
+        type: string
+      url:
+        type: string
+    type: object
+host: localhost:1234
+info:
+  contact: {}
+  description: SkillPass — skills-based hiring platform API
+  title: SkillPass API
+  version: "1.0"
+paths:
+  /admin/verifications/{id}:
+    post:
+      consumes:
+      - application/json
+      description: Process a company verification request (approve or reject). Requires
+        admin role.
+      parameters:
+      - description: Company UUID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Verification action
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/VerificationActionRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Approve or reject company verification
+      tags:
+      - admin
+  /admin/verifications/pending:
+    get:
+      description: Get all companies with pending verification status. Requires admin
+        role.
+      parameters:
+      - description: Max results (default 50, max 200)
+        in: query
+        name: limit
+        type: integer
+      - description: Result offset for pagination
+        in: query
+        name: offset
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              additionalProperties: true
+              type: object
+            type: array
+      security:
+      - BearerAuth: []
+      summary: List pending company verifications
+      tags:
+      - admin
+  /applications/{id}/messages:
+    get:
+      description: Company lists the message thread for an application it owns
+      parameters:
+      - description: Application UUID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/internal_application.Message'
+            type: array
+        "403":
+          description: Forbidden
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: List application messages
+      tags:
+      - applications
+    post:
+      consumes:
+      - application/json
+      description: Company adds a note/message to an application it owns (visible
+        to the candidate)
+      parameters:
+      - description: Application UUID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Message body
+        in: body
+        name: body
+        required: true
+        schema:
+          properties:
+            body:
+              type: string
+          type: object
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/internal_application.Message'
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "403":
+          description: Forbidden
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Add a note to an application
+      tags:
+      - applications
+  /applications/{id}/status:
+    put:
+      consumes:
+      - application/json
+      description: Update an application's status (reviewed, interviewed, offered,
+        rejected). Company action for verified companies.
+      parameters:
+      - description: Application UUID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: New status value
+        in: body
+        name: body
+        required: true
+        schema:
+          properties:
+            status:
+              type: string
+          type: object
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/ApplicationResult'
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "403":
+          description: Forbidden
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Update application status
+      tags:
+      - applications
+  /applications/me:
+    get:
+      description: Get all applications for the authenticated jobseeker (kanban-style
+        data with job title and company name)
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/ApplicationResult'
+            type: array
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: List my applications
+      tags:
+      - applications
+  /auth/forgot-password:
+    post:
+      consumes:
+      - application/json
+      description: Send a password reset link if the email belongs to an account.
+        Always responds with the same message to prevent account enumeration.
+      parameters:
+      - description: Account email
+        in: body
+        name: body
+        required: true
+        schema:
+          properties:
+            email:
+              type: string
+          type: object
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Request password reset
+      tags:
+      - auth
+  /auth/login:
+    post:
+      consumes:
+      - application/json
+      description: Authenticate with email and password. Sets a refresh token cookie
+        and returns an access token.
+      parameters:
+      - description: Login credentials
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/LoginRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/LoginResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Login
+      tags:
+      - auth
+  /auth/logout:
+    post:
+      description: Revoke all refresh tokens for the authenticated user and clear
+        the refresh cookie.
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/MessageResponse'
+      security:
+      - BearerAuth: []
+      summary: Logout
+      tags:
+      - auth
+  /auth/me:
+    get:
+      description: Return the authenticated user's account info (works for all roles,
+        unlike /profiles/me which is jobseeker-only).
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/UserResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Current user
+      tags:
+      - auth
+  /auth/refresh:
+    post:
+      description: Exchange a valid refresh token (from cookie) for a new access token.
+        Rotates the refresh token.
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/RefreshResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Refresh access token
+      tags:
+      - auth
+  /auth/register:
+    post:
+      consumes:
+      - application/json
+      description: Create a new user account (jobseeker or company). Sets a refresh
+        token cookie and returns an access token.
+      parameters:
+      - description: Registration details
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/RegisterRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/LoginResponse'
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "409":
+          description: Conflict
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Register a new user
+      tags:
+      - auth
+  /auth/resend-verification:
+    post:
+      description: Send a fresh verification link to the authenticated user's email.
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Resend verification email
+      tags:
+      - auth
+  /auth/reset-password:
+    post:
+      consumes:
+      - application/json
+      description: Set a new password using a reset token from the emailed link. Revokes
+        all existing sessions.
+      parameters:
+      - description: Reset token and new password
+        in: body
+        name: body
+        required: true
+        schema:
+          properties:
+            newPassword:
+              type: string
+            token:
+              type: string
+          type: object
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Reset password
+      tags:
+      - auth
+  /auth/verify-email:
+    get:
+      description: Consume an email-verification token (from the emailed link) and
+        mark the account verified.
+      parameters:
+      - description: Verification token
+        in: query
+        name: token
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Verify email address
+      tags:
+      - auth
+  /candidates/matches:
+    get:
+      description: Get candidate recommendations for a specific job posting based
+        on skill matching
+      parameters:
+      - description: Job posting UUID to find candidates for
+        in: query
+        name: jobId
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/CandidateMatch'
+            type: array
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Match candidates for a job
+      tags:
+      - matching
+  /company/analytics:
+    get:
+      description: 'Aggregate hiring metrics for the authenticated verified company:
+        jobs, applications by status, time-to-decision, per-job funnels'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/internal_analytics.CompanyAnalytics'
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "403":
+          description: Forbidden
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Company hiring analytics
+      tags:
+      - analytics
+  /company/applications:
+    get:
+      description: Get all applications for jobs owned by the authenticated verified
+        company
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/internal_application.CompanyApplicationResult'
+            type: array
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "403":
+          description: Forbidden
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: List applications for company's jobs
+      tags:
+      - applications
+  /company/profile:
+    get:
+      description: Get the authenticated company's profile
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Get company profile
+      tags:
+      - companies
+    put:
+      consumes:
+      - application/json
+      description: Update the authenticated company's profile fields (company name,
+        website, industry, description)
+      parameters:
+      - description: Company profile fields to update
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/UpdateCompanyRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Update company profile
+      tags:
+      - companies
+  /company/verification:
+    post:
+      consumes:
+      - application/json
+      description: Submit business verification documents for company approval
+      parameters:
+      - description: Verification documents
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/VerificationRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/VerificationSubmittedResponse'
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Submit verification documents
+      tags:
+      - companies
+  /company/verification-status:
+    get:
+      description: Get the current verification status for the authenticated company
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/VerificationStatusResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Get verification status
+      tags:
+      - companies
+  /company/webhooks:
+    get:
+      description: List the authenticated company's registered webhooks (secrets omitted)
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/internal_webhook.Webhook'
+            type: array
+        "403":
+          description: Forbidden
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: List webhooks
+      tags:
+      - webhooks
+    post:
+      consumes:
+      - application/json
+      description: Register a webhook URL. The signing secret is returned once — store
+        it; events are signed with HMAC-SHA256 in the X-SkillPass-Signature header.
+      parameters:
+      - description: Webhook URL
+        in: body
+        name: body
+        required: true
+        schema:
+          properties:
+            url:
+              type: string
+          type: object
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/internal_webhook.Webhook'
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "403":
+          description: Forbidden
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Register a webhook
+      tags:
+      - webhooks
+  /company/webhooks/{id}:
+    delete:
+      description: Delete a webhook owned by the authenticated company
+      parameters:
+      - description: Webhook UUID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "403":
+          description: Forbidden
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Delete a webhook
+      tags:
+      - webhooks
+  /evaluate/me:
+    post:
+      description: Trigger a fresh AI evaluation of the authenticated jobseeker's
+        profile and experiences
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/EvaluationResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Trigger AI evaluation
+      tags:
+      - evaluation
+  /evaluate/me/career-path:
+    post:
+      description: Generate AI career path recommendations from the authenticated
+        jobseeker's profile and latest evaluation
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/internal_evaluation.CareerPathResult'
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Career path recommendations
+      tags:
+      - evaluation
+  /evaluate/me/results:
+    get:
+      description: Get the most recent AI evaluation result for the authenticated
+        jobseeker
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/EvaluationResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Get latest evaluation
+      tags:
+      - evaluation
+  /health:
+    get:
+      description: Returns server health status with current timestamp
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Health check
+      tags:
+      - health
+  /industries:
+    get:
+      description: Get all industry categories for filtering
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/IndustryResponse'
+            type: array
+      summary: List industries
+      tags:
+      - reference
+  /jobs:
+    get:
+      description: Get all open job postings with optional filters
+      parameters:
+      - description: Filter by industry name
+        in: query
+        name: industry
+        type: string
+      - description: Filter by experience level (entry, mid, senior, lead)
+        in: query
+        name: experience_level
+        type: string
+      - description: Max results (default 50, max 200)
+        in: query
+        name: limit
+        type: integer
+      - description: Result offset for pagination
+        in: query
+        name: offset
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/JobResponse'
+            type: array
+      summary: List open job postings
+      tags:
+      - jobs
+    post:
+      consumes:
+      - application/json
+      description: Create a new job posting for the authenticated company
+      parameters:
+      - description: Job posting details
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/CreateJobRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/JobResponse'
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Create a job posting
+      tags:
+      - jobs
+  /jobs/{id}:
+    delete:
+      description: Delete a job posting owned by the authenticated company
+      parameters:
+      - description: Job posting UUID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/MessageResponse'
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Delete a job posting
+      tags:
+      - jobs
+    get:
+      description: Get a single job posting by ID
+      parameters:
+      - description: Job posting UUID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/JobResponse'
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Get a job posting
+      tags:
+      - jobs
+    put:
+      consumes:
+      - application/json
+      description: Update specific fields of a job posting owned by the authenticated
+        company
+      parameters:
+      - description: Job posting UUID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Fields to update
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/UpdateJobRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/JobResponse'
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Update a job posting
+      tags:
+      - jobs
+  /jobs/{id}/apply:
+    post:
+      description: Apply the authenticated jobseeker to a job posting
+      parameters:
+      - description: Job posting UUID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/ApplicationResult'
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "409":
+          description: Conflict
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Apply to a job
+      tags:
+      - applications
+  /jobs/{id}/skills-gap:
+    get:
+      description: Compare the authenticated jobseeker's evaluated skills against
+        a job's required skills
+      parameters:
+      - description: Job posting UUID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/internal_matching.SkillsGap'
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Skills gap for a job
+      tags:
+      - matching
+  /jobs/matches:
+    get:
+      description: Get job recommendations based on the authenticated jobseeker's
+        skills and AI evaluation
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/JobMatch'
+            type: array
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Match jobs for jobseeker
+      tags:
+      - matching
+  /jobs/me:
+    get:
+      description: Get all job postings for the authenticated company
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/JobResponse'
+            type: array
+      security:
+      - BearerAuth: []
+      summary: List company's job postings
+      tags:
+      - jobs
+  /notifications/{id}/read:
+    put:
+      description: Mark a single notification as read
+      parameters:
+      - description: Notification UUID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Mark notification read
+      tags:
+      - notifications
+  /notifications/me:
+    get:
+      description: Get recent notifications and unread count for the authenticated
+        user
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/internal_notification.ListResult'
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: List my notifications
+      tags:
+      - notifications
+  /notifications/read-all:
+    put:
+      description: Mark all unread notifications as read for the authenticated user
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Mark all notifications read
+      tags:
+      - notifications
+  /p/{username}:
+    get:
+      description: Server-rendered HTML with per-profile Open Graph tags for crawlers;
+        redirects humans to the SPA passport. Does not increment the view counter.
+      parameters:
+      - description: Profile username/slug
+        in: path
+        name: username
+        required: true
+        type: string
+      produces:
+      - text/html
+      responses:
+        "200":
+          description: OK
+          schema:
+            type: string
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Passport link-preview page
+      tags:
+      - passport
+  /profiles/{username}:
+    get:
+      description: Get a jobseeker's public profile by username/slug (no auth required)
+      parameters:
+      - description: Profile username/slug
+        in: path
+        name: username
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/PublicProfileResponse'
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Get public profile
+      tags:
+      - passport
+  /profiles/me:
+    get:
+      description: Get the authenticated jobseeker's full profile (including experiences)
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/ProfileResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Get own profile
+      tags:
+      - profiles
+    put:
+      consumes:
+      - application/json
+      description: Update the authenticated jobseeker's profile fields (headline,
+        about, years of experience, slug)
+      parameters:
+      - description: Profile fields to update
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/UpdateProfileRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/UpdateProfileResponse'
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "409":
+          description: Conflict
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Update own profile
+      tags:
+      - profiles
+  /profiles/me/analytics:
+    get:
+      description: Application counts by status, response rate, and passport views
+        for the authenticated jobseeker
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/internal_analytics.JobseekerAnalytics'
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Jobseeker stats
+      tags:
+      - analytics
+  /profiles/me/avatar:
+    post:
+      consumes:
+      - multipart/form-data
+      description: Upload a profile image (png/jpeg/webp, max 2MB) as multipart field
+        "file". Updates the user's avatarUrl.
+      parameters:
+      - description: Image file
+        in: formData
+        name: file
+        required: true
+        type: file
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Upload avatar
+      tags:
+      - profiles
+  /profiles/me/experience:
+    post:
+      consumes:
+      - application/json
+      description: Add a new employment, gig, education, certification, project, or
+        volunteering entry to the profile
+      parameters:
+      - description: Experience details
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/CreateExperienceRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/Experience'
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Add experience entry
+      tags:
+      - profiles
+  /profiles/me/experience/{id}:
+    delete:
+      description: Delete an experience entry owned by the authenticated jobseeker
+      parameters:
+      - description: Experience entry UUID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/MessageResponse'
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Delete an experience entry
+      tags:
+      - profiles
+    put:
+      consumes:
+      - application/json
+      description: Update specific fields of an experience entry owned by the authenticated
+        jobseeker
+      parameters:
+      - description: Experience entry UUID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Fields to update
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/UpdateExperienceRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/Experience'
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Update an experience entry
+      tags:
+      - profiles
+  /profiles/me/resume-parse:
+    post:
+      consumes:
+      - application/json
+      description: Extract structured profile data (headline, about, experiences)
+        from pasted resume text using AI. Does not modify the profile — the client
+        reviews and saves entries.
+      parameters:
+      - description: Raw resume text
+        in: body
+        name: body
+        required: true
+        schema:
+          properties:
+            text:
+              type: string
+          type: object
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/internal_resume.ParsedResume'
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Parse resume text
+      tags:
+      - profiles
+  /profiles/me/resume-upload:
+    post:
+      consumes:
+      - multipart/form-data
+      description: Upload a PDF resume as multipart field "file"; its text is extracted
+        and parsed by AI into structured experiences. Text-based PDFs only (scanned
+        PDFs need OCR and are rejected as unreadable).
+      parameters:
+      - description: PDF resume
+        in: formData
+        name: file
+        required: true
+        type: file
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/internal_resume.ParsedResume'
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Upload resume PDF
+      tags:
+      - profiles
+  /search/candidates:
+    get:
+      description: Search for jobseeker candidates by keyword, skills, and industry.
+        Requires verified company auth.
+      parameters:
+      - description: Text search query (matches name, headline, about)
+        in: query
+        name: q
+        type: string
+      - description: Comma-separated skill filter
+        in: query
+        name: skills
+        type: string
+      - description: Industry name filter
+        in: query
+        name: industry
+        type: string
+      - description: Max results (default 50, max 200)
+        in: query
+        name: limit
+        type: integer
+      - description: Result offset for pagination
+        in: query
+        name: offset
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/CandidateResult'
+            type: array
+      security:
+      - BearerAuth: []
+      summary: Search candidates
+      tags:
+      - search
+  /tags:
+    get:
+      description: Get skill tags, optionally filtered by industry category
+      parameters:
+      - description: Industry category ID to filter tags by
+        in: query
+        name: industry
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/TagResponse'
+            type: array
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: List tags
+      tags:
+      - reference
+securityDefinitions:
+  BearerAuth:
+    in: header
+    name: Authorization
+    type: apiKey
+swagger: "2.0"
