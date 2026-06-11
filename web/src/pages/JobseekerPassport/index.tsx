@@ -59,7 +59,7 @@ export function JobseekerPassport() {
       <div className="flex justify-between items-center flex-wrap gap-2">
         <h1 className="text-2xl font-bold">My Passport</h1>
         <div className="flex items-center gap-2 flex-wrap">
-          {evaluation && <EvaluationScoreBadge overallScore={evaluation.overallScore} />}
+          {evaluation && <EvaluationScoreBadge overallScore={evaluation.overallScore ?? 0} />}
           {user?.username && <SharePassport slug={user.username} name={data.name ?? ''} printRef={printRef} />}
           <Link to={`/profiles/${user?.username}`} className="btn btn-outline btn-sm gap-2" target="_blank">
             <ExternalLink size={14} aria-hidden="true" /> View Public
@@ -106,11 +106,11 @@ export function JobseekerPassport() {
                 <Sparkles size={14} aria-hidden="true" /> Details
               </Link>
             </div>
-            {evaluation.strengths.length > 0 && (
+            {(evaluation.strengths ?? []).length > 0 && (
               <div className="mb-3">
                 <p className="text-sm font-semibold text-success mb-1">Top Strengths</p>
                 <div className="flex flex-wrap gap-1">
-                  {evaluation.strengths.slice(0, 5).map((s) => (
+                  {(evaluation.strengths ?? []).slice(0, 5).map((s) => (
                     <span key={s.skill} className="badge badge-success badge-sm">
                       {s.skill} ({s.score})
                     </span>
@@ -118,11 +118,11 @@ export function JobseekerPassport() {
                 </div>
               </div>
             )}
-            {evaluation.skillScores.length > 0 && (
+            {(evaluation.skillScores ?? []).length > 0 && (
               <div>
                 <p className="text-sm font-semibold mb-1">Skill Scores</p>
                 <div className="flex flex-wrap gap-1">
-                  {evaluation.skillScores.slice(0, 8).map((s) => (
+                  {(evaluation.skillScores ?? []).slice(0, 8).map((s) => (
                     <span key={s.skill} className="badge badge-ghost badge-sm">
                       {s.skill}: {s.score}
                     </span>

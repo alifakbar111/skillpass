@@ -37,7 +37,9 @@ export function ApplicationKanban({ applications }: Props) {
                     <div key={app.id} className="p-3 bg-base-100 rounded-box">
                       <p className="font-medium text-sm">{app.jobTitle || 'Unknown Position'}</p>
                       <p className="text-xs opacity-60">{app.companyName || 'Unknown Company'}</p>
-                      <p className="text-xs opacity-40 mt-1">Applied {new Date(app.createdAt).toLocaleDateString()}</p>
+                      <p className="text-xs opacity-40 mt-1">
+                        Applied {app.createdAt ? new Date(app.createdAt).toLocaleDateString() : 'recently'}
+                      </p>
                       {app.latestNote && (
                         <div className="mt-2 text-xs bg-base-200 rounded p-2 border-l-2 border-l-primary">
                           <span className="opacity-50">Note: </span>

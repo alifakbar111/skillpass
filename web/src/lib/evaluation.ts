@@ -1,48 +1,18 @@
+import type {
+  CareerPathResult,
+  DevelopmentStep,
+  EvaluationResponse,
+  SkillNote,
+  SkillScoreItem,
+  SuggestedRole,
+  Suggestion,
+} from './api-types';
 import { ApiError, api } from './api';
 
-export interface SkillNote {
-  skill: string;
-  score: number;
-  note: string;
-}
-
-export interface Suggestion {
-  area: string;
-  tip: string;
-}
-
-export interface SkillScoreItem {
-  skill: string;
-  category: string;
-  score: number;
-}
-
-export interface EvaluationResult {
-  id: string;
-  overallScore: number;
-  strengths: SkillNote[];
-  weaknesses: SkillNote[];
-  suggestions: Suggestion[];
-  skillScores: SkillScoreItem[];
-  createdAt: string;
-}
-
-export interface SuggestedRole {
-  title: string;
-  reason: string;
-  readiness: 'ready' | 'stretch' | 'long-term';
-}
-
-export interface DevelopmentStep {
-  area: string;
-  action: string;
-}
-
-export interface CareerPathResult {
-  currentPosition: string;
-  suggestedRoles: SuggestedRole[];
-  steps: DevelopmentStep[];
-}
+// EvaluationResult keeps the historical name used across the UI; it is the
+// generated server response type.
+export type EvaluationResult = EvaluationResponse;
+export type { CareerPathResult, DevelopmentStep, SkillNote, SkillScoreItem, SuggestedRole, Suggestion };
 
 export async function triggerEvaluation(): Promise<EvaluationResult> {
   return api<EvaluationResult>('/evaluate/me', { method: 'POST' });

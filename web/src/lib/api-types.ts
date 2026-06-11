@@ -29,7 +29,18 @@ export type CandidateResult = Schemas['CandidateResult'];
 export type CandidateMatch = Schemas['CandidateMatch'];
 export type JobMatch = Schemas['JobMatch'];
 export type EvaluationResponse = Schemas['EvaluationResponse'];
+export type SkillNote = Schemas['SkillNote'];
+export type SkillScoreItem = Schemas['SkillScoreItem'];
+export type Suggestion = Schemas['Suggestion'];
+export type CareerPathResult = Schemas['CareerPathResult'];
+export type SuggestedRole = Schemas['SuggestedRole'];
+export type DevelopmentStep = Schemas['DevelopmentStep'];
 export type ApplicationResult = Schemas['ApplicationResult'];
+export type CompanyApplicationResult = Schemas['CompanyApplicationResult'];
+export type ApplicationMessage = Schemas['ApplicationMessage'];
+
+// Admin
+export type PendingCompany = Schemas['PendingCompany'];
 
 // Generic
 export type MessageResponse = Schemas['MessageResponse'];

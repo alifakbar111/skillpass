@@ -30,7 +30,7 @@ type PendingCompany struct {
 	VerificationDocs   json.RawMessage `json:"verificationDocs"`
 	VerifiedAt         *time.Time      `json:"verifiedAt"`
 	CreatedAt          time.Time       `json:"createdAt"`
-}
+} //@name PendingCompany
 
 type VerificationActionRequest struct {
 	Action string  `json:"action" binding:"required,oneof=approve reject"`
@@ -95,7 +95,7 @@ func parseOffset(c *gin.Context) int64 {
 // @Security	BearerAuth
 // @Param		limit query int false "Max results (default 50, max 200)"
 // @Param		offset query int false "Result offset for pagination"
-// @Success		200 {array} map[string]interface{}
+// @Success		200 {array} PendingCompany
 // @Router		/admin/verifications/pending [get]
 func (h *AdminHandler) ListPendingVerifications(c *gin.Context) {
 	limit := parseLimit(c)

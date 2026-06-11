@@ -62,7 +62,7 @@ type Message struct {
 	SenderName string `json:"senderName"`
 	Body       string `json:"body"`
 	CreatedAt  string `json:"createdAt"`
-}
+} //@name ApplicationMessage
 
 func contains(list []string, item string) bool {
 	for _, s := range list {
@@ -305,7 +305,7 @@ type CompanyApplicationResult struct {
 	CandidateSlug    string `json:"candidateSlug"`
 	CandidateHeadline string `json:"candidateHeadline,omitempty"`
 	LatestNote       *string `json:"latestNote,omitempty"`
-}
+} //@name CompanyApplicationResult
 
 func (s *Service) ListForCompany(ctx context.Context, companyID string) ([]CompanyApplicationResult, error) {
 	stmt := SELECT(

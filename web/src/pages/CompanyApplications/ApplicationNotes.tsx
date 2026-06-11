@@ -59,7 +59,7 @@ export function ApplicationNotes({ applicationId }: { applicationId: string }) {
             <div key={m.id} className="bg-base-200 rounded-lg p-2">
               <div className="text-sm">{m.body}</div>
               <div className="text-[10px] opacity-50 mt-1">
-                {m.senderName} · {m.createdAt.slice(0, 10)}
+                {m.senderName} · {m.createdAt?.slice(0, 10)}
               </div>
             </div>
           ))}

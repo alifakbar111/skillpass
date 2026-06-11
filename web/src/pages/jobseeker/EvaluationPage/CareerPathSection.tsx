@@ -67,12 +67,12 @@ export function CareerPathSection() {
           {result.currentPosition && <p className="text-sm opacity-70 italic">{result.currentPosition}</p>}
 
           <div className="space-y-2">
-            {result.suggestedRoles.map((role) => (
+            {(result.suggestedRoles ?? []).map((role) => (
               <div key={role.title} className="p-3 bg-base-100 rounded-box">
                 <div className="flex justify-between items-center gap-2">
                   <span className="font-medium">{role.title}</span>
-                  <span className={`badge badge-sm ${READINESS_BADGE[role.readiness] ?? 'badge-ghost'}`}>
-                    {READINESS_LABEL[role.readiness] ?? role.readiness}
+                  <span className={`badge badge-sm ${READINESS_BADGE[role.readiness ?? ''] ?? 'badge-ghost'}`}>
+                    {READINESS_LABEL[role.readiness ?? ''] ?? role.readiness}
                   </span>
                 </div>
                 <p className="text-xs opacity-60 mt-1">{role.reason}</p>
@@ -80,11 +80,11 @@ export function CareerPathSection() {
             ))}
           </div>
 
-          {result.steps.length > 0 && (
+          {(result.steps ?? []).length > 0 && (
             <div>
               <p className="text-sm font-semibold mb-1">Next steps</p>
               <ul className="space-y-1">
-                {result.steps.map((step) => (
+                {(result.steps ?? []).map((step) => (
                   <li key={`${step.area}-${step.action}`} className="text-sm flex gap-2">
                     <span className="badge badge-xs badge-ghost mt-1 shrink-0 capitalize">{step.area}</span>
                     <span className="opacity-80">{step.action}</span>

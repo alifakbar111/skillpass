@@ -35,9 +35,7 @@ export interface paths {
                         [name: string]: unknown;
                     };
                     content: {
-                        "application/json": {
-                            [key: string]: unknown;
-                        }[];
+                        "application/json": components["schemas"]["PendingCompany"][];
                     };
                 };
             };
@@ -211,7 +209,7 @@ export interface paths {
                         [name: string]: unknown;
                     };
                     content: {
-                        "application/json": components["schemas"]["internal_application.Message"][];
+                        "application/json": components["schemas"]["ApplicationMessage"][];
                     };
                 };
                 /** @description Forbidden */
@@ -268,7 +266,7 @@ export interface paths {
                         [name: string]: unknown;
                     };
                     content: {
-                        "application/json": components["schemas"]["internal_application.Message"];
+                        "application/json": components["schemas"]["ApplicationMessage"];
                     };
                 };
                 /** @description Bad Request */
@@ -1031,7 +1029,7 @@ export interface paths {
                         [name: string]: unknown;
                     };
                     content: {
-                        "application/json": components["schemas"]["internal_application.CompanyApplicationResult"][];
+                        "application/json": components["schemas"]["CompanyApplicationResult"][];
                     };
                 };
                 /** @description Unauthorized */
@@ -1576,7 +1574,7 @@ export interface paths {
                         [name: string]: unknown;
                     };
                     content: {
-                        "application/json": components["schemas"]["internal_evaluation.CareerPathResult"];
+                        "application/json": components["schemas"]["CareerPathResult"];
                     };
                 };
                 /** @description Unauthorized */
@@ -3233,6 +3231,12 @@ export interface paths {
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
+        ApplicationMessage: {
+            body?: string;
+            createdAt?: string;
+            id?: string;
+            senderName?: string;
+        };
         ApplicationResult: {
             companyName?: string;
             createdAt?: string;
@@ -3264,6 +3268,25 @@ export interface components {
             slug?: string;
             yearsOfExperience?: number;
         };
+        CareerPathResult: {
+            currentPosition?: string;
+            steps?: components["schemas"]["DevelopmentStep"][];
+            suggestedRoles?: components["schemas"]["SuggestedRole"][];
+        };
+        CompanyApplicationResult: {
+            candidateEmail?: string;
+            candidateHeadline?: string;
+            candidateName?: string;
+            candidateSlug?: string;
+            createdAt?: string;
+            id?: string;
+            jobPostingId?: string;
+            jobTitle?: string;
+            jobseekerId?: string;
+            latestNote?: string;
+            status?: string;
+            updatedAt?: string;
+        };
         CreateExperienceRequest: {
             description?: string;
             endDate?: string;
@@ -3287,6 +3310,10 @@ export interface components {
             salaryRange?: string;
             tags?: string[];
             title: string;
+        };
+        DevelopmentStep: {
+            action?: string;
+            area?: string;
         };
         EvaluationResponse: {
             createdAt?: string;
@@ -3352,6 +3379,18 @@ export interface components {
         MessageResponse: {
             message?: string;
         };
+        PendingCompany: {
+            companyName?: string;
+            createdAt?: string;
+            description?: string;
+            id?: string;
+            industry?: string;
+            userId?: string;
+            verificationDocs?: number[];
+            verificationStatus?: string;
+            verifiedAt?: string;
+            website?: string;
+        };
         ProfileResponse: {
             about?: string;
             avatarUrl?: string;
@@ -3400,6 +3439,12 @@ export interface components {
             category?: string;
             score?: number;
             skill?: string;
+        };
+        SuggestedRole: {
+            /** @description "ready", "stretch", "long-term" */
+            readiness?: string;
+            reason?: string;
+            title?: string;
         };
         Suggestion: {
             area?: string;
@@ -3507,41 +3552,6 @@ export interface components {
         "internal_analytics.StatusCount": {
             count?: number;
             status?: string;
-        };
-        "internal_application.CompanyApplicationResult": {
-            candidateEmail?: string;
-            candidateHeadline?: string;
-            candidateName?: string;
-            candidateSlug?: string;
-            createdAt?: string;
-            id?: string;
-            jobPostingId?: string;
-            jobTitle?: string;
-            jobseekerId?: string;
-            latestNote?: string;
-            status?: string;
-            updatedAt?: string;
-        };
-        "internal_application.Message": {
-            body?: string;
-            createdAt?: string;
-            id?: string;
-            senderName?: string;
-        };
-        "internal_evaluation.CareerPathResult": {
-            currentPosition?: string;
-            steps?: components["schemas"]["internal_evaluation.DevelopmentStep"][];
-            suggestedRoles?: components["schemas"]["internal_evaluation.SuggestedRole"][];
-        };
-        "internal_evaluation.DevelopmentStep": {
-            action?: string;
-            area?: string;
-        };
-        "internal_evaluation.SuggestedRole": {
-            /** @description "ready", "stretch", "long-term" */
-            readiness?: string;
-            reason?: string;
-            title?: string;
         };
         "internal_matching.SkillsGap": {
             hasEvaluation?: boolean;

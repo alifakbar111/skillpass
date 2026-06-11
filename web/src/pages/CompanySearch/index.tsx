@@ -4,7 +4,7 @@ import { Link } from 'react-router-dom';
 import { LoadingSpinner } from '../../components/ui/LoadingFallback';
 import { useIndustries } from '../../hooks/useIndustries';
 import { ApiError, api } from '../../lib/api';
-import type { Candidate } from './type';
+import type { CandidateResult as Candidate } from '@/lib/api-types';
 
 interface SearchParams {
   query: string;
@@ -96,14 +96,16 @@ export function CompanySearch() {
               <div className="flex-1">
                 <h3 className="font-semibold">{c.name}</h3>
                 {c.headline && <p className="text-sm opacity-70">{c.headline}</p>}
-                {c.skills.length > 0 && (
+                {(c.skills ?? []).length > 0 && (
                   <div className="flex flex-wrap gap-1 mt-1">
-                    {c.skills.slice(0, 5).map((s) => (
+                    {(c.skills ?? []).slice(0, 5).map((s) => (
                       <span key={s} className="badge badge-sm">
                         {s}
                       </span>
                     ))}
-                    {c.skills.length > 5 && <span className="text-xs opacity-50">+{c.skills.length - 5}</span>}
+                    {(c.skills ?? []).length > 5 && (
+                      <span className="text-xs opacity-50">+{(c.skills ?? []).length - 5}</span>
+                    )}
                   </div>
                 )}
               </div>

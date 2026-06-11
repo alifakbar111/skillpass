@@ -1,25 +1,14 @@
+import type { ApplicationMessage, ApplicationResult } from './api-types';
 import { api } from './api';
 
+// ApplicationStatus is a client-side narrowing of the server's free-form
+// status string; used to drive the kanban columns.
 export type ApplicationStatus = 'applied' | 'reviewed' | 'interviewed' | 'offered' | 'rejected';
 
-export interface Application {
-  id: string;
-  jobseekerId: string;
-  jobPostingId: string;
-  status: ApplicationStatus;
-  createdAt: string;
-  updatedAt: string;
-  jobTitle?: string;
-  companyName?: string;
-  latestNote?: string;
-}
-
-export interface ApplicationMessage {
-  id: string;
-  senderName: string;
-  body: string;
-  createdAt: string;
-}
+// Application keeps the historical name used across the UI; it is the
+// generated server response type.
+export type Application = ApplicationResult;
+export type { ApplicationMessage };
 
 export async function applyToJob(jobId: string): Promise<Application> {
   return api<Application>(`/jobs/${jobId}/apply`, { method: 'POST' });

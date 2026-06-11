@@ -2,23 +2,9 @@ import { ChevronDown, ExternalLink, MessageSquare, User } from 'lucide-react';
 import { Fragment, useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { LoadingFallback } from '../../components/ui/LoadingFallback';
+import type { CompanyApplicationResult as CompanyApplication } from '@/lib/api-types';
 import { ApiError, api } from '../../lib/api';
 import { ApplicationNotes } from './ApplicationNotes';
-
-interface CompanyApplication {
-  id: string;
-  jobseekerId: string;
-  jobPostingId: string;
-  status: string;
-  createdAt: string;
-  updatedAt: string;
-  jobTitle: string;
-  candidateName: string;
-  candidateEmail: string;
-  candidateSlug: string;
-  candidateHeadline?: string;
-  latestNote?: string;
-}
 
 const STATUS_OPTIONS = ['reviewed', 'interviewed', 'offered', 'rejected'] as const;
 
@@ -67,7 +53,7 @@ export function CompanyApplications() {
   if (loading) return <LoadingFallback text="Loading applications" />;
 
   const grouped = applications.reduce<Record<string, CompanyApplication[]>>((acc, app) => {
-    const key = app.jobTitle;
+    const key = app.jobTitle ?? 'Untitled';
     if (!acc[key]) acc[key] = [];
     acc[key].push(app);
     return acc;
@@ -128,9 +114,9 @@ export function CompanyApplications() {
                         </div>
                       </td>
                       <td>
-                        <span className={`badge ${STATUS_BADGE[app.status] ?? 'badge-ghost'}`}>{app.status}</span>
+                        <span className={`badge ${STATUS_BADGE[app.status ?? ''] ?? 'badge-ghost'}`}>{app.status}</span>
                       </td>
-                      <td className="text-sm opacity-70">{app.createdAt.slice(0, 10)}</td>
+                      <td className="text-sm opacity-70">{app.createdAt?.slice(0, 10)}</td>
                       <td>
                         <div className="flex items-center gap-2">
                           <Link
@@ -145,7 +131,7 @@ export function CompanyApplications() {
                             type="button"
                             className="btn btn-xs btn-ghost"
                             title="Notes"
-                            onClick={() => setNotesAppId((prev) => (prev === app.id ? null : app.id))}
+                            onClick={() => setNotesAppId((prev) => (prev === app.id ? null : (app.id ?? null)))}
                           >
                             <MessageSquare size={14} />
                           </button>
@@ -167,7 +153,7 @@ export function CompanyApplications() {
                               >
                                 {STATUS_OPTIONS.filter((s) => s !== app.status).map((s) => (
                                   <li key={s}>
-                                    <button type="button" onClick={() => handleStatusChange(app.id, s)}>
+                                    <button type="button" onClick={() => app.id && handleStatusChange(app.id, s)}>
                                       {s.charAt(0).toUpperCase() + s.slice(1)}
                                     </button>
                                   </li>

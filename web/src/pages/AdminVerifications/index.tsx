@@ -2,7 +2,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Check, X } from 'lucide-react';
 import { useState } from 'react';
 import { ApiError, api } from '../../lib/api';
-import type { Company } from './type';
+import type { PendingCompany as Company } from '@/lib/api-types';
 
 export function AdminVerifications() {
   const queryClient = useQueryClient();
@@ -77,11 +77,13 @@ export function AdminVerifications() {
                   {company.description && <p className="text-sm mt-1">{company.description}</p>}
                   {company.verificationDocs && (
                     <div className="mt-2 p-2 bg-base-100 rounded-box text-sm">
-                      {Object.entries(company.verificationDocs as Record<string, string>).map(([key, val]) => (
-                        <p key={key}>
-                          <span className="font-medium">{key}:</span> {val}
-                        </p>
-                      ))}
+                      {Object.entries(company.verificationDocs as unknown as Record<string, string>).map(
+                        ([key, val]) => (
+                          <p key={key}>
+                            <span className="font-medium">{key}:</span> {val}
+                          </p>
+                        ),
+                      )}
                     </div>
                   )}
                 </div>
@@ -90,7 +92,7 @@ export function AdminVerifications() {
                     type="button"
                     className="btn btn-success btn-sm"
                     disabled={loadingId === company.id}
-                    onClick={() => handleAction(company.id, 'approve')}
+                    onClick={() => company.id && handleAction(company.id, 'approve')}
                   >
                     <Check size={16} aria-hidden="true" /> Approve
                   </button>
@@ -98,7 +100,7 @@ export function AdminVerifications() {
                     type="button"
                     className="btn btn-error btn-sm"
                     disabled={loadingId === company.id}
-                    onClick={() => handleAction(company.id, 'reject')}
+                    onClick={() => company.id && handleAction(company.id, 'reject')}
                   >
                     <X size={16} aria-hidden="true" /> Reject
                   </button>

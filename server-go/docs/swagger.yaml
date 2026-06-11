@@ -1,5 +1,16 @@
 basePath: /api/v1
 definitions:
+  ApplicationMessage:
+    properties:
+      body:
+        type: string
+      createdAt:
+        type: string
+      id:
+        type: string
+      senderName:
+        type: string
+    type: object
   ApplicationResult:
     properties:
       companyName:
@@ -61,6 +72,46 @@ definitions:
         type: string
       yearsOfExperience:
         type: integer
+    type: object
+  CareerPathResult:
+    properties:
+      currentPosition:
+        type: string
+      steps:
+        items:
+          $ref: '#/definitions/DevelopmentStep'
+        type: array
+      suggestedRoles:
+        items:
+          $ref: '#/definitions/SuggestedRole'
+        type: array
+    type: object
+  CompanyApplicationResult:
+    properties:
+      candidateEmail:
+        type: string
+      candidateHeadline:
+        type: string
+      candidateName:
+        type: string
+      candidateSlug:
+        type: string
+      createdAt:
+        type: string
+      id:
+        type: string
+      jobPostingId:
+        type: string
+      jobTitle:
+        type: string
+      jobseekerId:
+        type: string
+      latestNote:
+        type: string
+      status:
+        type: string
+      updatedAt:
+        type: string
     type: object
   CreateExperienceRequest:
     properties:
@@ -130,6 +181,13 @@ definitions:
     - description
     - industry
     - title
+    type: object
+  DevelopmentStep:
+    properties:
+      action:
+        type: string
+      area:
+        type: string
     type: object
   EvaluationResponse:
     properties:
@@ -265,6 +323,31 @@ definitions:
       message:
         type: string
     type: object
+  PendingCompany:
+    properties:
+      companyName:
+        type: string
+      createdAt:
+        type: string
+      description:
+        type: string
+      id:
+        type: string
+      industry:
+        type: string
+      userId:
+        type: string
+      verificationDocs:
+        items:
+          type: integer
+        type: array
+      verificationStatus:
+        type: string
+      verifiedAt:
+        type: string
+      website:
+        type: string
+    type: object
   ProfileResponse:
     properties:
       about:
@@ -369,6 +452,16 @@ definitions:
       score:
         type: integer
       skill:
+        type: string
+    type: object
+  SuggestedRole:
+    properties:
+      readiness:
+        description: '"ready", "stretch", "long-term"'
+        type: string
+      reason:
+        type: string
+      title:
         type: string
     type: object
   Suggestion:
@@ -607,74 +700,6 @@ definitions:
       status:
         type: string
     type: object
-  internal_application.CompanyApplicationResult:
-    properties:
-      candidateEmail:
-        type: string
-      candidateHeadline:
-        type: string
-      candidateName:
-        type: string
-      candidateSlug:
-        type: string
-      createdAt:
-        type: string
-      id:
-        type: string
-      jobPostingId:
-        type: string
-      jobTitle:
-        type: string
-      jobseekerId:
-        type: string
-      latestNote:
-        type: string
-      status:
-        type: string
-      updatedAt:
-        type: string
-    type: object
-  internal_application.Message:
-    properties:
-      body:
-        type: string
-      createdAt:
-        type: string
-      id:
-        type: string
-      senderName:
-        type: string
-    type: object
-  internal_evaluation.CareerPathResult:
-    properties:
-      currentPosition:
-        type: string
-      steps:
-        items:
-          $ref: '#/definitions/internal_evaluation.DevelopmentStep'
-        type: array
-      suggestedRoles:
-        items:
-          $ref: '#/definitions/internal_evaluation.SuggestedRole'
-        type: array
-    type: object
-  internal_evaluation.DevelopmentStep:
-    properties:
-      action:
-        type: string
-      area:
-        type: string
-    type: object
-  internal_evaluation.SuggestedRole:
-    properties:
-      readiness:
-        description: '"ready", "stretch", "long-term"'
-        type: string
-      reason:
-        type: string
-      title:
-        type: string
-    type: object
   internal_matching.SkillsGap:
     properties:
       hasEvaluation:
@@ -839,8 +864,7 @@ paths:
           description: OK
           schema:
             items:
-              additionalProperties: true
-              type: object
+              $ref: '#/definitions/PendingCompany'
             type: array
       security:
       - BearerAuth: []
@@ -863,7 +887,7 @@ paths:
           description: OK
           schema:
             items:
-              $ref: '#/definitions/internal_application.Message'
+              $ref: '#/definitions/ApplicationMessage'
             type: array
         "403":
           description: Forbidden
@@ -908,7 +932,7 @@ paths:
         "201":
           description: Created
           schema:
-            $ref: '#/definitions/internal_application.Message'
+            $ref: '#/definitions/ApplicationMessage'
         "400":
           description: Bad Request
           schema:
@@ -1331,7 +1355,7 @@ paths:
           description: OK
           schema:
             items:
-              $ref: '#/definitions/internal_application.CompanyApplicationResult'
+              $ref: '#/definitions/CompanyApplicationResult'
             type: array
         "401":
           description: Unauthorized
@@ -1619,7 +1643,7 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/internal_evaluation.CareerPathResult'
+            $ref: '#/definitions/CareerPathResult'
         "401":
           description: Unauthorized
           schema:

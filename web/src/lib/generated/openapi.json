@@ -45,8 +45,7 @@
                                 "schema": {
                                     "type": "array",
                                     "items": {
-                                        "type": "object",
-                                        "additionalProperties": true
+                                        "$ref": "#/components/schemas/PendingCompany"
                                     }
                                 }
                             }
@@ -216,7 +215,7 @@
                                 "schema": {
                                     "type": "array",
                                     "items": {
-                                        "$ref": "#/components/schemas/internal_application.Message"
+                                        "$ref": "#/components/schemas/ApplicationMessage"
                                     }
                                 }
                             }
@@ -294,7 +293,7 @@
                         "content": {
                             "application/json": {
                                 "schema": {
-                                    "$ref": "#/components/schemas/internal_application.Message"
+                                    "$ref": "#/components/schemas/ApplicationMessage"
                                 }
                             }
                         }
@@ -972,7 +971,7 @@
                                 "schema": {
                                     "type": "array",
                                     "items": {
-                                        "$ref": "#/components/schemas/internal_application.CompanyApplicationResult"
+                                        "$ref": "#/components/schemas/CompanyApplicationResult"
                                     }
                                 }
                             }
@@ -1494,7 +1493,7 @@
                         "content": {
                             "application/json": {
                                 "schema": {
-                                    "$ref": "#/components/schemas/internal_evaluation.CareerPathResult"
+                                    "$ref": "#/components/schemas/CareerPathResult"
                                 }
                             }
                         }
@@ -3148,6 +3147,23 @@
             }
         },
         "schemas": {
+            "ApplicationMessage": {
+                "type": "object",
+                "properties": {
+                    "body": {
+                        "type": "string"
+                    },
+                    "createdAt": {
+                        "type": "string"
+                    },
+                    "id": {
+                        "type": "string"
+                    },
+                    "senderName": {
+                        "type": "string"
+                    }
+                }
+            },
             "ApplicationResult": {
                 "type": "object",
                 "properties": {
@@ -3239,6 +3255,67 @@
                     },
                     "yearsOfExperience": {
                         "type": "integer"
+                    }
+                }
+            },
+            "CareerPathResult": {
+                "type": "object",
+                "properties": {
+                    "currentPosition": {
+                        "type": "string"
+                    },
+                    "steps": {
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/DevelopmentStep"
+                        }
+                    },
+                    "suggestedRoles": {
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/SuggestedRole"
+                        }
+                    }
+                }
+            },
+            "CompanyApplicationResult": {
+                "type": "object",
+                "properties": {
+                    "candidateEmail": {
+                        "type": "string"
+                    },
+                    "candidateHeadline": {
+                        "type": "string"
+                    },
+                    "candidateName": {
+                        "type": "string"
+                    },
+                    "candidateSlug": {
+                        "type": "string"
+                    },
+                    "createdAt": {
+                        "type": "string"
+                    },
+                    "id": {
+                        "type": "string"
+                    },
+                    "jobPostingId": {
+                        "type": "string"
+                    },
+                    "jobTitle": {
+                        "type": "string"
+                    },
+                    "jobseekerId": {
+                        "type": "string"
+                    },
+                    "latestNote": {
+                        "type": "string"
+                    },
+                    "status": {
+                        "type": "string"
+                    },
+                    "updatedAt": {
+                        "type": "string"
                     }
                 }
             },
@@ -3336,6 +3413,17 @@
                         }
                     },
                     "title": {
+                        "type": "string"
+                    }
+                }
+            },
+            "DevelopmentStep": {
+                "type": "object",
+                "properties": {
+                    "action": {
+                        "type": "string"
+                    },
+                    "area": {
                         "type": "string"
                     }
                 }
@@ -3545,6 +3633,44 @@
                     }
                 }
             },
+            "PendingCompany": {
+                "type": "object",
+                "properties": {
+                    "companyName": {
+                        "type": "string"
+                    },
+                    "createdAt": {
+                        "type": "string"
+                    },
+                    "description": {
+                        "type": "string"
+                    },
+                    "id": {
+                        "type": "string"
+                    },
+                    "industry": {
+                        "type": "string"
+                    },
+                    "userId": {
+                        "type": "string"
+                    },
+                    "verificationDocs": {
+                        "type": "array",
+                        "items": {
+                            "type": "integer"
+                        }
+                    },
+                    "verificationStatus": {
+                        "type": "string"
+                    },
+                    "verifiedAt": {
+                        "type": "string"
+                    },
+                    "website": {
+                        "type": "string"
+                    }
+                }
+            },
             "ProfileResponse": {
                 "type": "object",
                 "properties": {
@@ -3699,6 +3825,21 @@
                         "type": "integer"
                     },
                     "skill": {
+                        "type": "string"
+                    }
+                }
+            },
+            "SuggestedRole": {
+                "type": "object",
+                "properties": {
+                    "readiness": {
+                        "description": "\"ready\", \"stretch\", \"long-term\"",
+                        "type": "string"
+                    },
+                    "reason": {
+                        "type": "string"
+                    },
+                    "title": {
                         "type": "string"
                     }
                 }
@@ -4051,110 +4192,6 @@
                         "type": "integer"
                     },
                     "status": {
-                        "type": "string"
-                    }
-                }
-            },
-            "internal_application.CompanyApplicationResult": {
-                "type": "object",
-                "properties": {
-                    "candidateEmail": {
-                        "type": "string"
-                    },
-                    "candidateHeadline": {
-                        "type": "string"
-                    },
-                    "candidateName": {
-                        "type": "string"
-                    },
-                    "candidateSlug": {
-                        "type": "string"
-                    },
-                    "createdAt": {
-                        "type": "string"
-                    },
-                    "id": {
-                        "type": "string"
-                    },
-                    "jobPostingId": {
-                        "type": "string"
-                    },
-                    "jobTitle": {
-                        "type": "string"
-                    },
-                    "jobseekerId": {
-                        "type": "string"
-                    },
-                    "latestNote": {
-                        "type": "string"
-                    },
-                    "status": {
-                        "type": "string"
-                    },
-                    "updatedAt": {
-                        "type": "string"
-                    }
-                }
-            },
-            "internal_application.Message": {
-                "type": "object",
-                "properties": {
-                    "body": {
-                        "type": "string"
-                    },
-                    "createdAt": {
-                        "type": "string"
-                    },
-                    "id": {
-                        "type": "string"
-                    },
-                    "senderName": {
-                        "type": "string"
-                    }
-                }
-            },
-            "internal_evaluation.CareerPathResult": {
-                "type": "object",
-                "properties": {
-                    "currentPosition": {
-                        "type": "string"
-                    },
-                    "steps": {
-                        "type": "array",
-                        "items": {
-                            "$ref": "#/components/schemas/internal_evaluation.DevelopmentStep"
-                        }
-                    },
-                    "suggestedRoles": {
-                        "type": "array",
-                        "items": {
-                            "$ref": "#/components/schemas/internal_evaluation.SuggestedRole"
-                        }
-                    }
-                }
-            },
-            "internal_evaluation.DevelopmentStep": {
-                "type": "object",
-                "properties": {
-                    "action": {
-                        "type": "string"
-                    },
-                    "area": {
-                        "type": "string"
-                    }
-                }
-            },
-            "internal_evaluation.SuggestedRole": {
-                "type": "object",
-                "properties": {
-                    "readiness": {
-                        "description": "\"ready\", \"stretch\", \"long-term\"",
-                        "type": "string"
-                    },
-                    "reason": {
-                        "type": "string"
-                    },
-                    "title": {
                         "type": "string"
                     }
                 }

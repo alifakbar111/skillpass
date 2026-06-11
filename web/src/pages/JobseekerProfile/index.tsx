@@ -11,7 +11,7 @@ import { useAuth } from '../../hooks/useAuth';
 import { ApiError, api } from '../../lib/api';
 import { type ExperienceForm, experienceSchema, type ProfileForm, profileSchema } from '../../lib/schemas';
 import { ResumeImport } from './ResumeImport';
-import type { Experience, Profile } from './type';
+import type { Experience, Profile } from '@/lib/api-types';
 
 const EXPERIENCE_TYPES = [
   { value: 'employment', label: 'Employment' },
@@ -69,7 +69,7 @@ export function JobseekerProfile() {
   useEffect(() => {
     if (!profile) return;
     // Surface the AI importer as step one for brand-new profiles.
-    if (profile.experiences.length === 0) setImportOpen(true);
+    if ((profile.experiences ?? []).length === 0) setImportOpen(true);
     profileForm.reset({
       headline: profile.headline || '',
       about: profile.about || '',
@@ -167,7 +167,7 @@ export function JobseekerProfile() {
       {profile && (
         <JobseekerOnboarding
           hasHeadline={Boolean(profile.headline)}
-          experienceCount={profile.experiences.length}
+          experienceCount={(profile.experiences ?? []).length}
           onAddExperience={() => setImportOpen(true)}
         />
       )}
@@ -217,7 +217,7 @@ export function JobseekerProfile() {
           if (!profile) return;
           queryClient.setQueryData(['profile', 'me'], {
             ...profile,
-            experiences: [...profile.experiences, added],
+            experiences: [...(profile.experiences ?? []), added],
           });
           queryClient.invalidateQueries({ queryKey: ['passport', user?.username] });
         }}
@@ -293,12 +293,12 @@ export function JobseekerProfile() {
           </form>
         )}
 
-        {profile?.experiences.length === 0 && (
+        {(profile?.experiences ?? []).length === 0 && (
           <p className="text-sm text-muted py-4 text-center">No experience added yet. Click "Add" to get started.</p>
         )}
 
         <div className="space-y-2">
-          {profile?.experiences.map((exp) => (
+          {(profile?.experiences ?? []).map((exp) => (
             <div key={exp.id} className="p-3 bg-base-100 rounded-box flex justify-between items-start">
               <div>
                 <p className="font-medium">{exp.title}</p>
@@ -310,7 +310,7 @@ export function JobseekerProfile() {
               <button
                 type="button"
                 className="btn btn-ghost btn-xs text-error"
-                onClick={() => deleteExperience(exp.id)}
+                onClick={() => exp.id && deleteExperience(exp.id)}
                 aria-label={`Delete ${exp.title}`}
               >
                 <Trash2 size={16} aria-hidden="true" />

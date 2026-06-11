@@ -85,18 +85,18 @@ export function EvaluationPage() {
                 <h2 className="text-lg font-semibold">Overall Score</h2>
                 <p className="text-sm opacity-60">Unlimited cumulative scoring — every skill adds points</p>
               </div>
-              <EvaluationScoreBadge overallScore={evaluation.overallScore} />
+              <EvaluationScoreBadge overallScore={evaluation.overallScore ?? 0} />
             </div>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="card bg-base-200 p-4">
               <h3 className="font-semibold mb-3 text-success">Strengths</h3>
-              {evaluation.strengths.length === 0 ? (
+              {(evaluation.strengths ?? []).length === 0 ? (
                 <p className="text-sm opacity-60">No strengths identified yet.</p>
               ) : (
                 <ul className="space-y-2">
-                  {evaluation.strengths.map((s) => (
+                  {(evaluation.strengths ?? []).map((s) => (
                     <li key={s.skill} className="p-2 bg-base-100 rounded-box">
                       <div className="flex justify-between items-center">
                         <span className="font-medium">{s.skill}</span>
@@ -111,11 +111,11 @@ export function EvaluationPage() {
 
             <div className="card bg-base-200 p-4">
               <h3 className="font-semibold mb-3 text-warning">Areas to Improve</h3>
-              {evaluation.weaknesses.length === 0 ? (
+              {(evaluation.weaknesses ?? []).length === 0 ? (
                 <p className="text-sm opacity-60">No weaknesses identified.</p>
               ) : (
                 <ul className="space-y-2">
-                  {evaluation.weaknesses.map((w) => (
+                  {(evaluation.weaknesses ?? []).map((w) => (
                     <li key={w.skill} className="p-2 bg-base-100 rounded-box">
                       <div className="flex justify-between items-center">
                         <span className="font-medium">{w.skill}</span>
@@ -131,11 +131,11 @@ export function EvaluationPage() {
 
           <div className="card bg-base-200 p-4">
             <h3 className="font-semibold mb-3 text-info">Suggestions</h3>
-            {evaluation.suggestions.length === 0 ? (
+            {(evaluation.suggestions ?? []).length === 0 ? (
               <p className="text-sm opacity-60">No suggestions yet.</p>
             ) : (
               <ul className="space-y-2">
-                {evaluation.suggestions.map((s) => (
+                {(evaluation.suggestions ?? []).map((s) => (
                   <li key={`suggest-${s.area}-${s.tip}`} className="p-3 bg-base-100 rounded-box">
                     <p className="font-medium capitalize">{s.area}</p>
                     <p className="text-sm opacity-70">{s.tip}</p>
@@ -147,13 +147,13 @@ export function EvaluationPage() {
 
           <div className="card bg-base-200 p-4">
             <h3 className="font-semibold mb-3">Skill Scores</h3>
-            <SkillScoresChart skillScores={evaluation.skillScores} />
+            <SkillScoresChart skillScores={evaluation.skillScores ?? []} />
           </div>
 
           <CareerPathSection />
 
           <p className="text-xs opacity-50 text-center">
-            Last evaluated: {new Date(evaluation.createdAt).toLocaleString()}
+            Last evaluated: {evaluation.createdAt ? new Date(evaluation.createdAt).toLocaleString() : 'unknown'}
           </p>
         </>
       ) : (

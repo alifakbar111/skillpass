@@ -341,20 +341,20 @@ type SuggestedRole struct {
 	Title     string `json:"title"`
 	Reason    string `json:"reason"`
 	Readiness string `json:"readiness"` // "ready", "stretch", "long-term"
-}
+} //@name SuggestedRole
 
 // DevelopmentStep is a concrete action toward the suggested roles.
 type DevelopmentStep struct {
 	Area   string `json:"area"`
 	Action string `json:"action"`
-}
+} //@name DevelopmentStep
 
 // CareerPathResult is the LLM-generated career guidance payload.
 type CareerPathResult struct {
 	CurrentPosition string            `json:"currentPosition"`
 	SuggestedRoles  []SuggestedRole   `json:"suggestedRoles"`
 	Steps           []DevelopmentStep `json:"steps"`
-}
+} //@name CareerPathResult
 
 // CareerPath asks the LLM for role recommendations based on the profile and its
 // latest evaluation. Returns sql.ErrNoRows if no evaluation exists yet.
