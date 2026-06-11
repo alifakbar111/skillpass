@@ -16,3 +16,7 @@ pre-push:
       run: 'command -v govulncheck >/dev/null 2>&1 && govulncheck -C server-go ./... || echo "govulncheck not installed — run: go install golang.org/x/vuln/cmd/govulncheck@latest"'
     vuln-web:
       run: cd web && bun audit
+    api-drift:
+      run: bun run api:check
+    no-gen-types-in-annotations:
+      run: '! grep -rn "@Success.*_gen\." server-go/internal || (echo "go-jet gen types must not appear in @Success annotations — wrap them in a handler response struct" && exit 1)'

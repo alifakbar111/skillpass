@@ -40,6 +40,7 @@ skillpass/              — root orchestration
 | Run migrations | `bun run db:migrate` |
 | Seed initial data | `bun run db:seed` |
 | Regenerate go-jet types | `bun run db:generate` |
+| Regenerate API types | `bun run api:generate` (after changing any response struct or swag annotation) |
 | **Code quality** | |
 | Lint (check) | `bun run lint` |
 | Lint + auto-fix | `bun run lint:fix` |
@@ -207,6 +208,13 @@ CORS_ORIGIN=http://localhost:4200
 2. Run `bun run db:migrate`
 3. Run `bun run db:generate` to regenerate go-jet types
 4. Types appear in `server-go/.gen/`, re-import via `server-go/internal/gen/`
+
+### Changing an API request/response shape
+
+1. Edit the named struct in `server-go/internal/handlers/` (or evaluation/application/matching) — never return raw `gin.H` or go-jet `internal/gen` types from success paths
+2. Run `bun run api:generate` — regenerates `server-go/docs/` and `web/src/lib/generated/`
+3. Commit BOTH the Go change and the regenerated files together
+4. Web types come from `@/lib/api-types` (a barrel over `web/src/lib/generated/api.d.ts`) — never hand-write API response interfaces
 
 ## Documentation
 
