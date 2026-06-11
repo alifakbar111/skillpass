@@ -3,6 +3,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Plus, Trash2, X } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { useForm } from 'react-hook-form';
+import type { Experience, Profile } from '@/lib/api-types';
 import { AvatarUploader } from '../../components/jobseeker/AvatarUploader';
 import { JobseekerOnboarding } from '../../components/onboarding/JobseekerOnboarding';
 import { FormInput, FormSelect, FormTextarea } from '../../components/ui/FormField';
@@ -11,7 +12,6 @@ import { useAuth } from '../../hooks/useAuth';
 import { ApiError, api } from '../../lib/api';
 import { type ExperienceForm, experienceSchema, type ProfileForm, profileSchema } from '../../lib/schemas';
 import { ResumeImport } from './ResumeImport';
-import type { Experience, Profile } from '@/lib/api-types';
 
 const EXPERIENCE_TYPES = [
   { value: 'employment', label: 'Employment' },

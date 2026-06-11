@@ -1,8 +1,8 @@
 import { ChevronDown, ExternalLink, MessageSquare, User } from 'lucide-react';
 import { Fragment, useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { LoadingFallback } from '../../components/ui/LoadingFallback';
 import type { CompanyApplicationResult as CompanyApplication } from '@/lib/api-types';
+import { LoadingFallback } from '../../components/ui/LoadingFallback';
 import { ApiError, api } from '../../lib/api';
 import { ApplicationNotes } from './ApplicationNotes';
 
@@ -138,6 +138,7 @@ export function CompanyApplications() {
 
                           {app.status !== 'rejected' && app.status !== 'offered' && (
                             <div className="dropdown dropdown-end">
+                              {/* biome-ignore lint/a11y/useSemanticElements: DaisyUI dropdown trigger uses a role="button" div by design */}
                               <div tabIndex={0} role="button" className="btn btn-xs btn-outline">
                                 {updating === app.id ? (
                                   <span className="loading loading-spinner loading-xs" />
@@ -148,6 +149,7 @@ export function CompanyApplications() {
                                 )}
                               </div>
                               <ul
+                                // biome-ignore lint/a11y/noNoninteractiveTabindex: DaisyUI dropdown content needs tabIndex to receive focus
                                 tabIndex={0}
                                 className="dropdown-content menu p-2 shadow bg-base-200 rounded-box w-40 z-10"
                               >

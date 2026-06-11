@@ -1,10 +1,10 @@
 import { useQuery } from '@tanstack/react-query';
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
+import type { CandidateResult as Candidate } from '@/lib/api-types';
 import { LoadingSpinner } from '../../components/ui/LoadingFallback';
 import { useIndustries } from '../../hooks/useIndustries';
 import { ApiError, api } from '../../lib/api';
-import type { CandidateResult as Candidate } from '@/lib/api-types';
 
 interface SearchParams {
   query: string;
@@ -87,6 +87,7 @@ export function CompanySearch() {
       <div className="space-y-2">
         {candidates.map((c) => {
           const content = (
+            // biome-ignore lint/correctness/useJsxKeyInIterable: keys are on the returned Link/div below, not this extracted fragment
             <div className="flex items-center gap-3">
               <div className="avatar placeholder">
                 <div className="bg-neutral text-neutral-content rounded-full w-12">

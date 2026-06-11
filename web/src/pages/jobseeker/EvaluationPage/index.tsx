@@ -6,7 +6,7 @@ import { SkillScoresChart } from '../../../components/jobseeker/SkillScoresChart
 import { LoadingFallback } from '../../../components/ui/LoadingFallback';
 import { useAuth } from '../../../hooks/useAuth';
 import { ApiError } from '../../../lib/api';
-import { type EvaluationResult, getLatestEvaluation, triggerEvaluation } from '../../../lib/evaluation';
+import { getLatestEvaluation, triggerEvaluation } from '../../../lib/evaluation';
 import { CareerPathSection } from './CareerPathSection';
 
 export function EvaluationPage() {

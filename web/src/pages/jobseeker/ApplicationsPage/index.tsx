@@ -2,8 +2,7 @@ import { useQuery } from '@tanstack/react-query';
 import { ApplicationKanban } from '../../../components/jobseeker/ApplicationKanban';
 import { LoadingFallback } from '../../../components/ui/LoadingFallback';
 import { useAuth } from '../../../hooks/useAuth';
-import { getJobseekerAnalytics, type JobseekerAnalytics } from '../../../lib/analytics';
-import type { Application } from '../../../lib/application';
+import { getJobseekerAnalytics } from '../../../lib/analytics';
 import { getMyApplications } from '../../../lib/application';
 
 export function ApplicationsPage() {

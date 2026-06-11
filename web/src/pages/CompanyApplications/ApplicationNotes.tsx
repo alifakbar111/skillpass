@@ -2,7 +2,7 @@ import { Send } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { LoadingSpinner } from '../../components/ui/LoadingFallback';
 import { ApiError } from '../../lib/api';
-import { addApplicationMessage, type ApplicationMessage, getApplicationMessages } from '../../lib/application';
+import { type ApplicationMessage, addApplicationMessage, getApplicationMessages } from '../../lib/application';
 
 export function ApplicationNotes({ applicationId }: { applicationId: string }) {
   const [messages, setMessages] = useState<ApplicationMessage[]>([]);

@@ -1,5 +1,5 @@
-import type { ApplicationMessage, ApplicationResult } from './api-types';
 import { api } from './api';
+import type { ApplicationMessage, ApplicationResult } from './api-types';
 
 // ApplicationStatus is a client-side narrowing of the server's free-form
 // status string; used to drive the kanban columns.

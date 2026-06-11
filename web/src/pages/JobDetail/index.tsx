@@ -1,12 +1,12 @@
 import { useMutation, useQuery } from '@tanstack/react-query';
 import { Briefcase, Calendar, CheckCircle, DollarSign, MapPin, Send } from 'lucide-react';
 import { Link, useParams } from 'react-router-dom';
+import type { Job } from '@/lib/api-types';
 import { LoadingFallback } from '../../components/ui/LoadingFallback';
 import { useAuth } from '../../hooks/useAuth';
 import { ApiError, api } from '../../lib/api';
 import { applyToJob } from '../../lib/application';
 import { SkillsGapPanel } from './SkillsGapPanel';
-import type { Job } from '@/lib/api-types';
 
 export function JobDetail() {
   const { id } = useParams();

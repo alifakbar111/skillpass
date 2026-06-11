@@ -3,6 +3,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Pencil, Plus, Users, X } from 'lucide-react';
 import { useState } from 'react';
 import { useForm } from 'react-hook-form';
+import type { Job } from '@/lib/api-types';
 import { JobMatches } from '../../components/company/JobMatches';
 import { FormInput, FormSelect, FormTextarea } from '../../components/ui/FormField';
 import { LoadingSpinner } from '../../components/ui/LoadingFallback';
@@ -10,7 +11,6 @@ import { useIndustries } from '../../hooks/useIndustries';
 import { ApiError, api } from '../../lib/api';
 import { EXPERIENCE_LEVEL_OPTIONS } from '../../lib/constants';
 import { type JobForm, jobSchema } from '../../lib/schemas';
-import type { Job } from '@/lib/api-types';
 
 function parseFormData(data: JobForm) {
   const tags = data.tags

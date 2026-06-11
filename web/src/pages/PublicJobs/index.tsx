@@ -2,9 +2,9 @@ import { useQuery } from '@tanstack/react-query';
 import { Briefcase } from 'lucide-react';
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
+import type { Job } from '@/lib/api-types';
 import { useIndustries } from '../../hooks/useIndustries';
 import { ApiError, api } from '../../lib/api';
-import type { Job } from '@/lib/api-types';
 
 export function PublicJobs() {
   const [industry, setIndustry] = useState('');

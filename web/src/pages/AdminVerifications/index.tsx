@@ -1,8 +1,8 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Check, X } from 'lucide-react';
 import { useState } from 'react';
-import { ApiError, api } from '../../lib/api';
 import type { PendingCompany as Company } from '@/lib/api-types';
+import { ApiError, api } from '../../lib/api';
 
 export function AdminVerifications() {
   const queryClient = useQueryClient();

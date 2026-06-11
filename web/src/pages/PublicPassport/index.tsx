@@ -1,11 +1,11 @@
 import { useQuery } from '@tanstack/react-query';
-import { Eye, ExternalLink } from 'lucide-react';
+import { ExternalLink, Eye } from 'lucide-react';
 import { useRef } from 'react';
 import { useParams } from 'react-router-dom';
+import type { PublicProfile } from '@/lib/api-types';
 import { SharePassport } from '../../components/passport/SharePassport';
 import { LoadingFallback } from '../../components/ui/LoadingFallback';
 import { ApiError, api } from '../../lib/api';
-import type { PublicProfile } from '@/lib/api-types';
 
 export function PublicPassport() {
   const { username } = useParams();

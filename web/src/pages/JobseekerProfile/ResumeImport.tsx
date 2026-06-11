@@ -1,9 +1,9 @@
 import { Check, FileUp, Sparkles, Wand2 } from 'lucide-react';
 import { useRef, useState } from 'react';
+import type { Experience } from '@/lib/api-types';
 import { LoadingSpinner } from '../../components/ui/LoadingFallback';
 import { ApiError, api } from '../../lib/api';
 import { type ParsedExperience, type ParsedResume, parseResume, uploadResume } from '../../lib/resume';
-import type { Experience } from '@/lib/api-types';
 
 interface Props {
   onExperienceAdded: (exp: Experience) => void;
@@ -178,6 +178,7 @@ export function ResumeImport({ onExperienceAdded, open, onToggle }: Props) {
               <div className="space-y-2">
                 {parsed.experiences.map((exp, idx) => (
                   <div
+                    // biome-ignore lint/suspicious/noArrayIndexKey: parsed entries have no stable id; title+org+idx disambiguates duplicates
                     key={`${exp.title}-${exp.organization}-${idx}`}
                     className="bg-base-100 rounded-box p-3 flex justify-between items-start gap-3"
                   >

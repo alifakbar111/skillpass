@@ -1,3 +1,4 @@
+import { ApiError, api } from './api';
 import type {
   CareerPathResult,
   DevelopmentStep,
@@ -7,7 +8,6 @@ import type {
   SuggestedRole,
   Suggestion,
 } from './api-types';
-import { ApiError, api } from './api';
 
 // EvaluationResult keeps the historical name used across the UI; it is the
 // generated server response type.
