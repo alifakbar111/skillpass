@@ -1,29 +1,9 @@
 ---
 name: planner
-description: |-
-  Use this agent when given a feature spec or requirement that needs a structured implementation plan with bite-sized tasks and TDD steps saved to docs/plans/. Examples:
-
-  <example>
-  Context: User wants to implement a new skill evaluation feature.
-  user: "Plan the implementation of skill verification with AI scoring"
-  assistant: "I'll use the planner agent to create a detailed implementation plan in docs/plans/ with bite-sized tasks and TDD steps."
-  <commentary>
-  Multi-step feature work needs a plan before implementation begins.
-  </commentary>
-  </example>
-
-  <example>
-  Context: User has a spec document and wants to know how to execute it.
-  user: "I have a spec for the company dashboard — create a plan for it"
-  assistant: "I'll dispatch planner to analyze the spec and produce an ordered task list with code examples and expected outputs."
-  <commentary>
-  Turning specs into executable plans with no placeholders is the planner's core purpose.
-  </commentary>
-  </example>
+description: "Use this agent when given a feature spec or requirement that needs a structured implementation plan with bite-sized tasks and TDD steps saved to docs/plans/. Examples:\n\n<example>\nContext: User wants to implement a new skill evaluation feature.\nuser: \"Plan the implementation of skill verification with AI scoring\"\nassistant: \"I'll use the planner agent to create a detailed implementation plan in docs/plans/ with bite-sized tasks and TDD steps.\"\n<commentary>\nMulti-step feature work needs a plan before implementation begins.\n</commentary>\n</example>\n\n<example>\nContext: User has a spec document and wants to know how to execute it.\nuser: \"I have a spec for the company dashboard — create a plan for it\"\nassistant: \"I'll dispatch planner to analyze the spec and produce an ordered task list with code examples and expected outputs.\"\n<commentary>\nTurning specs into executable plans with no placeholders is the planner's core purpose.\n</commentary>\n</example>"
 model: opus
 color: magenta
 ---
-
 Create structured plans and todo lists for implementation.
 
 ## Method

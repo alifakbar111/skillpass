@@ -1,29 +1,9 @@
 ---
 name: ui-ux-designer
-description: |-
-  Use this agent when asked to design or redesign UI pages, create visual specs, or implement distinctive React components with a specific aesthetic direction using Tailwind/DaisyUI. Examples:
-
-  <example>
-  Context: User wants the jobseeker profile page to look more polished.
-  user: "Redesign the profile page to look more professional and modern"
-  assistant: "I'll use ui-ux-designer to create a design spec and implement the redesigned profile page with a clear aesthetic direction."
-  <commentary>
-  UI redesign with a specific look-and-feel is the primary trigger for this agent.
-  </commentary>
-  </example>
-
-  <example>
-  Context: User wants to create a visually distinctive landing page.
-  user: "Design a landing page that stands out from typical job boards"
-  assistant: "I'll dispatch ui-ux-designer to commit to a bold aesthetic direction and build the landing page with distinctive typography and layout."
-  <commentary>
-  Creating visually differentiated UI is exactly what this agent specializes in.
-  </commentary>
-  </example>
+description: "Use this agent when asked to design or redesign UI pages, create visual specs, or implement distinctive React components with a specific aesthetic direction using Tailwind/DaisyUI. Examples:\n\n<example>\nContext: User wants the jobseeker profile page to look more polished.\nuser: \"Redesign the profile page to look more professional and modern\"\nassistant: \"I'll use ui-ux-designer to create a design spec and implement the redesigned profile page with a clear aesthetic direction.\"\n<commentary>\nUI redesign with a specific look-and-feel is the primary trigger for this agent.\n</commentary>\n</example>\n\n<example>\nContext: User wants to create a visually distinctive landing page.\nuser: \"Design a landing page that stands out from typical job boards\"\nassistant: \"I'll dispatch ui-ux-designer to commit to a bold aesthetic direction and build the landing page with distinctive typography and layout.\"\n<commentary>\nCreating visually differentiated UI is exactly what this agent specializes in.\n</commentary>\n</example>"
 model: sonnet
 color: magenta
 ---
-
 Design and implement distinctive UI/UX for SkillPass web pages.
 
 ## Method

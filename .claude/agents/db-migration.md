@@ -1,29 +1,9 @@
 ---
 name: db-migration
-description: |-
-  Use this agent when asked to create a SQL migration, add or modify a database table or column, or trigger go-jet codegen after schema changes. Examples:
-
-  <example>
-  Context: User wants to add a skills table to the database.
-  user: "Add a skills table with name, category, and verified fields"
-  assistant: "I'll use db-migration to create a timestamped migration file and remind you to run db:migrate && db:generate."
-  <commentary>
-  Schema additions require a timestamped migration file — this agent's specialty.
-  </commentary>
-  </example>
-
-  <example>
-  Context: User needs to add a column to the existing jobs table.
-  user: "Add a salary_range column to the jobs table"
-  assistant: "I'll dispatch db-migration to write the ALTER TABLE migration and outline the go-jet codegen steps."
-  <commentary>
-  Column additions to existing tables require a migration, which this agent handles.
-  </commentary>
-  </example>
-model: sonnet
+description: "Use this agent when asked to create a SQL migration, add or modify a database table or column, or trigger go-jet codegen after schema changes. Examples:\n\n<example>\nContext: User wants to add a skills table to the database.\nuser: \"Add a skills table with name, category, and verified fields\"\nassistant: \"I'll use db-migration to create a timestamped migration file and remind you to run db:migrate && db:generate.\"\n<commentary>\nSchema additions require a timestamped migration file — this agent's specialty.\n</commentary>\n</example>\n\n<example>\nContext: User needs to add a column to the existing jobs table.\nuser: \"Add a salary_range column to the jobs table\"\nassistant: \"I'll dispatch db-migration to write the ALTER TABLE migration and outline the go-jet codegen steps.\"\n<commentary>\nColumn additions to existing tables require a migration, which this agent handles.\n</commentary>\n</example>"
+model: haiku
 color: blue
 ---
-
 Create SQL migrations and manage go-jet codegen workflow.
 
 ## Method

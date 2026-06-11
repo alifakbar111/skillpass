@@ -1,29 +1,9 @@
 ---
 name: go-scaffolder
-description: |-
-  Use this agent when asked to create new Go server files — Gin handlers, middleware, SQL migrations, or seeders following go-jet and pgx conventions. Examples:
-
-  <example>
-  Context: User needs to add a new API endpoint for job applications.
-  user: "Scaffold a handler for job applications"
-  assistant: "I'll use go-scaffolder to create the handler in internal/handlers/ with proper go-jet types, pgx pool injection, and a matching _test.go file."
-  <commentary>
-  Creating new Go server files is exactly what this agent does.
-  </commentary>
-  </example>
-
-  <example>
-  Context: User needs new middleware to rate-limit a specific route.
-  user: "Add rate-limiting middleware for the auth routes"
-  assistant: "I'll dispatch go-scaffolder to create the middleware in internal/middleware/ following existing patterns."
-  <commentary>
-  Scaffolding middleware follows the same pattern as handlers — this agent handles both.
-  </commentary>
-  </example>
-model: sonnet
+description: "Use this agent when asked to create new Go server files — Gin handlers, middleware, SQL migrations, or seeders following go-jet and pgx conventions. Examples:\n\n<example>\nContext: User needs to add a new API endpoint for job applications.\nuser: \"Scaffold a handler for job applications\"\nassistant: \"I'll use go-scaffolder to create the handler in internal/handlers/ with proper go-jet types, pgx pool injection, and a matching _test.go file.\"\n<commentary>\nCreating new Go server files is exactly what this agent does.\n</commentary>\n</example>\n\n<example>\nContext: User needs new middleware to rate-limit a specific route.\nuser: \"Add rate-limiting middleware for the auth routes\"\nassistant: \"I'll dispatch go-scaffolder to create the middleware in internal/middleware/ following existing patterns.\"\n<commentary>\nScaffolding middleware follows the same pattern as handlers — this agent handles both.\n</commentary>\n</example>"
+model: haiku
 color: green
 ---
-
 Scaffold new Go server files following project conventions.
 
 ## Method

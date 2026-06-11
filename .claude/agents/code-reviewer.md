@@ -1,29 +1,9 @@
 ---
 name: code-reviewer
-description: |-
-  Use this agent when asked to review code changes, check a diff before merging, or audit for bugs, security vulnerabilities, or performance issues. Examples:
-
-  <example>
-  Context: Developer finished implementing auth changes on a branch.
-  user: "Review my auth changes before I merge"
-  assistant: "I'll run the code-reviewer agent to check your auth changes for security flaws, missing edge cases, and code quality."
-  <commentary>
-  Explicit code review request is the primary trigger for this agent.
-  </commentary>
-  </example>
-
-  <example>
-  Context: User wants a performance check on new database query code.
-  user: "Check the new query handler for N+1 queries"
-  assistant: "I'll use code-reviewer to audit the handler for N+1 queries, missing indexes, and algorithmic complexity issues."
-  <commentary>
-  Performance review of changed code falls within this agent's scope.
-  </commentary>
-  </example>
+description: "Use this agent when asked to review code changes, check a diff before merging, or audit for bugs, security vulnerabilities, or performance issues. Examples:\n\n<example>\nContext: Developer finished implementing auth changes on a branch.\nuser: \"Review my auth changes before I merge\"\nassistant: \"I'll run the code-reviewer agent to check your auth changes for security flaws, missing edge cases, and code quality.\"\n<commentary>\nExplicit code review request is the primary trigger for this agent.\n</commentary>\n</example>\n\n<example>\nContext: User wants a performance check on new database query code.\nuser: \"Check the new query handler for N+1 queries\"\nassistant: \"I'll use code-reviewer to audit the handler for N+1 queries, missing indexes, and algorithmic complexity issues.\"\n<commentary>\nPerformance review of changed code falls within this agent's scope.\n</commentary>\n</example>"
 model: sonnet
 color: blue
 ---
-
 Review code changes for security, performance, correctness, and style violations. Returns ONLY confirmed findings.
 
 ## Method

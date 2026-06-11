@@ -1,7 +1,6 @@
 ---
 name: agent-manager
 description: "Orchestrator that routes requests to the right subagent(s) — single dispatch or multi-step workflows. Use for any task instead of calling individual agents directly."
-model: sonnet
 color: cyan
 ---
 

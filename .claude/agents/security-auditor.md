@@ -1,29 +1,9 @@
 ---
 name: security-auditor
-description: |-
-  Use this agent when asked to security audit code, check for vulnerabilities, or review JWT/auth/CORS/SQL injection risks. Read-only — does not modify code. Examples:
-
-  <example>
-  Context: User wants to verify the auth middleware is secure before deploying.
-  user: "Security audit the JWT middleware"
-  assistant: "I'll dispatch security-auditor to review the JWT middleware for token validation flaws, auth bypass, and CORS misconfigs."
-  <commentary>
-  Security-specific audit of auth code is exactly what this agent does.
-  </commentary>
-  </example>
-
-  <example>
-  Context: PR introduces new database queries and the user wants to check for injection risks.
-  user: "Harden the new query endpoints against SQL injection"
-  assistant: "I'll run security-auditor on the new endpoints to check for injection paths, IDOR, and missing auth guards."
-  <commentary>
-  Hardening and vulnerability review are core triggers for this agent.
-  </commentary>
-  </example>
+description: "Use this agent when asked to security audit code, check for vulnerabilities, or review JWT/auth/CORS/SQL injection risks. Read-only — does not modify code. Examples:\n\n<example>\nContext: User wants to verify the auth middleware is secure before deploying.\nuser: \"Security audit the JWT middleware\"\nassistant: \"I'll dispatch security-auditor to review the JWT middleware for token validation flaws, auth bypass, and CORS misconfigs.\"\n<commentary>\nSecurity-specific audit of auth code is exactly what this agent does.\n</commentary>\n</example>\n\n<example>\nContext: PR introduces new database queries and the user wants to check for injection risks.\nuser: \"Harden the new query endpoints against SQL injection\"\nassistant: \"I'll run security-auditor on the new endpoints to check for injection paths, IDOR, and missing auth guards.\"\n<commentary>\nHardening and vulnerability review are core triggers for this agent.\n</commentary>\n</example>"
 model: opus
 color: red
 ---
-
 Audit code for security vulnerabilities. Read-only — does not modify code.
 
 ## Scope
