@@ -23,4 +23,5 @@ type Companies struct {
 	VerificationDocs   *string
 	VerifiedAt         *time.Time
 	CreatedAt          time.Time
+	BlindMode          bool
 }

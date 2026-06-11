@@ -27,6 +27,7 @@ type companiesTable struct {
 	VerificationDocs   postgres.ColumnString
 	VerifiedAt         postgres.ColumnTimestampz
 	CreatedAt          postgres.ColumnTimestampz
+	BlindMode          postgres.ColumnBool
 
 	AllColumns     postgres.ColumnList
 	MutableColumns postgres.ColumnList
@@ -78,9 +79,10 @@ func newCompaniesTableImpl(schemaName, tableName, alias string) companiesTable {
 		VerificationDocsColumn   = postgres.StringColumn("verification_docs")
 		VerifiedAtColumn         = postgres.TimestampzColumn("verified_at")
 		CreatedAtColumn          = postgres.TimestampzColumn("created_at")
-		allColumns               = postgres.ColumnList{IDColumn, UserIDColumn, CompanyNameColumn, WebsiteColumn, IndustryColumn, DescriptionColumn, VerificationStatusColumn, VerificationDocsColumn, VerifiedAtColumn, CreatedAtColumn}
-		mutableColumns           = postgres.ColumnList{UserIDColumn, CompanyNameColumn, WebsiteColumn, IndustryColumn, DescriptionColumn, VerificationStatusColumn, VerificationDocsColumn, VerifiedAtColumn, CreatedAtColumn}
-		defaultColumns           = postgres.ColumnList{IDColumn, VerificationStatusColumn, CreatedAtColumn}
+		BlindModeColumn          = postgres.BoolColumn("blind_mode")
+		allColumns               = postgres.ColumnList{IDColumn, UserIDColumn, CompanyNameColumn, WebsiteColumn, IndustryColumn, DescriptionColumn, VerificationStatusColumn, VerificationDocsColumn, VerifiedAtColumn, CreatedAtColumn, BlindModeColumn}
+		mutableColumns           = postgres.ColumnList{UserIDColumn, CompanyNameColumn, WebsiteColumn, IndustryColumn, DescriptionColumn, VerificationStatusColumn, VerificationDocsColumn, VerifiedAtColumn, CreatedAtColumn, BlindModeColumn}
+		defaultColumns           = postgres.ColumnList{IDColumn, VerificationStatusColumn, CreatedAtColumn, BlindModeColumn}
 	)
 
 	return companiesTable{
@@ -97,6 +99,7 @@ func newCompaniesTableImpl(schemaName, tableName, alias string) companiesTable {
 		VerificationDocs:   VerificationDocsColumn,
 		VerifiedAt:         VerifiedAtColumn,
 		CreatedAt:          CreatedAtColumn,
+		BlindMode:          BlindModeColumn,
 
 		AllColumns:     allColumns,
 		MutableColumns: mutableColumns,

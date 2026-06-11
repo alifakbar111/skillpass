@@ -23,6 +23,7 @@ type jobseekerProfilesTable struct {
 	About             postgres.ColumnString
 	YearsOfExperience postgres.ColumnInteger
 	Slug              postgres.ColumnString
+	ViewCount         postgres.ColumnInteger
 
 	AllColumns     postgres.ColumnList
 	MutableColumns postgres.ColumnList
@@ -70,9 +71,10 @@ func newJobseekerProfilesTableImpl(schemaName, tableName, alias string) jobseeke
 		AboutColumn             = postgres.StringColumn("about")
 		YearsOfExperienceColumn = postgres.IntegerColumn("years_of_experience")
 		SlugColumn              = postgres.StringColumn("slug")
-		allColumns              = postgres.ColumnList{IDColumn, UserIDColumn, HeadlineColumn, AboutColumn, YearsOfExperienceColumn, SlugColumn}
-		mutableColumns          = postgres.ColumnList{UserIDColumn, HeadlineColumn, AboutColumn, YearsOfExperienceColumn, SlugColumn}
-		defaultColumns          = postgres.ColumnList{IDColumn}
+		ViewCountColumn         = postgres.IntegerColumn("view_count")
+		allColumns              = postgres.ColumnList{IDColumn, UserIDColumn, HeadlineColumn, AboutColumn, YearsOfExperienceColumn, SlugColumn, ViewCountColumn}
+		mutableColumns          = postgres.ColumnList{UserIDColumn, HeadlineColumn, AboutColumn, YearsOfExperienceColumn, SlugColumn, ViewCountColumn}
+		defaultColumns          = postgres.ColumnList{IDColumn, ViewCountColumn}
 	)
 
 	return jobseekerProfilesTable{
@@ -85,6 +87,7 @@ func newJobseekerProfilesTableImpl(schemaName, tableName, alias string) jobseeke
 		About:             AboutColumn,
 		YearsOfExperience: YearsOfExperienceColumn,
 		Slug:              SlugColumn,
+		ViewCount:         ViewCountColumn,
 
 		AllColumns:     allColumns,
 		MutableColumns: mutableColumns,
