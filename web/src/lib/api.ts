@@ -1,3 +1,7 @@
+import type { LoginResponse, User } from './api-types';
+
+export type { LoginResponse, User };
+
 const BASE_URL = import.meta.env.VITE_API_BASE_PATH ?? '/api/v1';
 
 const ACCESS_TOKEN_KEY = 'accessToken';
@@ -176,27 +180,14 @@ export async function apiUpload<T = unknown>(path: string, form: FormData): Prom
   return JSON.parse(res.body) as T;
 }
 
-export interface AuthUser {
-  id: string;
-  email: string;
-  username: string;
-  name: string;
-  role: 'jobseeker' | 'company' | 'admin';
-  isVerified: boolean;
-}
-
-export interface LoginResponse {
-  accessToken: string;
-  refreshToken?: string;
-  user: AuthUser;
-}
+export type AuthUser = User;
 
 export async function login(email: string, password: string): Promise<LoginResponse> {
   const data = await api<LoginResponse>('/auth/login', {
     method: 'POST',
     body: JSON.stringify({ email, password }),
   });
-  setAccessToken(data.accessToken);
+  if (data.accessToken) setAccessToken(data.accessToken);
   return data;
 }
 
@@ -216,7 +207,7 @@ export async function register(body: {
     method: 'POST',
     body: JSON.stringify(body),
   });
-  setAccessToken(data.accessToken);
+  if (data.accessToken) setAccessToken(data.accessToken);
   return data;
 }
 

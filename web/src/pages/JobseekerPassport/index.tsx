@@ -60,7 +60,7 @@ export function JobseekerPassport() {
         <h1 className="text-2xl font-bold">My Passport</h1>
         <div className="flex items-center gap-2 flex-wrap">
           {evaluation && <EvaluationScoreBadge overallScore={evaluation.overallScore} />}
-          {user && <SharePassport slug={user.username} name={data.name} printRef={printRef} />}
+          {user?.username && <SharePassport slug={user.username} name={data.name} printRef={printRef} />}
           <Link to={`/profiles/${user?.username}`} className="btn btn-outline btn-sm gap-2" target="_blank">
             <ExternalLink size={14} aria-hidden="true" /> View Public
           </Link>

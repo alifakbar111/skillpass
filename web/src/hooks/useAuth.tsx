@@ -78,6 +78,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const login = useCallback(async (email: string, password: string) => {
     const data = await apiLogin(email, password);
+    if (!data.user) throw new Error('Login response missing user');
     setUser(data.user);
     return data.user;
   }, []);
@@ -96,7 +97,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       contact?: string;
     }) => {
       const res = await apiRegister(data);
-      setUser(res.user);
+      if (res.user) setUser(res.user);
     },
     [],
   );
