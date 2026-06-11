@@ -110,6 +110,48 @@ func (h *Handler) GetLatestEvaluation(c *gin.Context) {
 	c.JSON(http.StatusOK, toResponse(result))
 }
 
+// PostCareerPath	godoc
+// @Summary		Career path recommendations
+// @Description	Generate AI career path recommendations from the authenticated jobseeker's profile and latest evaluation
+// @Tags		evaluation
+// @Produce		json
+// @Security	BearerAuth
+// @Success		200 {object} evaluation.CareerPathResult
+// @Failure		401 {object} map[string]string
+// @Failure		404 {object} map[string]string
+// @Router		/evaluate/me/career-path [post]
+func (h *Handler) PostCareerPath(c *gin.Context) {
+	userID, err := getUserID(c)
+	if err != nil {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": err.Error()})
+		return
+	}
+
+	profileID, err := h.lookupProfileID(c, userID)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			c.JSON(http.StatusNotFound, gin.H{"error": "Jobseeker profile not found"})
+			return
+		}
+		slog.Error("failed to lookup profile", "userID", userID, "error", err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to lookup profile"})
+		return
+	}
+
+	result, err := h.service.CareerPath(c.Request.Context(), profileID)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			c.JSON(http.StatusNotFound, gin.H{"error": "No evaluation found. Run an evaluation first."})
+			return
+		}
+		slog.Error("career path failed", "profileID", profileID, "error", err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to generate career path"})
+		return
+	}
+
+	c.JSON(http.StatusOK, result)
+}
+
 func (h *Handler) lookupProfileID(c *gin.Context, userID string) (string, error) {
 	var profileID uuid.UUID
 	err := h.db.QueryRowContext(c.Request.Context(),

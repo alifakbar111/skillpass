@@ -28,6 +28,10 @@ services:
       JWT_SECRET: skillpass-dev-secret
       CORS_ORIGIN: http://localhost:4200
       PORT: 1234
+      APP_URL: http://localhost:4200
+      UPLOAD_DIR: /app/uploads
+    volumes:
+      - uploads:/app/uploads
 
   web:
     build:
@@ -39,3 +43,4 @@ services:
 
 volumes:
   pgdata:
+  uploads:

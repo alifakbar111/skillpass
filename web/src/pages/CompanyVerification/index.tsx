@@ -3,6 +3,8 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { X } from 'lucide-react';
 import { useState } from 'react';
 import { useForm } from 'react-hook-form';
+import { Link } from 'react-router-dom';
+import { CompanyOnboarding } from '../../components/onboarding/CompanyOnboarding';
 import { FormInput, FormTextarea } from '../../components/ui/FormField';
 import { LoadingSpinner } from '../../components/ui/LoadingFallback';
 import { ApiError, api } from '../../lib/api';
@@ -83,27 +85,56 @@ export function CompanyVerification() {
 
   if (status === 'verified')
     return (
-      <div className="max-w-lg mx-auto p-4 text-center">
-        <div className="card bg-base-200 p-6">
+      <div className="max-w-lg mx-auto p-4 space-y-4">
+        <div className="card bg-base-200 p-6 text-center">
           <span className="text-4xl mb-2" aria-hidden="true">
             &#10004;&#65039;
           </span>
           <h2 className="text-xl font-bold">Verified!</h2>
-          <p className="text-muted-strong">Your company is verified. You can search candidates and post jobs.</p>
+          <p className="text-muted-strong mb-4">Your company is verified. You can search candidates and post jobs.</p>
+          <div className="flex gap-2 justify-center">
+            <Link to="/company/jobs" className="btn btn-primary btn-sm">
+              Post your first job
+            </Link>
+            <Link to="/company/search" className="btn btn-outline btn-sm">
+              Browse candidates
+            </Link>
+          </div>
         </div>
+        <CompanyOnboarding />
       </div>
     );
 
   if (status === 'pending')
     return (
-      <div className="max-w-lg mx-auto p-4 text-center">
-        <div className="card bg-base-200 p-6">
+      <div className="max-w-lg mx-auto p-4 space-y-4">
+        <div className="card bg-base-200 p-6 text-center">
           <LoadingSpinner className="mb-2" />
           <h2 className="text-xl font-bold">Verification Pending</h2>
           <p className="text-muted-strong">
-            Your verification details were submitted at registration. We're reviewing them now. Check back soon.
+            Your verification details were submitted at registration. Our team reviews submissions within 48 hours and
+            you'll get an email the moment you're approved.
           </p>
         </div>
+        <div className="card bg-base-200 p-4">
+          <h3 className="font-semibold mb-2 text-sm">While you wait</h3>
+          <ul className="text-sm space-y-1 list-disc list-inside text-muted-strong">
+            <li>
+              <Link to="/company/profile" className="link link-primary">
+                Complete your company profile
+              </Link>{' '}
+              — a description and website help candidates trust you
+            </li>
+            <li>
+              <Link to="/jobs" className="link link-primary">
+                Browse the job board
+              </Link>{' '}
+              to see how other companies present roles
+            </li>
+            <li>Draft your first job post — you can publish it the moment you're verified</li>
+          </ul>
+        </div>
+        <CompanyOnboarding />
       </div>
     );
 

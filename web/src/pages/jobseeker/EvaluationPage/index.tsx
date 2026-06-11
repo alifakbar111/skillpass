@@ -6,7 +6,8 @@ import { SkillScoresChart } from '../../../components/jobseeker/SkillScoresChart
 import { LoadingFallback } from '../../../components/ui/LoadingFallback';
 import { useAuth } from '../../../hooks/useAuth';
 import { ApiError } from '../../../lib/api';
-import { getLatestEvaluation, triggerEvaluation } from '../../../lib/evaluation';
+import { type EvaluationResult, getLatestEvaluation, triggerEvaluation } from '../../../lib/evaluation';
+import { CareerPathSection } from './CareerPathSection';
 
 export function EvaluationPage() {
   const { user } = useAuth();
@@ -148,6 +149,8 @@ export function EvaluationPage() {
             <h3 className="font-semibold mb-3">Skill Scores</h3>
             <SkillScoresChart skillScores={evaluation.skillScores} />
           </div>
+
+          <CareerPathSection />
 
           <p className="text-xs opacity-50 text-center">
             Last evaluated: {new Date(evaluation.createdAt).toLocaleString()}

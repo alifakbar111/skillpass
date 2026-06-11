@@ -1,6 +1,7 @@
 import { useEffect, useRef } from 'react';
 import { Outlet, useLocation } from 'react-router-dom';
 import { Navbar } from './Navbar';
+import { VerifyEmailBanner } from './VerifyEmailBanner';
 
 export function RootLayout() {
   const mainRef = useRef<HTMLElement>(null);
@@ -18,6 +19,7 @@ export function RootLayout() {
       <nav aria-label="Main navigation">
         <Navbar />
       </nav>
+      <VerifyEmailBanner />
       <main id="main-content" ref={mainRef} className="flex-1 outline-none" tabIndex={-1}>
         <Outlet />
       </main>

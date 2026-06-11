@@ -3,11 +3,14 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Plus, Trash2, X } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { useForm } from 'react-hook-form';
+import { AvatarUploader } from '../../components/jobseeker/AvatarUploader';
+import { JobseekerOnboarding } from '../../components/onboarding/JobseekerOnboarding';
 import { FormInput, FormSelect, FormTextarea } from '../../components/ui/FormField';
 import { LoadingFallback, LoadingSpinner } from '../../components/ui/LoadingFallback';
 import { useAuth } from '../../hooks/useAuth';
 import { ApiError, api } from '../../lib/api';
 import { type ExperienceForm, experienceSchema, type ProfileForm, profileSchema } from '../../lib/schemas';
+import { ResumeImport } from './ResumeImport';
 import type { Experience, Profile } from './type';
 
 const EXPERIENCE_TYPES = [
@@ -29,6 +32,7 @@ export function JobseekerProfile() {
     queryClient.invalidateQueries({ queryKey: ['passport', user?.username] });
   };
   const [showExpForm, setShowExpForm] = useState(false);
+  const [importOpen, setImportOpen] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const profileForm = useForm<ProfileForm>({
@@ -48,6 +52,7 @@ export function JobseekerProfile() {
       description: '',
       industry: '',
       skills: '',
+      url: '',
     },
   });
 
@@ -63,6 +68,8 @@ export function JobseekerProfile() {
   // Seed the profile form once data loads (react-hook-form reset moved out of .then()).
   useEffect(() => {
     if (!profile) return;
+    // Surface the AI importer as step one for brand-new profiles.
+    if (profile.experiences.length === 0) setImportOpen(true);
     profileForm.reset({
       headline: profile.headline || '',
       about: profile.about || '',
@@ -95,6 +102,7 @@ export function JobseekerProfile() {
           ...data,
           skillsUsed: skills,
           endDate: data.isCurrent ? undefined : data.endDate || undefined,
+          url: data.url || undefined,
         }),
       });
     },
@@ -112,6 +120,7 @@ export function JobseekerProfile() {
         description: '',
         industry: '',
         skills: '',
+        url: '',
       });
     },
     onError: (err) => {
@@ -155,8 +164,28 @@ export function JobseekerProfile() {
         </div>
       )}
 
+      {profile && (
+        <JobseekerOnboarding
+          hasHeadline={Boolean(profile.headline)}
+          experienceCount={profile.experiences.length}
+          onAddExperience={() => setImportOpen(true)}
+        />
+      )}
+
       <form onSubmit={profileForm.handleSubmit(saveProfile)} className="card bg-base-200 p-6 space-y-4">
-        <h2 className="font-semibold">Profile Details</h2>
+        <div className="flex items-center justify-between">
+          <h2 className="font-semibold">Profile Details</h2>
+          {profile && (
+            <AvatarUploader
+              name={profile.name ?? ''}
+              avatarUrl={profile.avatarUrl}
+              onUploaded={(url) => {
+                queryClient.setQueryData(['profile', 'me'], { ...profile, avatarUrl: url });
+                queryClient.invalidateQueries({ queryKey: ['passport', user?.username] });
+              }}
+            />
+          )}
+        </div>
         <FormInput
           label="Headline"
           registration={profileForm.register('headline')}
@@ -180,6 +209,19 @@ export function JobseekerProfile() {
           {saveProfileMutation.isPending ? <LoadingSpinner size="sm" /> : 'Save Profile'}
         </button>
       </form>
+
+      <ResumeImport
+        open={importOpen}
+        onToggle={setImportOpen}
+        onExperienceAdded={(added) => {
+          if (!profile) return;
+          queryClient.setQueryData(['profile', 'me'], {
+            ...profile,
+            experiences: [...profile.experiences, added],
+          });
+          queryClient.invalidateQueries({ queryKey: ['passport', user?.username] });
+        }}
+      />
 
       <div className="card bg-base-200 p-4">
         <div className="flex justify-between items-center mb-3">
@@ -233,6 +275,12 @@ export function JobseekerProfile() {
               registration={expForm.register('skills')}
               error={expForm.formState.errors.skills}
               placeholder="React, TypeScript, Node.js"
+            />
+            <FormInput
+              label="Evidence URL (optional)"
+              registration={expForm.register('url')}
+              error={expForm.formState.errors.url}
+              placeholder="https://github.com/you/project or certificate link"
             />
             <div className="flex gap-2">
               <button type="submit" className="btn btn-primary btn-sm">

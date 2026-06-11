@@ -1,9 +1,9 @@
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Pencil, Plus, X } from 'lucide-react';
+import { Pencil, Plus, Users, X } from 'lucide-react';
 import { useState } from 'react';
 import { useForm } from 'react-hook-form';
-import { Link } from 'react-router-dom';
+import { JobMatches } from '../../components/company/JobMatches';
 import { FormInput, FormSelect, FormTextarea } from '../../components/ui/FormField';
 import { LoadingSpinner } from '../../components/ui/LoadingFallback';
 import { useIndustries } from '../../hooks/useIndustries';
@@ -12,10 +12,28 @@ import { EXPERIENCE_LEVEL_OPTIONS } from '../../lib/constants';
 import { type JobForm, jobSchema } from '../../lib/schemas';
 import type { Job } from './type';
 
+function parseFormData(data: JobForm) {
+  const tags = data.tags
+    ? data.tags
+        .split(',')
+        .map((t) => t.trim())
+        .filter(Boolean)
+    : [];
+  const requiredSkills = data.requiredSkills
+    ? data.requiredSkills
+        .split(',')
+        .map((s) => s.trim())
+        .filter(Boolean)
+    : [];
+  return { ...data, tags, requiredSkills };
+}
+
 export function CompanyJobs() {
   const queryClient = useQueryClient();
+  const [editingJobId, setEditingJobId] = useState<string | null>(null);
   const [showForm, setShowForm] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [matchesJobId, setMatchesJobId] = useState<string | null>(null);
 
   const { data: industries = [] } = useIndustries();
   const { data: jobs = [] } = useQuery({
@@ -43,32 +61,38 @@ export function CompanyJobs() {
   });
 
   const createMutation = useMutation({
-    mutationFn: (data: JobForm) => {
-      const tags = data.tags
-        ? data.tags
-            .split(',')
-            .map((t) => t.trim())
-            .filter(Boolean)
-        : [];
-      const requiredSkills = data.requiredSkills
-        ? data.requiredSkills
-            .split(',')
-            .map((s) => s.trim())
-            .filter(Boolean)
-        : [];
-      return api('/jobs', {
+    mutationFn: (data: JobForm) =>
+      api('/jobs', {
         method: 'POST',
-        body: JSON.stringify({ ...data, tags, requiredSkills }),
-      });
-    },
+        body: JSON.stringify(parseFormData(data)),
+      }),
     onMutate: () => setError(null),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['jobs'] });
       setShowForm(false);
+      setEditingJobId(null);
       reset();
     },
     onError: (err) => {
       setError(err instanceof ApiError ? (err.serverMessage ?? err.message) : 'Failed to create job');
+    },
+  });
+
+  const updateMutation = useMutation({
+    mutationFn: (data: JobForm & { id: string }) =>
+      api(`/jobs/${encodeURIComponent(data.id)}`, {
+        method: 'PUT',
+        body: JSON.stringify(parseFormData(data)),
+      }),
+    onMutate: () => setError(null),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['jobs'] });
+      setShowForm(false);
+      setEditingJobId(null);
+      reset();
+    },
+    onError: (err) => {
+      setError(err instanceof ApiError ? (err.serverMessage ?? err.message) : 'Failed to update job');
     },
   });
 
@@ -86,13 +110,59 @@ export function CompanyJobs() {
     },
   });
 
-  const createJob = (data: JobForm) => createMutation.mutate(data);
+  const isSaving = createMutation.isPending || updateMutation.isPending;
+
+  function openCreateForm() {
+    reset({
+      title: '',
+      description: '',
+      industry: 'Technology',
+      tags: '',
+      requiredSkills: '',
+      experienceLevel: 'mid',
+      location: '',
+      salaryRange: '',
+    });
+    setEditingJobId(null);
+    setShowForm(true);
+  }
+
+  function openEditForm(job: Job) {
+    reset({
+      title: job.title,
+      description: job.description,
+      industry: job.industry,
+      tags: job.tags?.join(', ') ?? '',
+      requiredSkills: job.requiredSkills?.join(', ') ?? '',
+      experienceLevel: (job.experienceLevel as 'entry' | 'mid' | 'senior' | 'lead') ?? 'mid',
+      location: job.location ?? '',
+      salaryRange: job.salaryRange ?? '',
+    });
+    setEditingJobId(job.id);
+    setShowForm(true);
+  }
+
+  function closeForm() {
+    setShowForm(false);
+    setEditingJobId(null);
+    reset();
+  }
+
+  function onSubmit(data: JobForm) {
+    if (editingJobId) {
+      updateMutation.mutate({ ...data, id: editingJobId });
+    } else {
+      createMutation.mutate(data);
+    }
+  }
+
   const closeJob = (id: string) => closeMutation.mutate(id);
+
   return (
     <div className="max-w-3xl mx-auto p-4 space-y-4">
       <div className="flex justify-between items-center">
         <h1 className="text-2xl font-bold">My Job Postings</h1>
-        <button type="button" className="btn btn-primary btn-sm" onClick={() => setShowForm(!showForm)}>
+        <button type="button" className="btn btn-primary btn-sm" onClick={openCreateForm}>
           <Plus size={16} aria-hidden="true" /> New Job
         </button>
       </div>
@@ -107,7 +177,8 @@ export function CompanyJobs() {
       )}
 
       {showForm && (
-        <form onSubmit={handleSubmit(createJob)} className="card bg-base-200 p-4 space-y-3">
+        <form onSubmit={handleSubmit(onSubmit)} className="card bg-base-200 p-4 space-y-3">
+          <h2 className="font-semibold text-lg">{editingJobId ? 'Edit Job' : 'New Job'}</h2>
           <FormInput label="Job Title" registration={register('title')} error={errors.title} placeholder="Job Title" />
           <FormTextarea
             label="Job Description"
@@ -155,10 +226,10 @@ export function CompanyJobs() {
             />
           </div>
           <div className="flex gap-2">
-            <button type="submit" className="btn btn-primary" disabled={createMutation.isPending}>
-              {createMutation.isPending ? <LoadingSpinner /> : 'Post Job'}
+            <button type="submit" className="btn btn-primary" disabled={isSaving}>
+              {isSaving ? <LoadingSpinner /> : editingJobId ? 'Save Changes' : 'Post Job'}
             </button>
-            <button type="button" className="btn" onClick={() => setShowForm(false)}>
+            <button type="button" className="btn" onClick={closeForm}>
               Cancel
             </button>
           </div>
@@ -182,9 +253,24 @@ export function CompanyJobs() {
                 </div>
               </div>
               <div className="flex gap-1">
-                <Link to={`/jobs/${job.id}`} className="btn btn-ghost btn-xs" aria-label={`Edit ${job.title}`}>
-                  <Pencil size={14} aria-hidden="true" />
-                </Link>
+                <button
+                  type="button"
+                  className="btn btn-ghost btn-xs"
+                  aria-label={`View matches for ${job.title}`}
+                  onClick={() => setMatchesJobId((prev) => (prev === job.id ? null : job.id))}
+                >
+                  <Users size={14} aria-hidden="true" />
+                </button>
+                {job.status === 'open' && (
+                  <button
+                    type="button"
+                    className="btn btn-ghost btn-xs"
+                    aria-label={`Edit ${job.title}`}
+                    onClick={() => openEditForm(job)}
+                  >
+                    <Pencil size={14} aria-hidden="true" />
+                  </button>
+                )}
                 {job.status === 'open' && (
                   <button
                     type="button"
@@ -197,6 +283,7 @@ export function CompanyJobs() {
                 )}
               </div>
             </div>
+            {matchesJobId === job.id && <JobMatches jobId={job.id} />}
           </div>
         ))}
         {jobs.length === 0 && !showForm && (

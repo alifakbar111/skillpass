@@ -85,12 +85,8 @@ export function CompanySearch() {
       {errorMessage && <div className="alert alert-error">{errorMessage}</div>}
 
       <div className="space-y-2">
-        {candidates.map((c) => (
-          <Link
-            key={c.id}
-            to={`/profiles/${c.slug}`}
-            className="card bg-base-200 p-4 block hover:bg-base-300 transition-colors"
-          >
+        {candidates.map((c) => {
+          const content = (
             <div className="flex items-center gap-3">
               <div className="avatar placeholder">
                 <div className="bg-neutral text-neutral-content rounded-full w-12">
@@ -112,8 +108,26 @@ export function CompanySearch() {
                 )}
               </div>
             </div>
-          </Link>
-        ))}
+          );
+
+          // Blind mode masks the slug; render a non-clickable card with a hint.
+          return c.slug ? (
+            <Link
+              key={c.id}
+              to={`/profiles/${c.slug}`}
+              className="card bg-base-200 p-4 block hover:bg-base-300 transition-colors"
+            >
+              {content}
+            </Link>
+          ) : (
+            <div key={c.id} className="card bg-base-200 p-4">
+              {content}
+              <p className="text-xs opacity-50 mt-2">
+                Identity hidden by blind screening — move this candidate forward to reveal.
+              </p>
+            </div>
+          );
+        })}
         {candidates.length === 0 && !loading && <p className="text-center opacity-50 py-8">No candidates found</p>}
       </div>
     </div>

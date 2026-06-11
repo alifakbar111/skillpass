@@ -22,7 +22,20 @@ type LLMClient interface {
 
 // Compile-time interface checks.
 var _ LLMClient = (*OpenAIClient)(nil)
+var _ LLMClient = (*AnthropicClient)(nil)
 var _ LLMClient = (*MockLLMClient)(nil)
+
+// NewLLMClient creates an LLMClient based on the LLM_PROVIDER env var.
+// Supported values: "anthropic", "openai" (default).
+func NewLLMClient() LLMClient {
+	provider := os.Getenv("LLM_PROVIDER")
+	switch strings.ToLower(provider) {
+	case "anthropic":
+		return NewAnthropicClient()
+	default:
+		return NewOpenAIClient()
+	}
+}
 
 // OpenAIClient implements LLMClient using the OpenAI-compatible chat completions API.
 type OpenAIClient struct {
@@ -144,6 +157,132 @@ func (c *OpenAIClient) Chat(ctx context.Context, systemPrompt, userPrompt string
 	content := chatResp.Choices[0].Message.Content
 	if err := json.Unmarshal([]byte(content), resultPtr); err != nil {
 		return fmt.Errorf("parse llm json response: %w (content: %s)", err, content)
+	}
+
+	return nil
+}
+
+// AnthropicClient implements LLMClient using the Anthropic Messages API.
+type AnthropicClient struct {
+	apiKey  string
+	model   string
+	baseURL string
+	http    *http.Client
+}
+
+// NewAnthropicClient creates an LLM client for the Anthropic API from environment variables:
+// LLM_API_KEY (required), LLM_MODEL (default: claude-sonnet-4-6), LLM_BASE_URL (default: https://api.anthropic.com).
+func NewAnthropicClient() *AnthropicClient {
+	apiKey := os.Getenv("LLM_API_KEY")
+	model := os.Getenv("LLM_MODEL")
+	if model == "" {
+		model = "claude-sonnet-4-6"
+	}
+	baseURL := os.Getenv("LLM_BASE_URL")
+	if baseURL == "" {
+		baseURL = "https://api.anthropic.com"
+	}
+	baseURL = strings.TrimRight(baseURL, "/")
+
+	return &AnthropicClient{
+		apiKey:  apiKey,
+		model:   model,
+		baseURL: baseURL,
+		http: &http.Client{
+			Timeout: 120 * time.Second,
+		},
+	}
+}
+
+type anthropicRequest struct {
+	Model     string             `json:"model"`
+	MaxTokens int                `json:"max_tokens"`
+	System    string             `json:"system,omitempty"`
+	Messages  []anthropicMessage `json:"messages"`
+}
+
+type anthropicMessage struct {
+	Role    string `json:"role"`
+	Content string `json:"content"`
+}
+
+type anthropicResponse struct {
+	Content []struct {
+		Type string `json:"type"`
+		Text string `json:"text"`
+	} `json:"content"`
+	Error *struct {
+		Type    string `json:"type"`
+		Message string `json:"message"`
+	} `json:"error,omitempty"`
+}
+
+func (c *AnthropicClient) Chat(ctx context.Context, systemPrompt, userPrompt string, resultPtr interface{}) error {
+	if c.apiKey == "" {
+		return fmt.Errorf("LLM_API_KEY not configured — cannot call Anthropic API")
+	}
+
+	body := anthropicRequest{
+		Model:     c.model,
+		MaxTokens: 4096,
+		System:    systemPrompt,
+		Messages: []anthropicMessage{
+			{Role: "user", Content: userPrompt + "\n\nRespond with valid JSON only."},
+		},
+	}
+
+	payload, err := json.Marshal(body)
+	if err != nil {
+		return fmt.Errorf("marshal request: %w", err)
+	}
+
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, c.baseURL+"/v1/messages", bytes.NewReader(payload))
+	if err != nil {
+		return fmt.Errorf("create request: %w", err)
+	}
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("x-api-key", c.apiKey)
+	req.Header.Set("anthropic-version", "2023-06-01")
+
+	resp, err := c.http.Do(req)
+	if err != nil {
+		return fmt.Errorf("anthropic request failed: %w", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		bodyPreview, _ := io.ReadAll(io.LimitReader(resp.Body, 1024))
+		return fmt.Errorf("anthropic API returned %d: %s", resp.StatusCode, strings.TrimSpace(string(bodyPreview)))
+	}
+
+	respBody, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return fmt.Errorf("read response: %w", err)
+	}
+
+	var anthropicResp anthropicResponse
+	if err := json.Unmarshal(respBody, &anthropicResp); err != nil {
+		return fmt.Errorf("parse response: %w (body: %s)", err, string(respBody))
+	}
+
+	if anthropicResp.Error != nil {
+		return fmt.Errorf("anthropic API error: %s", anthropicResp.Error.Message)
+	}
+
+	// Extract text content from response blocks
+	var textContent string
+	for _, block := range anthropicResp.Content {
+		if block.Type == "text" {
+			textContent = block.Text
+			break
+		}
+	}
+	if textContent == "" {
+		return fmt.Errorf("anthropic returned no text content (body: %s)", string(respBody))
+	}
+
+	if err := json.Unmarshal([]byte(textContent), resultPtr); err != nil {
+		return fmt.Errorf("parse anthropic json response: %w (content: %s)", err, textContent)
 	}
 
 	return nil

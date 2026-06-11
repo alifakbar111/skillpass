@@ -48,7 +48,7 @@ skillpass/              — root orchestration
 | **Testing** | |
 | Web typecheck | `bun --cwd web typecheck` (tsc --noEmit) |
 | Web tests | `bun --cwd web test` (vitest) |
-| Go tests | `go -C server-go test ./...` |
+| Go tests | `go -C server-go test -p 1 ./...` |
 | **Build/Deploy** | |
 | Build web for production | `bun run build` |
 | Docker full stack up | `bun run docker:up` |
@@ -127,7 +127,7 @@ bun run dev                            # Start server + web concurrently
 **Git hooks via `lefthook.yml`:**
 - **pre-commit:** `bun run format` (auto-fix code style)
 - **pre-push:** 
-  - `go -C server-go test ./...` (Go tests)
+  - `go -C server-go test -p 1 ./...` (Go tests)
   - Web tests (if any exist)
 
 **Commit before pushing** if you want to reformat locally first (hooks auto-stage fixed files).

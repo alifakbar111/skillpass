@@ -27,6 +27,7 @@ type CompanyResponse struct {
 	VerificationStatus string          `json:"verificationStatus"`
 	VerificationDocs   json.RawMessage `json:"verificationDocs"`
 	VerifiedAt         *time.Time      `json:"verifiedAt"`
+	BlindMode          bool            `json:"blindMode"`
 	CreatedAt          time.Time       `json:"createdAt"`
 }
 
@@ -35,6 +36,7 @@ type UpdateCompanyRequest struct {
 	Website     *string `json:"website" binding:"omitempty,url"`
 	Industry    *string `json:"industry" binding:"omitempty,min=1"`
 	Description *string `json:"description"`
+	BlindMode   *bool   `json:"blindMode"`
 }
 
 type VerificationRequest struct {
@@ -112,7 +114,9 @@ func (h *CompanyHandler) GetProfile(c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusOK, companyFromModel(company))
+	resp := companyFromModel(company)
+	resp.BlindMode = CompanyBlindMode(c.Request.Context(), h.db, company.ID.String())
+	c.JSON(http.StatusOK, resp)
 }
 
 // UpdateProfile	godoc
@@ -160,29 +164,58 @@ func (h *CompanyHandler) UpdateProfile(c *gin.Context) {
 		setVals = append(setVals, gen.Companies.Description.SET(String(*req.Description)))
 	}
 
-	if len(setVals) == 0 {
+	if len(setVals) == 0 && req.BlindMode == nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "No fields to update"})
 		return
 	}
 
-	stmt := gen.Companies.UPDATE().SET(setVals[0], setVals[1:]...).WHERE(
-		gen.Companies.UserID.EQ(UUID(uuid.MustParse(userIDStr))),
-	).RETURNING(
-		gen.Companies.AllColumns,
-	)
-
-	var company model.Companies
-	if err := stmt.QueryContext(c.Request.Context(), h.db, &company); err != nil {
-		if errors.Is(err, sql.ErrNoRows) || errors.Is(err, qrm.ErrNoRows) {
-			c.JSON(http.StatusNotFound, gin.H{"error": "Company not found"})
+	// blind_mode is not part of the go-jet model; update it via raw SQL.
+	if req.BlindMode != nil {
+		if _, err := h.db.ExecContext(c.Request.Context(),
+			`UPDATE companies SET blind_mode = $1 WHERE user_id = $2`,
+			*req.BlindMode, userIDStr,
+		); err != nil {
+			slog.Error("failed to update blind_mode", "error", err)
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to update company"})
 			return
 		}
-		slog.Error("failed to update company", "error", err)
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to update company"})
-		return
 	}
 
-	c.JSON(http.StatusOK, companyFromModel(company))
+	var company model.Companies
+	if len(setVals) > 0 {
+		stmt := gen.Companies.UPDATE().SET(setVals[0], setVals[1:]...).WHERE(
+			gen.Companies.UserID.EQ(UUID(uuid.MustParse(userIDStr))),
+		).RETURNING(
+			gen.Companies.AllColumns,
+		)
+		if err := stmt.QueryContext(c.Request.Context(), h.db, &company); err != nil {
+			if errors.Is(err, sql.ErrNoRows) || errors.Is(err, qrm.ErrNoRows) {
+				c.JSON(http.StatusNotFound, gin.H{"error": "Company not found"})
+				return
+			}
+			slog.Error("failed to update company", "error", err)
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to update company"})
+			return
+		}
+	} else {
+		// Only blind_mode changed — re-read the row for the response.
+		stmt := SELECT(gen.Companies.AllColumns).FROM(gen.Companies).WHERE(
+			gen.Companies.UserID.EQ(UUID(uuid.MustParse(userIDStr))),
+		)
+		if err := stmt.QueryContext(c.Request.Context(), h.db, &company); err != nil {
+			if errors.Is(err, sql.ErrNoRows) || errors.Is(err, qrm.ErrNoRows) {
+				c.JSON(http.StatusNotFound, gin.H{"error": "Company not found"})
+				return
+			}
+			slog.Error("failed to load company", "error", err)
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to load company"})
+			return
+		}
+	}
+
+	resp := companyFromModel(company)
+	resp.BlindMode = CompanyBlindMode(c.Request.Context(), h.db, company.ID.String())
+	c.JSON(http.StatusOK, resp)
 }
 
 // SubmitVerification	godoc

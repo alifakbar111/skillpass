@@ -18,6 +18,7 @@ type PublicProfileResponse struct {
 	Headline    *string      `json:"headline"`
 	About       *string      `json:"about"`
 	YearsOfExp  *int         `json:"yearsOfExperience"`
+	ViewCount   int          `json:"viewCount"`
 	Experiences []Experience `json:"experiences"`
 }
 
@@ -110,12 +111,22 @@ func (h *PassportHandler) GetProfile(c *gin.Context) {
 		experiences[i] = mapExperience(exp)
 	}
 
+	// Increment the view counter and read the updated value (raw SQL — column not in go-jet model).
+	var viewCount int
+	if err := h.db.QueryRowContext(c.Request.Context(),
+		`UPDATE jobseeker_profiles SET view_count = view_count + 1 WHERE id = $1 RETURNING view_count`,
+		profile.ID,
+	).Scan(&viewCount); err != nil {
+		slog.Warn("failed to increment view count", "error", err)
+	}
+
 	c.JSON(http.StatusOK, PublicProfileResponse{
 		Name:        user.Name,
 		AvatarURL:   user.AvatarURL,
 		Headline:    profile.Headline,
 		About:       profile.About,
 		YearsOfExp:  int32ToIntPtr(profile.YearsOfExperience),
+		ViewCount:   viewCount,
 		Experiences: experiences,
 	})
 }

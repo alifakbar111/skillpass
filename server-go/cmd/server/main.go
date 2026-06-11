@@ -22,15 +22,22 @@ import (
 	swaggerFiles "github.com/swaggo/files"
 	ginSwagger "github.com/swaggo/gin-swagger"
 
+	"skillpass-server-go/internal/analytics"
 	"skillpass-server-go/internal/application"
+	"skillpass-server-go/internal/authtoken"
 	"skillpass-server-go/internal/config"
 	"skillpass-server-go/internal/db"
 	_ "skillpass-server-go/docs"
+	"skillpass-server-go/internal/email"
 	"skillpass-server-go/internal/evaluation"
 	"skillpass-server-go/internal/handlers"
 	"skillpass-server-go/internal/lib"
 	"skillpass-server-go/internal/matching"
 	"skillpass-server-go/internal/middleware"
+	"skillpass-server-go/internal/notification"
+	"skillpass-server-go/internal/resume"
+	"skillpass-server-go/internal/storage"
+	"skillpass-server-go/internal/webhook"
 )
 
 func main() {
@@ -68,13 +75,40 @@ func main() {
 	search := handlers.NewSearchHandler(database)
 	admin := handlers.NewAdminHandler(database)
 
+	// Phase 4: email delivery + auth tokens + file storage
+	emailSender := email.NewSender()
+	tokenService := authtoken.NewService(database)
+	auth.SetEmailer(emailSender)
+	auth.SetTokenService(tokenService)
+
+	store := storage.NewStore()
+	uploads := handlers.NewUploadHandler(database, store)
+	if ls, ok := store.(*storage.LocalStore); ok {
+		r.Static("/uploads", ls.Dir())
+	}
+
 	// Phase 2: AI Evaluation & Matching
-	llmClient := lib.NewOpenAIClient()
+	llmClient := lib.NewLLMClient()
 	evalService := evaluation.NewService(database, llmClient)
 	evalHandler := evaluation.NewHandler(database, evalService)
 
+	resumeService := resume.NewService(llmClient)
+	resumeHandler := resume.NewHandler(resumeService)
+
 	appService := application.NewService(database)
 	appHandler := application.NewHandler(appService)
+
+	notifService := notification.NewService(database)
+	notifService.SetEmailer(emailSender)
+	notifHandler := notification.NewHandler(notifService)
+	appHandler.SetNotifier(notifService)
+
+	webhookService := webhook.NewService(database)
+	webhookHandler := webhook.NewHandler(webhookService)
+	appHandler.SetWebhookDispatcher(webhookService)
+
+	analyticsService := analytics.NewService(database)
+	analyticsHandler := analytics.NewHandler(database, analyticsService)
 
 	matchService := matching.NewService(database)
 	matchHandler := matching.NewHandler(matchService)
@@ -91,8 +125,16 @@ func main() {
 	api.POST("/auth/login", authRL.Middleware(), auth.Login)
 	api.POST("/auth/refresh", authRL.Middleware(), auth.Refresh)
 	api.POST("/auth/logout", middleware.AuthRequired(cfg.JWTSecret), auth.Logout)
+	api.GET("/auth/me", middleware.AuthRequired(cfg.JWTSecret), auth.Me)
+	api.GET("/auth/verify-email", auth.VerifyEmail)
+	api.POST("/auth/resend-verification", middleware.AuthRequired(cfg.JWTSecret), auth.ResendVerification)
+	api.POST("/auth/forgot-password", authRL.Middleware(), auth.ForgotPassword)
+	api.POST("/auth/reset-password", authRL.Middleware(), auth.ResetPassword)
 
 	api.GET("/profiles/:username", passport.GetProfile)
+
+	// Server-rendered Open Graph page for link crawlers (outside /api/v1).
+	r.GET("/p/:username", passport.GetOGPage)
 
 	authGroup := api.Group("/profiles")
 	authGroup.Use(middleware.AuthRequired(cfg.JWTSecret))
@@ -101,6 +143,10 @@ func main() {
 	authGroup.POST("/me/experience", profiles.CreateExperience)
 	authGroup.PUT("/me/experience/:id", profiles.UpdateExperience)
 	authGroup.DELETE("/me/experience/:id", profiles.DeleteExperience)
+	authGroup.POST("/me/resume-parse", resumeHandler.ParseResume)
+	authGroup.POST("/me/resume-upload", resumeHandler.UploadResume)
+	authGroup.POST("/me/avatar", uploads.UploadAvatar)
+	authGroup.GET("/me/analytics", analyticsHandler.JobseekerAnalytics)
 
 	companyGroup := api.Group("/company")
 	companyGroup.Use(middleware.AuthRequired(cfg.JWTSecret), middleware.RequireRole("company"))
@@ -140,6 +186,7 @@ func main() {
 	evalGroup.Use(middleware.AuthRequired(cfg.JWTSecret), middleware.RequireRole("jobseeker"))
 	evalGroup.POST("/me", evalHandler.PostEvaluate)
 	evalGroup.GET("/me/results", evalHandler.GetLatestEvaluation)
+	evalGroup.POST("/me/career-path", evalHandler.PostCareerPath)
 
 	// ── Application routes (jobseeker applies) ──
 	jobApplyGroup := api.Group("/jobs")
@@ -150,17 +197,37 @@ func main() {
 	appGroup.Use(middleware.AuthRequired(cfg.JWTSecret), middleware.RequireRole("jobseeker"))
 	appGroup.GET("/me", appHandler.ListMyApplications)
 
-	// ── Application status update (company) ──
+	// ── Company application management (verified company) ──
+	companyAppGroup := api.Group("/company")
+	for _, m := range verifiedCompany {
+		companyAppGroup.Use(m)
+	}
+	companyAppGroup.GET("/applications", appHandler.ListCompanyApplications)
+	companyAppGroup.GET("/analytics", analyticsHandler.CompanyAnalytics)
+	companyAppGroup.GET("/webhooks", webhookHandler.List)
+	companyAppGroup.POST("/webhooks", webhookHandler.Create)
+	companyAppGroup.DELETE("/webhooks/:id", webhookHandler.Delete)
+
 	appStatusGroup := api.Group("/applications")
 	for _, m := range verifiedCompany {
 		appStatusGroup.Use(m)
 	}
 	appStatusGroup.PUT("/:id/status", appHandler.UpdateStatus)
+	appStatusGroup.GET("/:id/messages", appHandler.ListMessages)
+	appStatusGroup.POST("/:id/messages", appHandler.AddMessage)
+
+	// ── Notification routes (any authenticated user) ──
+	notifGroup := api.Group("/notifications")
+	notifGroup.Use(middleware.AuthRequired(cfg.JWTSecret))
+	notifGroup.GET("/me", notifHandler.ListMine)
+	notifGroup.PUT("/read-all", notifHandler.MarkAllRead)
+	notifGroup.PUT("/:id/read", notifHandler.MarkRead)
 
 	// ── Matching routes ──
 	matchesJobseekerGroup := api.Group("/jobs")
 	matchesJobseekerGroup.Use(middleware.AuthRequired(cfg.JWTSecret), middleware.RequireRole("jobseeker"))
 	matchesJobseekerGroup.GET("/matches", matchHandler.MatchJobs)
+	matchesJobseekerGroup.GET("/:id/skills-gap", matchHandler.SkillsGap)
 
 	matchesCompanyGroup := api.Group("/candidates")
 	for _, m := range verifiedCompany {

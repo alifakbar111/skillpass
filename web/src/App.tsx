@@ -22,6 +22,10 @@ const CompanyVerification = lazy(() =>
 );
 const CompanySearch = lazy(() => import('./pages/CompanySearch').then((m) => ({ default: m.CompanySearch })));
 const CompanyJobs = lazy(() => import('./pages/CompanyJobs').then((m) => ({ default: m.CompanyJobs })));
+const CompanyApplications = lazy(() =>
+  import('./pages/CompanyApplications').then((m) => ({ default: m.CompanyApplications })),
+);
+const CompanyAnalytics = lazy(() => import('./pages/CompanyAnalytics').then((m) => ({ default: m.CompanyAnalytics })));
 const PublicJobs = lazy(() => import('./pages/PublicJobs').then((m) => ({ default: m.PublicJobs })));
 const JobDetail = lazy(() => import('./pages/JobDetail').then((m) => ({ default: m.JobDetail })));
 const PublicPassport = lazy(() => import('./pages/PublicPassport').then((m) => ({ default: m.PublicPassport })));
@@ -34,6 +38,10 @@ const EvaluationPage = lazy(() =>
 const ApplicationsPage = lazy(() =>
   import('./pages/jobseeker/ApplicationsPage').then((m) => ({ default: m.ApplicationsPage })),
 );
+const MatchesPage = lazy(() => import('./pages/jobseeker/MatchesPage').then((m) => ({ default: m.MatchesPage })));
+const ForgotPassword = lazy(() => import('./pages/ForgotPassword').then((m) => ({ default: m.ForgotPassword })));
+const ResetPassword = lazy(() => import('./pages/ResetPassword').then((m) => ({ default: m.ResetPassword })));
+const VerifyEmail = lazy(() => import('./pages/VerifyEmail').then((m) => ({ default: m.VerifyEmail })));
 
 const router = createBrowserRouter([
   {
@@ -42,6 +50,9 @@ const router = createBrowserRouter([
       { path: '/', element: <Landing /> },
       { path: '/auth/login', element: <Login /> },
       { path: '/auth/register', element: <Register /> },
+      { path: '/auth/forgot-password', element: <ForgotPassword /> },
+      { path: '/auth/reset-password', element: <ResetPassword /> },
+      { path: '/auth/verify-email', element: <VerifyEmail /> },
       {
         path: '/jobseeker/profile',
         element: (
@@ -75,6 +86,14 @@ const router = createBrowserRouter([
         ),
       },
       {
+        path: '/jobseeker/matches',
+        element: (
+          <ProtectedRoute requiredRole="jobseeker">
+            <MatchesPage />
+          </ProtectedRoute>
+        ),
+      },
+      {
         path: '/company/profile',
         element: (
           <ProtectedRoute requiredRole="company">
@@ -103,6 +122,22 @@ const router = createBrowserRouter([
         element: (
           <ProtectedRoute requiredRole="company">
             <CompanyJobs />
+          </ProtectedRoute>
+        ),
+      },
+      {
+        path: '/company/applications',
+        element: (
+          <ProtectedRoute requiredRole="company">
+            <CompanyApplications />
+          </ProtectedRoute>
+        ),
+      },
+      {
+        path: '/company/analytics',
+        element: (
+          <ProtectedRoute requiredRole="company">
+            <CompanyAnalytics />
           </ProtectedRoute>
         ),
       },

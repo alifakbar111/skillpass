@@ -261,5 +261,19 @@ func (h *SearchHandler) SearchCandidates(c *gin.Context) {
 		results = results[:0]
 	}
 
+	// Blind hiring mode: mask candidate identities for companies that opted in.
+	if companyIDVal, ok := c.Get("companyId"); ok {
+		if companyID, ok := companyIDVal.(string); ok && companyID != "" {
+			if CompanyBlindMode(c.Request.Context(), h.db, companyID) {
+				for i := range results {
+					results[i].Name = MaskCandidateName(results[i].ID)
+					results[i].AvatarURL = nil
+					results[i].About = nil
+					results[i].Slug = ""
+				}
+			}
+		}
+	}
+
 	c.JSON(http.StatusOK, results)
 }

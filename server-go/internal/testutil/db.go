@@ -7,6 +7,7 @@ import (
 	"log"
 	"os"
 	"path/filepath"
+	"runtime"
 	"sort"
 	"sync"
 	"testing"
@@ -79,14 +80,16 @@ func runMigrations(ctx context.Context, db *sql.DB) error {
 	`); err != nil {
 		return fmt.Errorf("create schema_migrations: %w", err)
 	}
-	migrationsDir := "../migrations"
+	// Resolve the migrations dir from this source file's location so tests in
+	// any package find it (a relative "../migrations" silently globs nothing).
+	_, thisFile, _, _ := runtime.Caller(0)
+	migrationsDir := filepath.Join(filepath.Dir(thisFile), "..", "..", "migrations")
 	files, err := filepath.Glob(filepath.Join(migrationsDir, "*.sql"))
 	if err != nil {
-		migrationsDir = "migrations"
-		files, err = filepath.Glob(filepath.Join(migrationsDir, "*.sql"))
-		if err != nil {
-			return fmt.Errorf("glob migrations: %w", err)
-		}
+		return fmt.Errorf("glob migrations: %w", err)
+	}
+	if len(files) == 0 {
+		return fmt.Errorf("no migration files found in %s", migrationsDir)
 	}
 	sort.Strings(files)
 	rows, err := db.QueryContext(ctx, "SELECT filename FROM schema_migrations ORDER BY id")

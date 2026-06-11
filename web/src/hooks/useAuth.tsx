@@ -1,6 +1,6 @@
 import { createContext, type ReactNode, useCallback, useContext, useEffect, useMemo, useState } from 'react';
 import {
-  ApiError,
+  type AuthUser,
   api,
   login as apiLogin,
   logout as apiLogout,
@@ -10,13 +10,7 @@ import {
 } from '../lib/api';
 import { queryClient } from '../lib/queryClient';
 
-interface User {
-  id: string;
-  email: string;
-  username: string;
-  name: string;
-  role: 'jobseeker' | 'company' | 'admin';
-}
+type User = AuthUser;
 
 interface AuthContextType {
   user: User | null;
@@ -35,6 +29,7 @@ interface AuthContextType {
     contact?: string;
   }) => Promise<void>;
   logout: () => Promise<void>;
+  refreshUser: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | null>(null);
@@ -65,10 +60,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     const accessToken = localStorage.getItem('accessToken');
     if (accessToken) {
-      api<User>('/profiles/me')
+      // /auth/me works for every role (unlike /profiles/me, which is
+      // jobseeker-only and used to log company users out on refresh).
+      api<User>('/auth/me')
         .then((u) => setUser(u))
         .catch((err) => {
-          if (isAuthError(err) || err instanceof ApiError) {
+          if (isAuthError(err)) {
             clearTokens();
             setUser(null);
           }
@@ -110,9 +107,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setUser(null);
   }, []);
 
+  // refreshUser re-reads /auth/me, e.g. after email verification.
+  const refreshUser = useCallback(async () => {
+    try {
+      const u = await api<User>('/auth/me');
+      setUser(u);
+    } catch {
+      // keep current state; this is a soft refresh
+    }
+  }, []);
+
   const value = useMemo<AuthContextType>(
-    () => ({ user, loading, login, register, logout }),
-    [user, loading, login, register, logout],
+    () => ({ user, loading, login, register, logout, refreshUser }),
+    [user, loading, login, register, logout, refreshUser],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

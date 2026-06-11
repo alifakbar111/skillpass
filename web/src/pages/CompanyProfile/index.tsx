@@ -8,6 +8,7 @@ import { LoadingFallback, LoadingSpinner } from '../../components/ui/LoadingFall
 import { useIndustries } from '../../hooks/useIndustries';
 import { ApiError, api } from '../../lib/api';
 import { type CompanyProfileForm, companyProfileSchema } from '../../lib/schemas';
+import { WebhooksSection } from './WebhooksSection';
 
 type CompanyProfileData = { companyName: string; website?: string; industry: string; description?: string };
 
@@ -15,6 +16,8 @@ export function CompanyProfile() {
   const queryClient = useQueryClient();
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
+  const [blindMode, setBlindMode] = useState(false);
+  const [blindSaving, setBlindSaving] = useState(false);
 
   const { data: industries = [] } = useIndustries();
 
@@ -41,6 +44,7 @@ export function CompanyProfile() {
       industry: companyProfile.industry,
       description: companyProfile.description || '',
     });
+    setBlindMode((companyProfile as Record<string, unknown>).blindMode === true);
   }, [companyProfile, reset]);
 
   const saveMutation = useMutation({
@@ -59,6 +63,21 @@ export function CompanyProfile() {
   });
 
   const onSubmit = (data: CompanyProfileForm) => saveMutation.mutate(data);
+
+  const toggleBlindMode = async (next: boolean) => {
+    setBlindSaving(true);
+    setError(null);
+    const prev = blindMode;
+    setBlindMode(next);
+    try {
+      await api('/company/profile', { method: 'PUT', body: JSON.stringify({ blindMode: next }) });
+    } catch (err) {
+      setBlindMode(prev);
+      setError(err instanceof ApiError ? (err.serverMessage ?? err.message) : 'Failed to update blind mode');
+    } finally {
+      setBlindSaving(false);
+    }
+  };
 
   if (loading) return <LoadingFallback text="Loading company profile" />;
 
@@ -100,6 +119,27 @@ export function CompanyProfile() {
           {saveMutation.isPending ? <LoadingSpinner /> : 'Save'}
         </button>
       </form>
+
+      <div className="card bg-base-200 p-4 mt-4">
+        <label className="flex items-start justify-between gap-4 cursor-pointer">
+          <div>
+            <span className="font-semibold">Blind screening</span>
+            <p className="text-sm opacity-70 mt-1">
+              Hide candidate names, photos, and bios in search and matches to reduce bias. Identities stay masked until
+              you move a candidate forward.
+            </p>
+          </div>
+          <input
+            type="checkbox"
+            className="toggle toggle-primary"
+            checked={blindMode}
+            disabled={blindSaving}
+            onChange={(e) => toggleBlindMode(e.target.checked)}
+          />
+        </label>
+      </div>
+
+      <WebhooksSection />
     </div>
   );
 }
