@@ -18,4 +18,5 @@ type JobseekerProfiles struct {
 	About             *string
 	YearsOfExperience *int32
 	Slug              string
+	ViewCount         int32
 }
