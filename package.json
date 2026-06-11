@@ -9,6 +9,7 @@
     "db:migrate": "go -C server-go run ./cmd/migrate/",
     "db:seed": "go -C server-go run ./cmd/seed/",
     "db:generate": "cd server-go && jet -dsn=postgres://postgres:postgres@localhost:5432/skillpass?sslmode=disable -schema=public -path=./.gen",
+    "api:spec": "go -C server-go tool swag init -g cmd/server/main.go -o docs --parseDependency --parseInternal",
     "docker:up": "docker compose up --build",
     "docker:down": "docker compose down",
     "lint": "biome check .",
