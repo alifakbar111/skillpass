@@ -12,23 +12,21 @@ export function EvaluationPage() {
   const { user } = useAuth();
   const queryClient = useQueryClient();
   const [error, setError] = useState<string | null>(null);
-  const [successMsg, setSuccessMsg] = useState<string | null>(null);
 
   const { data: evaluation, isLoading } = useQuery({
     queryKey: ['evaluation', 'latest'],
     enabled: !!user,
     queryFn: getLatestEvaluation,
+    retry: (count, err) => count < 1 && !(err instanceof ApiError && err.status === 404),
   });
 
   const evaluateMutation = useMutation({
     mutationFn: triggerEvaluation,
     onMutate: () => {
       setError(null);
-      setSuccessMsg(null);
     },
     onSuccess: (result) => {
       queryClient.setQueryData(['evaluation', 'latest'], result);
-      setSuccessMsg('Evaluation complete!');
     },
     onError: (err) => {
       setError(err instanceof ApiError ? (err.serverMessage ?? err.message) : 'Evaluation failed. Please try again.');
@@ -69,10 +67,10 @@ export function EvaluationPage() {
         </div>
       )}
 
-      {successMsg && (
+      {evaluateMutation.isSuccess && (
         <div className="alert alert-success">
-          <span>{successMsg}</span>
-          <button type="button" title="close" className="btn btn-ghost btn-xs" onClick={() => setSuccessMsg(null)}>
+          <span>Evaluation complete!</span>
+          <button type="button" title="close" className="btn btn-ghost btn-xs" onClick={() => evaluateMutation.reset()}>
             <X size={14} />
           </button>
         </div>

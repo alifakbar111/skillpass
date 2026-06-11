@@ -38,8 +38,8 @@ export function PublicJobs() {
       >
         <option value="">All Industries</option>
         {industries.map((ind) => (
-          <option key={ind.ID} value={ind.Name}>
-            {ind.Name}
+          <option key={ind.id} value={ind.name}>
+            {ind.name}
           </option>
         ))}
       </select>

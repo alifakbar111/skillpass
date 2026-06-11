@@ -27,6 +27,7 @@ export function JobseekerPassport() {
     queryKey: ['evaluation', 'latest'],
     enabled: !!user,
     queryFn: getLatestEvaluation,
+    retry: (count, err) => count < 1 && !(err instanceof ApiError && err.status === 404),
   });
 
   const error =

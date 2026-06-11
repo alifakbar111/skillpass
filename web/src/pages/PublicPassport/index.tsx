@@ -1,7 +1,7 @@
 import { useQuery } from '@tanstack/react-query';
 import { useParams } from 'react-router-dom';
 import { LoadingFallback } from '../../components/ui/LoadingFallback';
-import { api } from '../../lib/api';
+import { ApiError, api } from '../../lib/api';
 import type { PassportData } from './type';
 
 export function PublicPassport() {
@@ -13,7 +13,11 @@ export function PublicPassport() {
     queryFn: () => api<PassportData>(`/profiles/${encodeURIComponent(username as string)}`),
   });
 
-  const errorMessage = error ? 'Failed to load passport' : null;
+  const errorMessage = error
+    ? error instanceof ApiError && error.status >= 400 && error.status < 500
+      ? (error.serverMessage ?? error.message)
+      : 'Failed to load passport'
+    : null;
 
   if (errorMessage)
     return (

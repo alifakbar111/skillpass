@@ -63,7 +63,7 @@ export function CompanyJobs() {
     },
     onMutate: () => setError(null),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['jobs', 'me'] });
+      queryClient.invalidateQueries({ queryKey: ['jobs'] });
       setShowForm(false);
       reset();
     },
@@ -79,7 +79,7 @@ export function CompanyJobs() {
         body: JSON.stringify({ status: 'closed' }),
       }),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['jobs', 'me'] });
+      queryClient.invalidateQueries({ queryKey: ['jobs'] });
     },
     onError: (err) => {
       setError(err instanceof ApiError ? (err.serverMessage ?? err.message) : 'Failed to close job');
@@ -120,7 +120,7 @@ export function CompanyJobs() {
             label="Industry"
             registration={register('industry')}
             error={errors.industry}
-            options={industries.map((ind) => ({ value: ind.Name, label: ind.Name }))}
+            options={industries.map((ind) => ({ value: ind.name, label: ind.name }))}
           />
           <FormSelect
             label="Experience Level"

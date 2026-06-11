@@ -93,7 +93,7 @@ export function CompanyProfile() {
           label="Industry"
           registration={register('industry')}
           error={errors.industry}
-          options={industries.map((ind) => ({ value: ind.Name, label: ind.Name }))}
+          options={industries.map((ind) => ({ value: ind.name, label: ind.name }))}
         />
         <FormTextarea label="Description" registration={register('description')} error={errors.description} rows={4} />
         <button type="submit" className="btn btn-primary" disabled={saveMutation.isPending}>
