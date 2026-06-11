@@ -95,21 +95,25 @@ func TestWebhookDispatch(t *testing.T) {
 	var receivedSig string
 	done := make(chan struct{}, 1)
 
+	// Create a test receiver on loopback. Since validateURL now rejects private
+	// addresses, we insert the webhook directly into the DB to test dispatch.
 	receiver := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		body, _ := io.ReadAll(r.Body)
 		mu.Lock()
+		defer mu.Unlock()
 		receivedBody = body
 		receivedSig = r.Header.Get("X-SkillPass-Signature")
-		mu.Unlock()
-		w.WriteHeader(http.StatusOK)
 		done <- struct{}{}
 	}))
 	defer receiver.Close()
 
+	secret := generateSecretForTest()
 	svc := NewService(db)
-	created, err := svc.Create(ctx, cID.String(), receiver.URL)
+	_, err := db.ExecContext(ctx,
+		`INSERT INTO company_webhooks (company_id, url, secret) VALUES ($1, $2, $3)`,
+		cID, receiver.URL, secret)
 	if err != nil {
-		t.Fatalf("create webhook: %v", err)
+		t.Fatalf("insert webhook: %v", err)
 	}
 
 	if err := svc.DispatchApplicationReceived(ctx, jID.String(), pID.String()); err != nil {
@@ -126,10 +130,20 @@ func TestWebhookDispatch(t *testing.T) {
 	defer mu.Unlock()
 
 	// Verify the HMAC signature matches the body.
-	mac := hmac.New(sha256.New, []byte(created.Secret))
+	mac := hmac.New(sha256.New, []byte(secret))
 	mac.Write(receivedBody)
 	expected := hex.EncodeToString(mac.Sum(nil))
 	if receivedSig != expected {
 		t.Fatalf("signature mismatch: got %s want %s", receivedSig, expected)
 	}
+}
+
+// generateSecretForTest creates a deterministic secret to avoid relying on
+// the non-deterministic rand.Read in production.
+func generateSecretForTest() string {
+	b := make([]byte, 32)
+	for i := range b {
+		b[i] = byte(i)
+	}
+	return hex.EncodeToString(b)
 }

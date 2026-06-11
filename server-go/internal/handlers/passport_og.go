@@ -31,7 +31,7 @@ var ogPageTmpl = template.Must(template.New("og").Parse(`<!DOCTYPE html>
 </head>
 <body>
 <p>Redirecting to <a href="{{.URL}}">{{.Title}}</a>…</p>
-<script>window.location.replace({{.URL}});</script>
+<script>window.location.replace('{{.URL}}');</script>
 </body>
 </html>`))
 
