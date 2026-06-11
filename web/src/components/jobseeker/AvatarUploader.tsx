@@ -46,7 +46,7 @@ export function AvatarUploader({ name, avatarUrl, onUploaded }: Props) {
             <img src={avatarUrl} alt={`${name} avatar`} />
           </div>
         ) : (
-          <div className="bg-neutral text-neutral-content rounded-full w-20">
+          <div className="flex bg-neutral text-neutral-content rounded-full w-20 justify-center items-center">
             <span className="text-2xl">{name?.charAt(0)}</span>
           </div>
         )}
@@ -60,6 +60,7 @@ export function AvatarUploader({ name, avatarUrl, onUploaded }: Props) {
       </button>
       <input
         ref={inputRef}
+        aria-label="upload-profile-image"
         type="file"
         accept="image/png,image/jpeg,image/webp"
         className="hidden"

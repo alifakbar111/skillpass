@@ -91,7 +91,7 @@ export function Navbar() {
                 className="btn btn-ghost btn-circle avatar avatar-placeholder"
                 onClick={toggleDropdown}
                 aria-haspopup="menu"
-                aria-expanded={dropdownOpen}
+                // aria-expanded={dropdownOpen}
                 aria-controls={menuId}
                 aria-label="User menu"
               >
@@ -119,8 +119,8 @@ export function Navbar() {
                       </Link>
                     </li>
                   )}
-                  <li role="none">
-                    <button type="button" role="menuitem" onClick={handleLogout} className="text-error">
+                  <li>
+                    <button type="button" onClick={handleLogout} className="text-error">
                       Logout
                     </button>
                   </li>
