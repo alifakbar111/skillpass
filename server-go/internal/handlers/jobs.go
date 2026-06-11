@@ -53,7 +53,7 @@ type JobResponse struct {
 	SalaryRange     *string   `json:"salaryRange"`
 	Status          string    `json:"status"`
 	CreatedAt       time.Time `json:"createdAt"`
-}
+} //@name JobResponse
 
 type CreateJobRequest struct {
 	Title           string   `json:"title" binding:"required"`
@@ -64,7 +64,7 @@ type CreateJobRequest struct {
 	ExperienceLevel *string  `json:"experienceLevel" binding:"omitempty,oneof=entry mid senior lead"`
 	Location        *string  `json:"location"`
 	SalaryRange     *string  `json:"salaryRange"`
-}
+} //@name CreateJobRequest
 
 type UpdateJobRequest struct {
 	Title           *string  `json:"title" binding:"omitempty,min=1"`
@@ -76,7 +76,7 @@ type UpdateJobRequest struct {
 	Location        *string  `json:"location"`
 	SalaryRange     *string  `json:"salaryRange"`
 	Status          *string  `json:"status" binding:"omitempty,oneof=open closed"`
-}
+} //@name UpdateJobRequest
 
 type JobHandler struct {
 	db *sql.DB

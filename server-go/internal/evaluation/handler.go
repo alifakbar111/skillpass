@@ -28,7 +28,7 @@ type EvaluationResponse struct {
 	Suggestions  []Suggestion     `json:"suggestions"`
 	SkillScores  []SkillScoreItem `json:"skillScores"`
 	CreatedAt    string           `json:"createdAt"`
-}
+} //@name EvaluationResponse
 
 // PostEvaluate		godoc
 // @Summary		Trigger AI evaluation

@@ -32,7 +32,7 @@ const (
 type LoginRequest struct {
 	Email    string `json:"email"`
 	Password string `json:"password"`
-}
+} //@name LoginRequest
 
 type RegisterRequest struct {
 	Email                string  `json:"email" binding:"required,email"`
@@ -45,7 +45,7 @@ type RegisterRequest struct {
 	Website              *string `json:"website"`
 	Address              *string `json:"address"`
 	Contact              *string `json:"contact"`
-}
+} //@name RegisterRequest
 
 type UserResponse struct {
 	ID         string `json:"id"`
@@ -54,12 +54,12 @@ type UserResponse struct {
 	Name       string `json:"name"`
 	Role       string `json:"role"`
 	IsVerified bool   `json:"isVerified"`
-}
+} //@name UserResponse
 
 type LoginResponse struct {
 	AccessToken string       `json:"accessToken"`
 	User        UserResponse `json:"user"`
-}
+} //@name LoginResponse
 
 type AuthHandler struct {
 	db        *sql.DB

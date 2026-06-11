@@ -42,18 +42,18 @@ type SkillNote struct {
 	Skill string `json:"skill"`
 	Score int    `json:"score"`
 	Note  string `json:"note"`
-}
+} //@name SkillNote
 
 type Suggestion struct {
 	Area string `json:"area"`
 	Tip  string `json:"tip"`
-}
+} //@name Suggestion
 
 type SkillScoreItem struct {
 	Skill    string `json:"skill"`
 	Category string `json:"category"`
 	Score    int    `json:"score"`
-}
+} //@name SkillScoreItem
 
 func (s *Service) Evaluate(ctx context.Context, profileID string) (*EvaluationResult, error) {
 	// 1. Load full profile + experiences

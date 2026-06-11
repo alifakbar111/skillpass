@@ -24,7 +24,7 @@ type IndustryResponse struct {
 	ID          uuid.UUID `json:"id"`
 	Name        string    `json:"name"`
 	Description *string   `json:"description"`
-}
+} //@name IndustryResponse
 
 // GetIndustries	godoc
 // @Summary		List industries
@@ -66,7 +66,7 @@ type TagResponse struct {
 	ID                 uuid.UUID  `json:"id"`
 	Name               string     `json:"name"`
 	IndustryCategoryID *uuid.UUID `json:"industryCategoryId"`
-}
+} //@name TagResponse
 
 // GetTags		godoc
 // @Summary		List tags

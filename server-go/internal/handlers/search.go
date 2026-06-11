@@ -19,7 +19,7 @@ type CandidateResult struct {
 	YearsOfExp       *int     `json:"yearsOfExperience"`
 	Slug             string   `json:"slug"`
 	Skills           []string `json:"skills"`
-}
+} //@name CandidateResult
 
 type SearchHandler struct {
 	db *sql.DB

@@ -54,7 +54,7 @@ type ApplicationResult struct {
 	JobTitle    string  `json:"jobTitle,omitempty"`
 	CompanyName string  `json:"companyName,omitempty"`
 	LatestNote  *string `json:"latestNote,omitempty"`
-}
+} //@name ApplicationResult
 
 // Message is a note attached to an application (e.g. company → candidate).
 type Message struct {

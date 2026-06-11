@@ -35,7 +35,7 @@ type PendingCompany struct {
 type VerificationActionRequest struct {
 	Action string  `json:"action" binding:"required,oneof=approve reject"`
 	Reason *string `json:"reason"`
-}
+} //@name VerificationActionRequest
 
 type AdminHandler struct {
 	db *sql.DB

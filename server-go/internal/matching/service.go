@@ -36,7 +36,7 @@ type JobMatch struct {
 	ExperienceLevel *string `json:"experienceLevel"`
 	MatchScore      float64 `json:"matchScore"`
 	MatchReason     string  `json:"matchReason"`
-}
+} //@name JobMatch
 
 type CandidateMatch struct {
 	ProfileID    string   `json:"profileId"`
@@ -46,7 +46,7 @@ type CandidateMatch struct {
 	TopSkills    []string `json:"topSkills"`
 	MatchScore   float64  `json:"matchScore"`
 	MatchReason  string   `json:"matchReason"`
-}
+} //@name CandidateMatch
 
 type skillScoreData struct {
 	Skill    string  `json:"skill"`

@@ -20,7 +20,7 @@ type PublicProfileResponse struct {
 	YearsOfExp  *int         `json:"yearsOfExperience"`
 	ViewCount   int          `json:"viewCount"`
 	Experiences []Experience `json:"experiences"`
-}
+} //@name PublicProfileResponse
 
 type PassportHandler struct {
 	db *sql.DB

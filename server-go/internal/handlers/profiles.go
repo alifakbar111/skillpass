@@ -22,7 +22,7 @@ type UpdateProfileRequest struct {
 	About             *string `json:"about"`
 	YearsOfExperience *int    `json:"yearsOfExperience"`
 	Slug              *string `json:"slug" binding:"omitempty,min=3,max=64"`
-}
+} //@name UpdateProfileRequest
 
 type CreateExperienceRequest struct {
 	Type         string   `json:"type" binding:"required,oneof=employment gig education certification project volunteering"`
@@ -35,7 +35,7 @@ type CreateExperienceRequest struct {
 	Industry     *string  `json:"industry"`
 	SkillsUsed   []string `json:"skillsUsed"`
 	URL          *string  `json:"url"`
-}
+} //@name CreateExperienceRequest
 
 type UpdateExperienceRequest struct {
 	Type         *string  `json:"type" binding:"omitempty,oneof=employment gig education certification project volunteering"`
@@ -48,7 +48,7 @@ type UpdateExperienceRequest struct {
 	Industry     *string  `json:"industry"`
 	SkillsUsed   []string `json:"skillsUsed"`
 	URL          *string  `json:"url"`
-}
+} //@name UpdateExperienceRequest
 
 type Experience struct {
 	ID           string   `json:"id"`
@@ -63,7 +63,7 @@ type Experience struct {
 	Industry     *string  `json:"industry"`
 	SkillsUsed   []string `json:"skillsUsed"`
 	URL          *string  `json:"url"`
-}
+} //@name Experience
 
 type ProfileResponse struct {
 	ID          string       `json:"id"`
@@ -78,7 +78,7 @@ type ProfileResponse struct {
 	Role        string       `json:"role"`
 	AvatarURL   *string      `json:"avatarUrl"`
 	Experiences []Experience `json:"experiences"`
-}
+} //@name ProfileResponse
 
 type ProfileHandler struct {
 	db *sql.DB

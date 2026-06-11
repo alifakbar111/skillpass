@@ -37,14 +37,14 @@ type UpdateCompanyRequest struct {
 	Industry    *string `json:"industry" binding:"omitempty,min=1"`
 	Description *string `json:"description"`
 	BlindMode   *bool   `json:"blindMode"`
-}
+} //@name UpdateCompanyRequest
 
 type VerificationRequest struct {
 	BusinessRegistration string `json:"businessRegistration" binding:"required"`
 	Website              string `json:"website" binding:"required,url"`
 	Address              string `json:"address" binding:"required"`
 	Contact              string `json:"contact" binding:"required"`
-}
+} //@name VerificationRequest
 
 type CompanyHandler struct {
 	db *sql.DB
