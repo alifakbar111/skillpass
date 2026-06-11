@@ -115,7 +115,6 @@ func TestGetTags_InvalidIndustryID(t *testing.T) {
 	db := testutil.SetupTestDB()
 
 	router := gin.New()
-	router.Use(gin.Recovery())
 	h := NewReferenceHandler(db)
 	router.GET("/api/v1/tags", h.GetTags)
 
@@ -123,8 +122,15 @@ func TestGetTags_InvalidIndustryID(t *testing.T) {
 		w := httptest.NewRecorder()
 		req := httptest.NewRequest("GET", "/api/v1/tags?industry=not-a-uuid", nil)
 		router.ServeHTTP(w, req)
-		if w.Code != http.StatusInternalServerError {
-			t.Fatalf("expected 500, got %d: %s", w.Code, w.Body.String())
+		if w.Code != http.StatusBadRequest {
+			t.Fatalf("expected 400, got %d: %s", w.Code, w.Body.String())
+		}
+		var resp map[string]string
+		if err := json.Unmarshal(w.Body.Bytes(), &resp); err != nil {
+			t.Fatalf("unmarshal: %v", err)
+		}
+		if resp["error"] != "invalid industry ID" {
+			t.Fatalf("expected error %q, got %q", "invalid industry ID", resp["error"])
 		}
 	})
 }
