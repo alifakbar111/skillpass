@@ -10,7 +10,7 @@ import { useIndustries } from '../../hooks/useIndustries';
 import { ApiError, api } from '../../lib/api';
 import { EXPERIENCE_LEVEL_OPTIONS } from '../../lib/constants';
 import { type JobForm, jobSchema } from '../../lib/schemas';
-import type { Job } from './type';
+import type { Job } from '@/lib/api-types';
 
 function parseFormData(data: JobForm) {
   const tags = data.tags
@@ -138,7 +138,7 @@ export function CompanyJobs() {
       location: job.location ?? '',
       salaryRange: job.salaryRange ?? '',
     });
-    setEditingJobId(job.id);
+    setEditingJobId(job.id ?? null);
     setShowForm(true);
   }
 
@@ -259,7 +259,7 @@ export function CompanyJobs() {
                   type="button"
                   className="btn btn-ghost btn-xs"
                   aria-label={`View matches for ${job.title}`}
-                  onClick={() => setMatchesJobId((prev) => (prev === job.id ? null : job.id))}
+                  onClick={() => setMatchesJobId((prev) => (prev === job.id ? null : (job.id ?? null)))}
                 >
                   <Users size={14} aria-hidden="true" />
                 </button>
@@ -277,7 +277,7 @@ export function CompanyJobs() {
                   <button
                     type="button"
                     className="btn btn-ghost btn-xs text-error"
-                    onClick={() => closeJob(job.id)}
+                    onClick={() => job.id && closeJob(job.id)}
                     aria-label={`Close ${job.title}`}
                   >
                     <X size={14} aria-hidden="true" />

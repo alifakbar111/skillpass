@@ -6,7 +6,7 @@ import { useAuth } from '../../hooks/useAuth';
 import { ApiError, api } from '../../lib/api';
 import { applyToJob } from '../../lib/application';
 import { SkillsGapPanel } from './SkillsGapPanel';
-import type { Job } from './type';
+import type { Job } from '@/lib/api-types';
 
 export function JobDetail() {
   const { id } = useParams();

@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useIndustries } from '../../hooks/useIndustries';
 import { ApiError, api } from '../../lib/api';
-import type { Job } from './type';
+import type { Job } from '@/lib/api-types';
 
 export function PublicJobs() {
   const [industry, setIndustry] = useState('');
