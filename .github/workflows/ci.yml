@@ -29,12 +29,17 @@ jobs:
         with:
           go-version-file: server-go/go.mod
           cache-dependency-path: server-go/go.sum
+      - name: Generate Swagger docs
+        run: |
+          go install github.com/swaggo/swag/cmd/swag@latest
+          cd server-go && swag init -g cmd/server/main.go
       # -p 1: test packages share one DB and truncate tables for isolation,
       # so they must not run in parallel.
+      # ./docs/... is swag-generated code with no tests — exclude it.
       - name: Run tests
         env:
           SKILLPASS_TEST_DATABASE_URL: postgres://postgres:postgres@localhost:5432/skillpass
-        run: go -C server-go test -p 1 ./...
+        run: go -C server-go test -p 1 $(go -C server-go list ./... | grep -v '/docs$')
 
   web:
     name: Web typecheck, tests, build
