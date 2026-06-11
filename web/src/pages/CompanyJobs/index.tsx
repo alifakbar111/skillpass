@@ -191,7 +191,9 @@ export function CompanyJobs() {
             label="Industry"
             registration={register('industry')}
             error={errors.industry}
-            options={industries.map((ind) => ({ value: ind.name, label: ind.name }))}
+            options={industries
+              .filter((ind): ind is typeof ind & { name: string } => ind.name != null)
+              .map((ind) => ({ value: ind.name, label: ind.name }))}
           />
           <FormSelect
             label="Experience Level"

@@ -1,11 +1,8 @@
 import { useQuery } from '@tanstack/react-query';
 import { api } from '../lib/api';
+import type { Industry } from '../lib/api-types';
 
-export interface Industry {
-  id: string;
-  name: string;
-  description: string | null;
-}
+export type { Industry };
 
 export function useIndustries() {
   return useQuery({
