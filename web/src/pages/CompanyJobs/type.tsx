@@ -11,9 +11,3 @@ export interface Job {
   status: string;
   createdAt: string;
 }
-
-export interface Industry {
-  ID: string;
-  Name: string;
-  Description: string | null;
-}

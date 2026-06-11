@@ -1,6 +1,7 @@
 import { zodResolver } from '@hookform/resolvers/zod';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { X } from 'lucide-react';
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { Link } from 'react-router-dom';
 import { CompanyOnboarding } from '../../components/onboarding/CompanyOnboarding';
@@ -10,9 +11,8 @@ import { ApiError, api } from '../../lib/api';
 import { type VerificationForm, verificationSchema } from '../../lib/schemas';
 
 export function CompanyVerification() {
-  const [status, setStatus] = useState<string | null>(null);
-  const [submitting, setSubmitting] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const queryClient = useQueryClient();
+  const [queryErrorDismissed, setQueryErrorDismissed] = useState(false);
 
   const {
     register,
@@ -22,41 +22,60 @@ export function CompanyVerification() {
     resolver: zodResolver(verificationSchema),
   });
 
-  useEffect(() => {
-    let cancelled = false;
-    api<{ verificationStatus: string }>('/company/verification-status')
-      .then((data) => {
-        if (!cancelled) setStatus(data.verificationStatus);
-      })
-      .catch((err) => {
-        if (!cancelled) {
-          setError(err instanceof ApiError ? (err.serverMessage ?? err.message) : 'Failed to load verification status');
-        }
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, []);
+  const {
+    data,
+    error: queryError,
+    isLoading,
+  } = useQuery({
+    queryKey: ['company', 'verification-status'],
+    queryFn: () => api<{ verificationStatus: string }>('/company/verification-status'),
+  });
 
-  const onSubmit = async (data: VerificationForm) => {
-    setSubmitting(true);
-    setError(null);
-    try {
-      await api('/company/verification', { method: 'POST', body: JSON.stringify(data) });
-      setStatus('pending');
-    } catch (err) {
-      setError(err instanceof ApiError ? (err.serverMessage ?? err.message) : 'Submission failed');
-    } finally {
-      setSubmitting(false);
-    }
-  };
+  const status = data?.verificationStatus ?? null;
+
+  const submitMutation = useMutation({
+    mutationFn: (formData: VerificationForm) =>
+      api('/company/verification', { method: 'POST', body: JSON.stringify(formData) }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['company', 'verification-status'] });
+    },
+  });
+
+  const onSubmit = (formData: VerificationForm) => submitMutation.mutate(formData);
+
+  const error =
+    queryError && !queryErrorDismissed
+      ? queryError instanceof ApiError
+        ? (queryError.serverMessage ?? queryError.message)
+        : 'Failed to load verification status'
+      : submitMutation.error
+        ? submitMutation.error instanceof ApiError
+          ? (submitMutation.error.serverMessage ?? submitMutation.error.message)
+          : 'Submission failed'
+        : null;
+
+  if (isLoading) {
+    return (
+      <div className="max-w-lg mx-auto p-4 flex justify-center">
+        <LoadingSpinner />
+      </div>
+    );
+  }
 
   if (error) {
     return (
       <div className="max-w-lg mx-auto p-4">
         <div className="alert alert-error">
           <span>{error}</span>
-          <button type="button" title="close" className="btn btn-ghost btn-xs" onClick={() => setError(null)}>
+          <button
+            type="button"
+            title="close"
+            className="btn btn-ghost btn-xs"
+            onClick={() => {
+              setQueryErrorDismissed(true);
+              submitMutation.reset();
+            }}
+          >
             <X size={14} />
           </button>
         </div>
@@ -141,8 +160,8 @@ export function CompanyVerification() {
         />
         <FormTextarea label="Office Address" registration={register('address')} error={errors.address} rows={3} />
         <FormInput label="Contact Person & Title" registration={register('contact')} error={errors.contact} />
-        <button type="submit" className="btn btn-primary" disabled={submitting}>
-          {submitting ? <LoadingSpinner /> : 'Resubmit Verification'}
+        <button type="submit" className="btn btn-primary" disabled={submitMutation.isPending}>
+          {submitMutation.isPending ? <LoadingSpinner /> : 'Resubmit Verification'}
         </button>
       </form>
     </div>

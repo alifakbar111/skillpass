@@ -1,62 +1,50 @@
+import { useQuery } from '@tanstack/react-query';
 import { Eye, ExternalLink, Sparkles, X } from 'lucide-react';
-import { useEffect, useRef, useState } from 'react';
+import { useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { EvaluationScoreBadge } from '../../components/jobseeker/EvaluationScoreBadge';
 import { SharePassport } from '../../components/passport/SharePassport';
 import { LoadingFallback } from '../../components/ui/LoadingFallback';
 import { useAuth } from '../../hooks/useAuth';
 import { ApiError, api } from '../../lib/api';
-import type { EvaluationResult } from '../../lib/evaluation';
 import { getLatestEvaluation } from '../../lib/evaluation';
 import type { PassportData } from './type';
 
 export function JobseekerPassport() {
   const { user } = useAuth();
-  const [data, setData] = useState<PassportData | null>(null);
-  const [evaluation, setEvaluation] = useState<EvaluationResult | null>(null);
-  const [error, setError] = useState<string | null>(null);
+  const [errorDismissed, setErrorDismissed] = useState(false);
   const printRef = useRef<HTMLDivElement>(null);
 
-  useEffect(() => {
-    if (!user) return;
-    const safe = encodeURIComponent(user.username);
-    let cancelled = false;
+  const {
+    data,
+    error: passportError,
+    isLoading,
+  } = useQuery({
+    queryKey: ['passport', user?.username],
+    enabled: !!user?.username,
+    queryFn: () => api<PassportData>(`/profiles/${encodeURIComponent(user?.username as string)}`),
+  });
 
-    const fetchData = async () => {
-      try {
-        const [profile, evalResult] = await Promise.allSettled([
-          api<PassportData>(`/profiles/${safe}`),
-          getLatestEvaluation(),
-        ]);
-        if (cancelled) return;
-        if (profile.status === 'fulfilled') setData(profile.value);
-        if (profile.status === 'rejected') {
-          setError(
-            profile.reason instanceof ApiError
-              ? (profile.reason.serverMessage ?? profile.reason.message)
-              : 'Failed to load passport',
-          );
-        }
-        if (evalResult.status === 'fulfilled') {
-          setEvaluation(evalResult.value);
-        }
-      } catch {
-        // handled per-Promise above
-      }
-    };
+  const { data: evaluation } = useQuery({
+    queryKey: ['evaluation', 'latest'],
+    enabled: !!user,
+    queryFn: getLatestEvaluation,
+    retry: (count, err) => count < 1 && !(err instanceof ApiError && err.status === 404),
+  });
 
-    fetchData();
-    return () => {
-      cancelled = true;
-    };
-  }, [user]);
+  const error =
+    passportError && !errorDismissed
+      ? passportError instanceof ApiError
+        ? (passportError.serverMessage ?? passportError.message)
+        : 'Failed to load passport'
+      : null;
 
   if (error) {
     return (
       <div className="max-w-2xl mx-auto p-4">
         <div className="alert alert-error">
           <span>{error}</span>
-          <button type="button" title="close" className="btn btn-ghost btn-xs" onClick={() => setError(null)}>
+          <button type="button" title="close" className="btn btn-ghost btn-xs" onClick={() => setErrorDismissed(true)}>
             <X size={14} />
           </button>
         </div>
@@ -64,7 +52,7 @@ export function JobseekerPassport() {
     );
   }
 
-  if (!data) return <LoadingFallback text="Loading passport" />;
+  if (isLoading || !data) return <LoadingFallback text="Loading passport" />;
 
   return (
     <div className="max-w-2xl mx-auto p-4 space-y-4">

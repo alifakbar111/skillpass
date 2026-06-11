@@ -1,32 +1,31 @@
+import { useQuery } from '@tanstack/react-query';
 import { Briefcase } from 'lucide-react';
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { Link } from 'react-router-dom';
+import { useIndustries } from '../../hooks/useIndustries';
 import { ApiError, api } from '../../lib/api';
 import type { Job } from './type';
 
 export function PublicJobs() {
-  const [jobs, setJobs] = useState<Job[]>([]);
   const [industry, setIndustry] = useState('');
-  const [industries, setIndustries] = useState<Array<{ id: string; name: string }>>([]);
-  const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
-    const controller = new AbortController();
-    setError(null);
-    api<Array<{ id: string; name: string }>>('/industries')
-      .then(setIndustries)
-      .catch(() => {});
-    const params = new URLSearchParams();
-    if (industry) params.set('industry', industry);
-    const qs = params.toString();
-    api<Job[]>(`/jobs${qs ? `?${qs}` : ''}`)
-      .then(setJobs)
-      .catch((err) => {
-        if (err.name === 'AbortError') return;
-        setError(err instanceof ApiError ? (err.serverMessage ?? err.message) : 'Failed to load jobs');
-      });
-    return () => controller.abort();
-  }, [industry]);
+  const { data: industries = [] } = useIndustries();
+
+  const { data: jobs = [], error } = useQuery({
+    queryKey: ['jobs', { industry }],
+    queryFn: () => {
+      const params = new URLSearchParams();
+      if (industry) params.set('industry', industry);
+      const qs = params.toString();
+      return api<Job[]>(`/jobs${qs ? `?${qs}` : ''}`);
+    },
+  });
+
+  const errorMessage = error
+    ? error instanceof ApiError
+      ? (error.serverMessage ?? error.message)
+      : 'Failed to load jobs'
+    : null;
 
   return (
     <div className="max-w-3xl mx-auto p-4 space-y-4">
@@ -45,7 +44,7 @@ export function PublicJobs() {
         ))}
       </select>
 
-      {error && <div className="alert alert-error">{error}</div>}
+      {errorMessage && <div className="alert alert-error">{errorMessage}</div>}
 
       <div className="space-y-2">
         {jobs.map((job) => (

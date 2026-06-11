@@ -132,6 +132,12 @@ bun run dev                            # Start server + web concurrently
 
 **Commit before pushing** if you want to reformat locally first (hooks auto-stage fixed files).
 
+# Git Commit Style
+
+- Commit messages must be a single line only — no body, no trailers.
+- Never add "Co-Authored-By" (or any other) trailers to commits.
+- Keep messages simple but meaningful, following conventional commits (e.g. `fix(web): ...`, `feat(server): ...`).
+
 ## Agent Development Kit
 
 **Located in `.agents/`:**

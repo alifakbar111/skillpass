@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import { ApplicationKanban } from '../../../components/jobseeker/ApplicationKanban';
 import { LoadingFallback } from '../../../components/ui/LoadingFallback';
 import { useAuth } from '../../../hooks/useAuth';
@@ -8,36 +8,22 @@ import { getMyApplications } from '../../../lib/application';
 
 export function ApplicationsPage() {
   const { user } = useAuth();
-  const [applications, setApplications] = useState<Application[]>([]);
-  const [stats, setStats] = useState<JobseekerAnalytics | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
-    if (!user) return;
-    let cancelled = false;
-    setLoading(true);
-    getMyApplications()
-      .then((data) => {
-        if (!cancelled) setApplications(data);
-      })
-      .catch((err) => {
-        if (!cancelled) setError(err instanceof Error ? err.message : 'Failed to load applications');
-      })
-      .finally(() => {
-        if (!cancelled) setLoading(false);
-      });
-    getJobseekerAnalytics()
-      .then((data) => {
-        if (!cancelled) setStats(data);
-      })
-      .catch(() => {
-        // Stats strip is non-critical — fail silently.
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [user]);
+  const {
+    data: applications = [],
+    error,
+    isLoading,
+  } = useQuery({
+    queryKey: ['applications', 'me'],
+    enabled: !!user,
+    queryFn: getMyApplications,
+  });
+
+  const { data: stats } = useQuery({
+    queryKey: ['jobseeker', 'analytics'],
+    enabled: !!user,
+    queryFn: () => getJobseekerAnalytics(),
+  });
 
   if (!user) {
     return (
@@ -47,12 +33,14 @@ export function ApplicationsPage() {
     );
   }
 
-  if (loading) return <LoadingFallback text="Loading applications" />;
+  if (isLoading) return <LoadingFallback text="Loading applications" />;
 
   if (error) {
     return (
       <div className="max-w-4xl mx-auto p-4">
-        <div className="alert alert-error">{error}</div>
+        <div className="alert alert-error">
+          {error instanceof Error ? error.message : 'Failed to load applications'}
+        </div>
       </div>
     );
   }

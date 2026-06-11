@@ -1,23 +1,45 @@
 import { zodResolver } from '@hookform/resolvers/zod';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Pencil, Plus, Users, X } from 'lucide-react';
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { JobMatches } from '../../components/company/JobMatches';
 import { FormInput, FormSelect, FormTextarea } from '../../components/ui/FormField';
 import { LoadingSpinner } from '../../components/ui/LoadingFallback';
+import { useIndustries } from '../../hooks/useIndustries';
 import { ApiError, api } from '../../lib/api';
 import { EXPERIENCE_LEVEL_OPTIONS } from '../../lib/constants';
 import { type JobForm, jobSchema } from '../../lib/schemas';
-import type { Industry, Job } from './type';
+import type { Job } from './type';
+
+function parseFormData(data: JobForm) {
+  const tags = data.tags
+    ? data.tags
+        .split(',')
+        .map((t) => t.trim())
+        .filter(Boolean)
+    : [];
+  const requiredSkills = data.requiredSkills
+    ? data.requiredSkills
+        .split(',')
+        .map((s) => s.trim())
+        .filter(Boolean)
+    : [];
+  return { ...data, tags, requiredSkills };
+}
 
 export function CompanyJobs() {
-  const [jobs, setJobs] = useState<Job[]>([]);
-  const [formMode, setFormMode] = useState<'hidden' | 'create' | 'edit'>('hidden');
+  const queryClient = useQueryClient();
   const [editingJobId, setEditingJobId] = useState<string | null>(null);
-  const [industries, setIndustries] = useState<Industry[]>([]);
-  const [saving, setSaving] = useState(false);
+  const [showForm, setShowForm] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [matchesJobId, setMatchesJobId] = useState<string | null>(null);
+
+  const { data: industries = [] } = useIndustries();
+  const { data: jobs = [] } = useQuery({
+    queryKey: ['jobs', 'me'],
+    queryFn: () => api<Job[]>('/jobs/me'),
+  });
 
   const {
     register,
@@ -38,22 +60,57 @@ export function CompanyJobs() {
     },
   });
 
-  useEffect(() => {
-    let cancelled = false;
-    api<Industry[]>('/industries')
-      .then((data) => {
-        if (!cancelled) setIndustries(data);
-      })
-      .catch(() => {});
-    api<Job[]>('/jobs/me')
-      .then((data) => {
-        if (!cancelled) setJobs(data);
-      })
-      .catch(() => {});
-    return () => {
-      cancelled = true;
-    };
-  }, []);
+  const createMutation = useMutation({
+    mutationFn: (data: JobForm) =>
+      api('/jobs', {
+        method: 'POST',
+        body: JSON.stringify(parseFormData(data)),
+      }),
+    onMutate: () => setError(null),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['jobs'] });
+      setShowForm(false);
+      setEditingJobId(null);
+      reset();
+    },
+    onError: (err) => {
+      setError(err instanceof ApiError ? (err.serverMessage ?? err.message) : 'Failed to create job');
+    },
+  });
+
+  const updateMutation = useMutation({
+    mutationFn: (data: JobForm & { id: string }) =>
+      api(`/jobs/${encodeURIComponent(data.id)}`, {
+        method: 'PUT',
+        body: JSON.stringify(parseFormData(data)),
+      }),
+    onMutate: () => setError(null),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['jobs'] });
+      setShowForm(false);
+      setEditingJobId(null);
+      reset();
+    },
+    onError: (err) => {
+      setError(err instanceof ApiError ? (err.serverMessage ?? err.message) : 'Failed to update job');
+    },
+  });
+
+  const closeMutation = useMutation({
+    mutationFn: (id: string) =>
+      api(`/jobs/${encodeURIComponent(id)}`, {
+        method: 'PUT',
+        body: JSON.stringify({ status: 'closed' }),
+      }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['jobs'] });
+    },
+    onError: (err) => {
+      setError(err instanceof ApiError ? (err.serverMessage ?? err.message) : 'Failed to close job');
+    },
+  });
+
+  const isSaving = createMutation.isPending || updateMutation.isPending;
 
   function openCreateForm() {
     reset({
@@ -67,7 +124,7 @@ export function CompanyJobs() {
       salaryRange: '',
     });
     setEditingJobId(null);
-    setFormMode('create');
+    setShowForm(true);
   }
 
   function openEditForm(job: Job) {
@@ -82,65 +139,25 @@ export function CompanyJobs() {
       salaryRange: job.salaryRange ?? '',
     });
     setEditingJobId(job.id);
-    setFormMode('edit');
+    setShowForm(true);
   }
 
   function closeForm() {
-    setFormMode('hidden');
+    setShowForm(false);
     setEditingJobId(null);
     reset();
   }
 
-  function parseArrayField(value?: string): string[] {
-    return value
-      ? value
-          .split(',')
-          .map((s) => s.trim())
-          .filter(Boolean)
-      : [];
+  function onSubmit(data: JobForm) {
+    if (editingJobId) {
+      updateMutation.mutate({ ...data, id: editingJobId });
+    } else {
+      createMutation.mutate(data);
+    }
   }
 
-  const saveJob = async (data: JobForm) => {
-    setSaving(true);
-    setError(null);
-    const payload = {
-      ...data,
-      tags: parseArrayField(data.tags),
-      requiredSkills: parseArrayField(data.requiredSkills),
-    };
-    try {
-      if (formMode === 'edit' && editingJobId) {
-        await api(`/jobs/${encodeURIComponent(editingJobId)}`, {
-          method: 'PUT',
-          body: JSON.stringify(payload),
-        });
-      } else {
-        await api('/jobs', {
-          method: 'POST',
-          body: JSON.stringify(payload),
-        });
-      }
-      const updated = await api<Job[]>('/jobs/me');
-      setJobs(updated);
-      closeForm();
-    } catch (err) {
-      setError(err instanceof ApiError ? (err.serverMessage ?? err.message) : 'Failed to save job');
-    } finally {
-      setSaving(false);
-    }
-  };
+  const closeJob = (id: string) => closeMutation.mutate(id);
 
-  const closeJob = async (id: string) => {
-    try {
-      await api(`/jobs/${encodeURIComponent(id)}`, {
-        method: 'PUT',
-        body: JSON.stringify({ status: 'closed' }),
-      });
-      setJobs((prev) => prev.map((j) => (j.id === id ? { ...j, status: 'closed' } : j)));
-    } catch (err) {
-      setError(err instanceof ApiError ? (err.serverMessage ?? err.message) : 'Failed to close job');
-    }
-  };
   return (
     <div className="max-w-3xl mx-auto p-4 space-y-4">
       <div className="flex justify-between items-center">
@@ -159,9 +176,9 @@ export function CompanyJobs() {
         </div>
       )}
 
-      {formMode !== 'hidden' && (
-        <form onSubmit={handleSubmit(saveJob)} className="card bg-base-200 p-4 space-y-3">
-          <h2 className="font-semibold text-lg">{formMode === 'edit' ? 'Edit Job' : 'New Job'}</h2>
+      {showForm && (
+        <form onSubmit={handleSubmit(onSubmit)} className="card bg-base-200 p-4 space-y-3">
+          <h2 className="font-semibold text-lg">{editingJobId ? 'Edit Job' : 'New Job'}</h2>
           <FormInput label="Job Title" registration={register('title')} error={errors.title} placeholder="Job Title" />
           <FormTextarea
             label="Job Description"
@@ -174,7 +191,7 @@ export function CompanyJobs() {
             label="Industry"
             registration={register('industry')}
             error={errors.industry}
-            options={industries.map((ind) => ({ value: ind.Name, label: ind.Name }))}
+            options={industries.map((ind) => ({ value: ind.name, label: ind.name }))}
           />
           <FormSelect
             label="Experience Level"
@@ -209,8 +226,8 @@ export function CompanyJobs() {
             />
           </div>
           <div className="flex gap-2">
-            <button type="submit" className="btn btn-primary" disabled={saving}>
-              {saving ? <LoadingSpinner /> : formMode === 'edit' ? 'Save Changes' : 'Post Job'}
+            <button type="submit" className="btn btn-primary" disabled={isSaving}>
+              {isSaving ? <LoadingSpinner /> : editingJobId ? 'Save Changes' : 'Post Job'}
             </button>
             <button type="button" className="btn" onClick={closeForm}>
               Cancel
@@ -269,7 +286,7 @@ export function CompanyJobs() {
             {matchesJobId === job.id && <JobMatches jobId={job.id} />}
           </div>
         ))}
-        {jobs.length === 0 && formMode === 'hidden' && (
+        {jobs.length === 0 && !showForm && (
           <p className="text-center opacity-50 py-8">No job postings yet. Create your first one!</p>
         )}
       </div>

@@ -1,40 +1,35 @@
+import { useQuery } from '@tanstack/react-query';
 import { Eye, ExternalLink } from 'lucide-react';
-import { useEffect, useRef, useState } from 'react';
+import { useRef } from 'react';
 import { useParams } from 'react-router-dom';
 import { SharePassport } from '../../components/passport/SharePassport';
 import { LoadingFallback } from '../../components/ui/LoadingFallback';
-import { api } from '../../lib/api';
+import { ApiError, api } from '../../lib/api';
 import type { PassportData } from './type';
 
 export function PublicPassport() {
   const { username } = useParams();
-  const [data, setData] = useState<PassportData | null>(null);
-  const [error, setError] = useState('');
   const printRef = useRef<HTMLDivElement>(null);
 
-  useEffect(() => {
-    if (!username) return;
-    const safe = encodeURIComponent(username);
-    let cancelled = false;
-    api<PassportData>(`/profiles/${safe}`)
-      .then((d) => {
-        if (!cancelled) setData(d);
-      })
-      .catch(() => {
-        if (!cancelled) setError('Profile not found');
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [username]);
+  const { data, error, isLoading } = useQuery({
+    queryKey: ['passport', username],
+    enabled: !!username,
+    queryFn: () => api<PassportData>(`/profiles/${encodeURIComponent(username as string)}`),
+  });
 
-  if (error)
+  const errorMessage = error
+    ? error instanceof ApiError && error.status >= 400 && error.status < 500
+      ? (error.serverMessage ?? error.message)
+      : 'Failed to load passport'
+    : null;
+
+  if (errorMessage)
     return (
       <div className="text-center p-8">
-        <p className="text-error">{error}</p>
+        <p className="text-error">{errorMessage}</p>
       </div>
     );
-  if (!data) return <LoadingFallback text="Loading profile" />;
+  if (isLoading || !data) return <LoadingFallback text="Loading profile" />;
 
   return (
     <div className="max-w-2xl mx-auto p-4 space-y-4">

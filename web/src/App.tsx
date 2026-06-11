@@ -1,3 +1,4 @@
+import { QueryClientProvider } from '@tanstack/react-query';
 import { lazy, Suspense } from 'react';
 import { createBrowserRouter, RouterProvider } from 'react-router-dom';
 import { RootLayout } from './components/layout/RootLayout';
@@ -5,6 +6,7 @@ import { ErrorBoundary } from './components/ui/ErrorBoundary';
 import { LoadingFallback } from './components/ui/LoadingFallback';
 import { ProtectedRoute } from './components/ui/ProtectedRoute';
 import { AuthProvider } from './hooks/useAuth';
+import { queryClient } from './lib/queryClient';
 
 import { Landing } from './pages/Landing';
 import { Login } from './pages/Login';
@@ -165,12 +167,14 @@ const router = createBrowserRouter([
 
 export function App() {
   return (
-    <AuthProvider>
-      <ErrorBoundary>
-        <Suspense fallback={<LoadingFallback />}>
-          <RouterProvider router={router} />
-        </Suspense>
-      </ErrorBoundary>
-    </AuthProvider>
+    <QueryClientProvider client={queryClient}>
+      <AuthProvider>
+        <ErrorBoundary>
+          <Suspense fallback={<LoadingFallback />}>
+            <RouterProvider router={router} />
+          </Suspense>
+        </ErrorBoundary>
+      </AuthProvider>
+    </QueryClientProvider>
   );
 }

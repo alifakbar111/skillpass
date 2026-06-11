@@ -1,4 +1,5 @@
 import { zodResolver } from '@hookform/resolvers/zod';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Plus, Trash2, X } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { useForm } from 'react-hook-form';
@@ -6,6 +7,7 @@ import { AvatarUploader } from '../../components/jobseeker/AvatarUploader';
 import { JobseekerOnboarding } from '../../components/onboarding/JobseekerOnboarding';
 import { FormInput, FormSelect, FormTextarea } from '../../components/ui/FormField';
 import { LoadingFallback, LoadingSpinner } from '../../components/ui/LoadingFallback';
+import { useAuth } from '../../hooks/useAuth';
 import { ApiError, api } from '../../lib/api';
 import { type ExperienceForm, experienceSchema, type ProfileForm, profileSchema } from '../../lib/schemas';
 import { ResumeImport } from './ResumeImport';
@@ -21,9 +23,14 @@ const EXPERIENCE_TYPES = [
 ];
 
 export function JobseekerProfile() {
-  const [profile, setProfile] = useState<Profile | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState(false);
+  const queryClient = useQueryClient();
+  const { user } = useAuth();
+
+  // Profile edits also affect the public passport view (/profiles/:username).
+  const invalidateProfileViews = () => {
+    queryClient.invalidateQueries({ queryKey: ['profile', 'me'] });
+    queryClient.invalidateQueries({ queryKey: ['passport', user?.username] });
+  };
   const [showExpForm, setShowExpForm] = useState(false);
   const [importOpen, setImportOpen] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -49,59 +56,47 @@ export function JobseekerProfile() {
     },
   });
 
+  const {
+    data: profile,
+    error: loadError,
+    isLoading: loading,
+  } = useQuery({
+    queryKey: ['profile', 'me'],
+    queryFn: () => api<Profile>('/profiles/me'),
+  });
+
+  // Seed the profile form once data loads (react-hook-form reset moved out of .then()).
   useEffect(() => {
-    let cancelled = false;
-    api<Profile>('/profiles/me')
-      .then((data) => {
-        if (cancelled) return;
-        setProfile(data);
-        // Surface the AI importer as step one for brand-new profiles.
-        if (data.experiences.length === 0) setImportOpen(true);
-        profileForm.reset({
-          headline: data.headline || '',
-          about: data.about || '',
-          yearsOfExperience: data.yearsOfExperience || undefined,
-        });
-      })
-      .catch((err) => {
-        if (!cancelled) {
-          setError(err instanceof ApiError ? (err.serverMessage ?? err.message) : 'Failed to load profile');
-        }
-      })
-      .finally(() => {
-        if (!cancelled) setLoading(false);
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [profileForm]);
+    if (!profile) return;
+    // Surface the AI importer as step one for brand-new profiles.
+    if (profile.experiences.length === 0) setImportOpen(true);
+    profileForm.reset({
+      headline: profile.headline || '',
+      about: profile.about || '',
+      yearsOfExperience: profile.yearsOfExperience || undefined,
+    });
+  }, [profile, profileForm]);
 
-  const saveProfile = async (data: ProfileForm) => {
-    setSaving(true);
-    setError(null);
-    try {
-      const updated = await api<Profile>('/profiles/me', {
-        method: 'PUT',
-        body: JSON.stringify(data),
-      });
-      setProfile((prev) => (prev ? { ...prev, ...updated } : null));
-    } catch (err) {
+  const saveProfileMutation = useMutation({
+    mutationFn: (data: ProfileForm) => api<Profile>('/profiles/me', { method: 'PUT', body: JSON.stringify(data) }),
+    onMutate: () => setError(null),
+    onSuccess: () => {
+      invalidateProfileViews();
+    },
+    onError: (err) => {
       setError(err instanceof ApiError ? (err.serverMessage ?? err.message) : 'Failed to save profile');
-    } finally {
-      setSaving(false);
-    }
-  };
+    },
+  });
 
-  const addExperience = async (data: ExperienceForm) => {
-    setError(null);
-    const skills = data.skills
-      ? data.skills
-          .split(',')
-          .map((s) => s.trim())
-          .filter(Boolean)
-      : [];
-    try {
-      const added = await api<Experience>('/profiles/me/experience', {
+  const addExperienceMutation = useMutation({
+    mutationFn: (data: ExperienceForm) => {
+      const skills = data.skills
+        ? data.skills
+            .split(',')
+            .map((s) => s.trim())
+            .filter(Boolean)
+        : [];
+      return api<Experience>('/profiles/me/experience', {
         method: 'POST',
         body: JSON.stringify({
           ...data,
@@ -110,7 +105,10 @@ export function JobseekerProfile() {
           url: data.url || undefined,
         }),
       });
-      setProfile((prev) => (prev ? { ...prev, experiences: [...prev.experiences, added] } : null));
+    },
+    onMutate: () => setError(null),
+    onSuccess: () => {
+      invalidateProfileViews();
       setShowExpForm(false);
       expForm.reset({
         type: 'employment',
@@ -124,22 +122,34 @@ export function JobseekerProfile() {
         skills: '',
         url: '',
       });
-    } catch (err) {
+    },
+    onError: (err) => {
       setError(err instanceof ApiError ? (err.serverMessage ?? err.message) : 'Failed to add experience');
-    }
-  };
+    },
+  });
 
-  const deleteExperience = async (id: string) => {
-    setError(null);
-    try {
-      await api(`/profiles/me/experience/${encodeURIComponent(id)}`, { method: 'DELETE' });
-      setProfile((prev) => (prev ? { ...prev, experiences: prev.experiences.filter((e) => e.id !== id) } : null));
-    } catch (err) {
+  const deleteExperienceMutation = useMutation({
+    mutationFn: (id: string) => api(`/profiles/me/experience/${encodeURIComponent(id)}`, { method: 'DELETE' }),
+    onMutate: () => setError(null),
+    onSuccess: () => {
+      invalidateProfileViews();
+    },
+    onError: (err) => {
       setError(err instanceof ApiError ? (err.serverMessage ?? err.message) : 'Failed to delete experience');
-    }
-  };
+    },
+  });
+
+  const saveProfile = (data: ProfileForm) => saveProfileMutation.mutate(data);
+  const addExperience = (data: ExperienceForm) => addExperienceMutation.mutate(data);
+  const deleteExperience = (id: string) => deleteExperienceMutation.mutate(id);
 
   if (loading) return <LoadingFallback text="Loading profile" />;
+
+  if (loadError && !profile) {
+    const message =
+      loadError instanceof ApiError ? (loadError.serverMessage ?? loadError.message) : 'Failed to load profile';
+    return <p className="text-center p-8 text-error">{message}</p>;
+  }
 
   return (
     <div className="max-w-2xl mx-auto p-4 space-y-6">
@@ -169,7 +179,10 @@ export function JobseekerProfile() {
             <AvatarUploader
               name={profile.name ?? ''}
               avatarUrl={profile.avatarUrl}
-              onUploaded={(url) => setProfile((prev) => (prev ? { ...prev, avatarUrl: url } : prev))}
+              onUploaded={(url) => {
+                queryClient.setQueryData(['profile', 'me'], { ...profile, avatarUrl: url });
+                queryClient.invalidateQueries({ queryKey: ['passport', user?.username] });
+              }}
             />
           )}
         </div>
@@ -192,17 +205,22 @@ export function JobseekerProfile() {
           type="number"
           min={0}
         />
-        <button type="submit" className="btn btn-primary" disabled={saving}>
-          {saving ? <LoadingSpinner size="sm" /> : 'Save Profile'}
+        <button type="submit" className="btn btn-primary" disabled={saveProfileMutation.isPending}>
+          {saveProfileMutation.isPending ? <LoadingSpinner size="sm" /> : 'Save Profile'}
         </button>
       </form>
 
       <ResumeImport
         open={importOpen}
         onToggle={setImportOpen}
-        onExperienceAdded={(added) =>
-          setProfile((prev) => (prev ? { ...prev, experiences: [...prev.experiences, added] } : prev))
-        }
+        onExperienceAdded={(added) => {
+          if (!profile) return;
+          queryClient.setQueryData(['profile', 'me'], {
+            ...profile,
+            experiences: [...profile.experiences, added],
+          });
+          queryClient.invalidateQueries({ queryKey: ['passport', user?.username] });
+        }}
       />
 
       <div className="card bg-base-200 p-4">
