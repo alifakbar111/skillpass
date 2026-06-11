@@ -8,7 +8,7 @@ import { LoadingFallback } from '../../components/ui/LoadingFallback';
 import { useAuth } from '../../hooks/useAuth';
 import { ApiError, api } from '../../lib/api';
 import { getLatestEvaluation } from '../../lib/evaluation';
-import type { PassportData } from './type';
+import type { PublicProfile } from '@/lib/api-types';
 
 export function JobseekerPassport() {
   const { user } = useAuth();
@@ -22,7 +22,7 @@ export function JobseekerPassport() {
   } = useQuery({
     queryKey: ['passport', user?.username],
     enabled: !!user?.username,
-    queryFn: () => api<PassportData>(`/profiles/${encodeURIComponent(user?.username as string)}`),
+    queryFn: () => api<PublicProfile>(`/profiles/${encodeURIComponent(user?.username as string)}`),
   });
 
   const { data: evaluation } = useQuery({
@@ -60,7 +60,7 @@ export function JobseekerPassport() {
         <h1 className="text-2xl font-bold">My Passport</h1>
         <div className="flex items-center gap-2 flex-wrap">
           {evaluation && <EvaluationScoreBadge overallScore={evaluation.overallScore} />}
-          {user?.username && <SharePassport slug={user.username} name={data.name} printRef={printRef} />}
+          {user?.username && <SharePassport slug={user.username} name={data.name ?? ''} printRef={printRef} />}
           <Link to={`/profiles/${user?.username}`} className="btn btn-outline btn-sm gap-2" target="_blank">
             <ExternalLink size={14} aria-hidden="true" /> View Public
           </Link>
@@ -136,7 +136,7 @@ export function JobseekerPassport() {
         <div className="card bg-base-200 p-4">
           <h3 className="font-semibold mb-3">Experience</h3>
           <div className="space-y-2">
-            {data.experiences.map((exp, i) => (
+            {(data.experiences ?? []).map((exp, i) => (
               // biome-ignore lint/suspicious/noArrayIndexKey: experiences array has no stable id in this view
               <div key={i} className="p-3 bg-base-100 rounded-box">
                 <p className="font-medium">{exp.title}</p>

@@ -5,7 +5,7 @@ import { useParams } from 'react-router-dom';
 import { SharePassport } from '../../components/passport/SharePassport';
 import { LoadingFallback } from '../../components/ui/LoadingFallback';
 import { ApiError, api } from '../../lib/api';
-import type { PassportData } from './type';
+import type { PublicProfile } from '@/lib/api-types';
 
 export function PublicPassport() {
   const { username } = useParams();
@@ -14,7 +14,7 @@ export function PublicPassport() {
   const { data, error, isLoading } = useQuery({
     queryKey: ['passport', username],
     enabled: !!username,
-    queryFn: () => api<PassportData>(`/profiles/${encodeURIComponent(username as string)}`),
+    queryFn: () => api<PublicProfile>(`/profiles/${encodeURIComponent(username as string)}`),
   });
 
   const errorMessage = error
@@ -34,7 +34,7 @@ export function PublicPassport() {
   return (
     <div className="max-w-2xl mx-auto p-4 space-y-4">
       <div className="flex justify-end">
-        {username && <SharePassport slug={username} name={data.name} printRef={printRef} />}
+        {username && <SharePassport slug={username} name={data.name ?? ''} printRef={printRef} />}
       </div>
 
       <div ref={printRef} className="space-y-4">
@@ -70,7 +70,7 @@ export function PublicPassport() {
         <div className="card bg-base-200 p-4">
           <h2 className="font-semibold mb-3">Experience</h2>
           <div className="space-y-2">
-            {data.experiences.map((exp, i) => (
+            {(data.experiences ?? []).map((exp, i) => (
               // biome-ignore lint/suspicious/noArrayIndexKey: experiences array has no stable id in this view
               <div key={i} className="p-3 bg-base-100 rounded-box">
                 <p className="font-medium">{exp.title}</p>
