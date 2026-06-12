@@ -9,13 +9,11 @@
     "noUnusedLocals": true,
     "noUnusedParameters": true,
     "resolveJsonModule": true,
-    "baseUrl": ".",
     "strict": true,
     "esModuleInterop": true,
     "skipLibCheck": true,
     "jsx": "react-jsx",
-    "paths": { "@/*": ["./src/*"] },
-    "ignoreDeprecations": "6.0"
+    "paths": { "@/*": ["./src/*"] }
   },
   "include": ["src"]
 }
