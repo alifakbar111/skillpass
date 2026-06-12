@@ -1,11 +1,10 @@
 import { useEffect, useRef } from 'react';
-import { Outlet, useLocation } from 'react-router-dom';
+import { Outlet } from 'react-router-dom';
 import { Navbar } from './Navbar';
 import { VerifyEmailBanner } from './VerifyEmailBanner';
 
 export function RootLayout() {
   const mainRef = useRef<HTMLElement>(null);
-  const _location = useLocation();
 
   useEffect(() => {
     mainRef.current?.focus();

@@ -1,9 +1,12 @@
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useState } from 'react';
-import { useForm } from 'react-hook-form';
+import { useForm, useWatch } from 'react-hook-form';
 import { Link, useNavigate } from 'react-router-dom';
-import { FormInput, FormTextarea } from '../../components/ui/FormField';
+import { Form } from '../../components/ui/Form';
+import { FormInput } from '../../components/ui/FormInput';
+import { FormTextarea } from '../../components/ui/FormTextarea';
 import { LoadingSpinner } from '../../components/ui/LoadingFallback';
+import { ToggleButtonGroup } from '../../components/ui/ToggleButtonGroup';
 import { useAuth } from '../../hooks/useAuth';
 import { ApiError } from '../../lib/api';
 import { type RegisterForm, registerSchema } from '../../lib/schemas';
@@ -11,13 +14,7 @@ import { type RegisterForm, registerSchema } from '../../lib/schemas';
 export function Register() {
   const { register: authRegister } = useAuth();
   const navigate = useNavigate();
-  const {
-    register,
-    handleSubmit,
-    setValue,
-    watch,
-    formState: { errors },
-  } = useForm<RegisterForm>({
+  const methods = useForm<RegisterForm>({
     resolver: zodResolver(registerSchema),
     shouldUnregister: true,
     defaultValues: {
@@ -29,7 +26,7 @@ export function Register() {
   });
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
-  const role = watch('role');
+  const role = useWatch({ control: methods.control, name: 'role', defaultValue: 'jobseeker' });
 
   const onSubmit = async (data: RegisterForm) => {
     setError('');
@@ -48,72 +45,32 @@ export function Register() {
       setLoading(false);
     }
   };
-
   return (
     <div className="hero min-h-[60vh]">
       <div className="hero-content w-full max-w-xl">
         <div className="card bg-base-200 w-full p-6">
           <h1 className="text-2xl font-bold mb-6 text-center">Create Account</h1>
-          <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
-            <fieldset className="fieldset" aria-label="Account type">
-              <legend className="fieldset-legend">I am a&hellip;</legend>
-              <div className="flex gap-2">
-                <button
-                  type="button"
-                  className={`btn flex-1 ${role === 'jobseeker' ? 'btn-primary' : 'btn-outline'}`}
-                  onClick={() => setValue('role', 'jobseeker', { shouldDirty: true })}
-                  aria-label="Jobseeker"
-                >
-                  Jobseeker
-                </button>
-                <button
-                  type="button"
-                  className={`btn flex-1 ${role === 'company' ? 'btn-primary' : 'btn-outline'}`}
-                  onClick={() => setValue('role', 'company', { shouldDirty: true })}
-                  aria-label="Company"
-                >
-                  Company
-                </button>
-              </div>
-            </fieldset>
+          <Form methods={methods} onSubmit={onSubmit} className="space-y-4">
+            <ToggleButtonGroup
+              name="role"
+              legend="I am a&hellip;"
+              options={[
+                { value: 'jobseeker', label: 'Jobseeker' },
+                { value: 'company', label: 'Company' },
+              ]}
+              aria-label="Account type"
+            />
             <fieldset className="fieldset">
               <legend className="fieldset-legend">Account Details</legend>
               <div className="space-y-4">
                 {role === 'company' ? (
-                  <FormInput
-                    label="Company Name"
-                    registration={register('companyName')}
-                    error={errors.companyName}
-                    autoComplete="organization"
-                  />
+                  <FormInput label="Company Name" name="companyName" autoComplete="organization" />
                 ) : (
-                  <FormInput
-                    label="Full Name"
-                    registration={register('name')}
-                    error={errors.name}
-                    autoComplete="name"
-                  />
+                  <FormInput label="Full Name" name="name" autoComplete="name" />
                 )}
-                <FormInput
-                  label="Username"
-                  registration={register('username')}
-                  error={errors.username}
-                  autoComplete="username"
-                />
-                <FormInput
-                  label="Email"
-                  registration={register('email')}
-                  error={errors.email}
-                  type="email"
-                  autoComplete="email"
-                />
-                <FormInput
-                  label="Password"
-                  registration={register('password')}
-                  error={errors.password}
-                  type="password"
-                  autoComplete="new-password"
-                />
+                <FormInput label="Username" name="username" autoComplete="username" />
+                <FormInput label="Email" name="email" type="email" autoComplete="email" />
+                <FormInput label="Password" name="password" type="password" autoComplete="new-password" />
               </div>
             </fieldset>
             {role === 'company' && (
@@ -121,30 +78,16 @@ export function Register() {
                 <fieldset className="fieldset">
                   <legend className="fieldset-legend">Company Verification</legend>
                   <div className="space-y-4">
-                    <FormInput
-                      label="Business Registration Number"
-                      registration={register('businessRegistration')}
-                      error={errors.businessRegistration}
-                    />
+                    <FormInput label="Business Registration Number" name="businessRegistration" />
                     <FormInput
                       label="Company Website"
-                      registration={register('website')}
-                      error={errors.website}
+                      name="website"
                       type="url"
                       placeholder="https://example.com"
                       autoComplete="url"
                     />
-                    <FormTextarea
-                      label="Office Address"
-                      registration={register('address')}
-                      error={errors.address}
-                      rows={3}
-                    />
-                    <FormInput
-                      label="Contact Person & Title"
-                      registration={register('contact')}
-                      error={errors.contact}
-                    />
+                    <FormTextarea label="Office Address" name="address" rows={3} />
+                    <FormInput label="Contact Person & Title" name="contact" />
                   </div>
                 </fieldset>
                 <div className="alert alert-soft text-sm" role="note">
@@ -161,7 +104,7 @@ export function Register() {
             <button type="submit" className="btn btn-primary w-full" disabled={loading}>
               {loading ? <LoadingSpinner /> : 'Create Account'}
             </button>
-          </form>
+          </Form>
           <p className="text-sm text-center mt-4">
             Already have an account?{' '}
             <Link to="/auth/login" className="link link-primary">

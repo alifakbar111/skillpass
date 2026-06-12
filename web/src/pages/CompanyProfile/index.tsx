@@ -3,7 +3,10 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { X } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { useForm } from 'react-hook-form';
-import { FormInput, FormSelect, FormTextarea } from '../../components/ui/FormField';
+import { Form } from '../../components/ui/Form';
+import { FormInput } from '../../components/ui/FormInput';
+import { FormSelect } from '../../components/ui/FormSelect';
+import { FormTextarea } from '../../components/ui/FormTextarea';
 import { LoadingFallback, LoadingSpinner } from '../../components/ui/LoadingFallback';
 import { useIndustries } from '../../hooks/useIndustries';
 import { ApiError, api } from '../../lib/api';
@@ -21,12 +24,7 @@ export function CompanyProfile() {
 
   const { data: industries = [] } = useIndustries();
 
-  const {
-    register,
-    handleSubmit,
-    reset,
-    formState: { errors },
-  } = useForm<CompanyProfileForm>({
+  const methods = useForm<CompanyProfileForm>({
     resolver: zodResolver(companyProfileSchema),
   });
 
@@ -38,14 +36,14 @@ export function CompanyProfile() {
   // Seed the form once the profile loads (react-hook-form reset moved out of .then()).
   useEffect(() => {
     if (!companyProfile) return;
-    reset({
+    methods.reset({
       companyName: companyProfile.companyName,
       website: companyProfile.website || '',
       industry: companyProfile.industry,
       description: companyProfile.description || '',
     });
     setBlindMode((companyProfile as Record<string, unknown>).blindMode === true);
-  }, [companyProfile, reset]);
+  }, [companyProfile, methods]);
 
   const saveMutation = useMutation({
     mutationFn: (data: CompanyProfileForm) => api('/company/profile', { method: 'PUT', body: JSON.stringify(data) }),
@@ -100,27 +98,21 @@ export function CompanyProfile() {
         </div>
       )}
 
-      <form onSubmit={handleSubmit(onSubmit)} className="card bg-base-200 p-4 space-y-4">
-        <FormInput label="Company Name" registration={register('companyName')} error={errors.companyName} />
-        <FormInput
-          label="Website"
-          registration={register('website')}
-          error={errors.website}
-          placeholder="https://example.com"
-        />
+      <Form methods={methods} onSubmit={onSubmit} className="card bg-base-200 p-4 space-y-4">
+        <FormInput label="Company Name" name="companyName" />
+        <FormInput label="Website" name="website" placeholder="https://example.com" />
         <FormSelect
           label="Industry"
-          registration={register('industry')}
-          error={errors.industry}
+          name="industry"
           options={industries
             .filter((ind): ind is typeof ind & { name: string } => ind.name != null)
             .map((ind) => ({ value: ind.name, label: ind.name }))}
         />
-        <FormTextarea label="Description" registration={register('description')} error={errors.description} rows={4} />
+        <FormTextarea label="Description" name="description" rows={4} />
         <button type="submit" className="btn btn-primary" disabled={saveMutation.isPending}>
           {saveMutation.isPending ? <LoadingSpinner /> : 'Save'}
         </button>
-      </form>
+      </Form>
 
       <div className="card bg-base-200 p-4 mt-4">
         <label className="flex items-start justify-between gap-4 cursor-pointer">

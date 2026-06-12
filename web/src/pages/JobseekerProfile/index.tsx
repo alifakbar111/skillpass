@@ -6,7 +6,11 @@ import { useForm } from 'react-hook-form';
 import type { Experience, Profile } from '@/lib/api-types';
 import { AvatarUploader } from '../../components/jobseeker/AvatarUploader';
 import { JobseekerOnboarding } from '../../components/onboarding/JobseekerOnboarding';
-import { FormInput, FormSelect, FormTextarea } from '../../components/ui/FormField';
+import { Form } from '../../components/ui/Form';
+import { FormInput } from '../../components/ui/FormInput';
+import { FormNumberInput } from '../../components/ui/FormNumberInput';
+import { FormSelect } from '../../components/ui/FormSelect';
+import { FormTextarea } from '../../components/ui/FormTextarea';
 import { LoadingFallback, LoadingSpinner } from '../../components/ui/LoadingFallback';
 import { useAuth } from '../../hooks/useAuth';
 import { ApiError, api } from '../../lib/api';
@@ -172,9 +176,11 @@ export function JobseekerProfile() {
         />
       )}
 
-      <form onSubmit={profileForm.handleSubmit(saveProfile)} className="card bg-base-200 p-6 space-y-4">
+      <Form methods={profileForm} onSubmit={saveProfile} className="card bg-base-200 p-6 space-y-4">
         <div className="flex items-center justify-between">
-          <h2 className="font-semibold">Profile Details</h2>
+          <h2 id="profile-details-sections" className="font-semibold">
+            Profile Details
+          </h2>
           {profile && (
             <AvatarUploader
               name={profile.name ?? ''}
@@ -186,29 +192,13 @@ export function JobseekerProfile() {
             />
           )}
         </div>
-        <FormInput
-          label="Headline"
-          registration={profileForm.register('headline')}
-          error={profileForm.formState.errors.headline}
-          placeholder="e.g. Senior Full-Stack Developer"
-        />
-        <FormTextarea
-          label="About"
-          registration={profileForm.register('about')}
-          error={profileForm.formState.errors.about}
-          rows={4}
-        />
-        <FormInput
-          label="Years of Experience"
-          registration={profileForm.register('yearsOfExperience', { valueAsNumber: true })}
-          error={profileForm.formState.errors.yearsOfExperience}
-          type="number"
-          min={0}
-        />
+        <FormInput label="Headline" name="headline" placeholder="e.g. Senior Full-Stack Developer" />
+        <FormTextarea label="About" name="about" rows={4} />
+        <FormNumberInput label="Years of Experience" name="yearsOfExperience" min={0} />
         <button type="submit" className="btn btn-primary" disabled={saveProfileMutation.isPending}>
           {saveProfileMutation.isPending ? <LoadingSpinner size="sm" /> : 'Save Profile'}
         </button>
-      </form>
+      </Form>
 
       <ResumeImport
         open={importOpen}
@@ -225,61 +215,32 @@ export function JobseekerProfile() {
 
       <div className="card bg-base-200 p-4">
         <div className="flex justify-between items-center mb-3">
-          <h2 className="font-semibold">Experience</h2>
+          <h2 id="experience-sections" className="font-semibold">
+            Experience
+          </h2>
           <button type="button" className="btn btn-outline btn-sm gap-1" onClick={() => setShowExpForm(!showExpForm)}>
             <Plus size={16} aria-hidden="true" /> Add
           </button>
         </div>
 
         {showExpForm && (
-          <form onSubmit={expForm.handleSubmit(addExperience)} className="space-y-3 mb-4 p-3 bg-base-100 rounded-box">
-            <FormSelect
-              label="Type"
-              registration={expForm.register('type')}
-              error={expForm.formState.errors.type}
-              options={EXPERIENCE_TYPES}
-            />
-            <FormInput label="Title" registration={expForm.register('title')} error={expForm.formState.errors.title} />
-            <FormInput
-              label="Organization"
-              registration={expForm.register('organization')}
-              error={expForm.formState.errors.organization}
-            />
+          <Form methods={expForm} onSubmit={addExperience} className="space-y-3 mb-4 p-3 bg-base-100 rounded-box">
+            <FormSelect label="Type" name="type" options={EXPERIENCE_TYPES} />
+            <FormInput label="Title" name="title" />
+            <FormInput label="Organization" name="organization" />
             <div className="grid grid-cols-2 gap-2">
-              <FormInput
-                label="Start Date"
-                registration={expForm.register('startDate')}
-                error={expForm.formState.errors.startDate}
-                placeholder="2020-01"
-              />
-              <FormInput
-                label="End Date"
-                registration={expForm.register('endDate')}
-                error={expForm.formState.errors.endDate}
-                placeholder="2023-12"
-                disabled={expForm.watch('isCurrent')}
-              />
+              <FormInput label="Start Date" name="startDate" placeholder="2020-01" />
+              <FormInput label="End Date" name="endDate" placeholder="2023-12" disabled={expForm.watch('isCurrent')} />
             </div>
             <label className="flex items-center gap-2 cursor-pointer">
               <input type="checkbox" className="checkbox checkbox-sm" {...expForm.register('isCurrent')} />
               <span className="label-text">I currently work here</span>
             </label>
-            <FormTextarea
-              label="Description"
-              registration={expForm.register('description')}
-              error={expForm.formState.errors.description}
-              rows={3}
-            />
-            <FormInput
-              label="Skills (comma separated)"
-              registration={expForm.register('skills')}
-              error={expForm.formState.errors.skills}
-              placeholder="React, TypeScript, Node.js"
-            />
+            <FormTextarea label="Description" name="description" rows={3} />
+            <FormInput label="Skills (comma separated)" name="skills" placeholder="React, TypeScript, Node.js" />
             <FormInput
               label="Evidence URL (optional)"
-              registration={expForm.register('url')}
-              error={expForm.formState.errors.url}
+              name="url"
               placeholder="https://github.com/you/project or certificate link"
             />
             <div className="flex gap-2">
@@ -290,7 +251,7 @@ export function JobseekerProfile() {
                 Cancel
               </button>
             </div>
-          </form>
+          </Form>
         )}
 
         {(profile?.experiences ?? []).length === 0 && (

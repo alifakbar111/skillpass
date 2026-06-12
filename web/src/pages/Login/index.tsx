@@ -2,7 +2,8 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { Link, useNavigate } from 'react-router-dom';
-import { FormInput } from '../../components/ui/FormField';
+import { Form } from '../../components/ui/Form';
+import { FormInput } from '../../components/ui/FormInput';
 import { LoadingSpinner } from '../../components/ui/LoadingFallback';
 import { useAuth } from '../../hooks/useAuth';
 import { ApiError } from '../../lib/api';
@@ -11,11 +12,7 @@ import { type LoginForm, loginSchema } from '../../lib/schemas';
 export function Login() {
   const { login } = useAuth();
   const navigate = useNavigate();
-  const {
-    register,
-    handleSubmit,
-    formState: { errors },
-  } = useForm<LoginForm>({ resolver: zodResolver(loginSchema) });
+  const methods = useForm<LoginForm>({ resolver: zodResolver(loginSchema) });
   const [serverError, setServerError] = useState('');
   const [loading, setLoading] = useState(false);
 
@@ -45,21 +42,9 @@ export function Login() {
       <div className="hero-content w-full max-w-sm">
         <div className="card bg-base-200 w-full p-6">
           <h1 className="text-2xl font-bold mb-6 text-center">Sign In</h1>
-          <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
-            <FormInput
-              label="Email"
-              registration={register('email')}
-              error={errors.email}
-              type="email"
-              autoComplete="email"
-            />
-            <FormInput
-              label="Password"
-              registration={register('password')}
-              error={errors.password}
-              type="password"
-              autoComplete="current-password"
-            />
+          <Form methods={methods} onSubmit={onSubmit} className="space-y-4">
+            <FormInput label="Email" name="email" type="email" autoComplete="email" />
+            <FormInput label="Password" name="password" type="password" autoComplete="current-password" />
             {serverError && (
               <p className="text-error text-sm" id="login-error" role="alert">
                 {serverError}
@@ -73,7 +58,7 @@ export function Login() {
             >
               {loading ? <LoadingSpinner /> : 'Sign In'}
             </button>
-          </form>
+          </Form>
           <p className="text-sm text-center mt-4">
             Don't have an account?{' '}
             <Link to="/auth/register" className="link link-primary">

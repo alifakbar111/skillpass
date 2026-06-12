@@ -5,7 +5,10 @@ import { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import type { Job } from '@/lib/api-types';
 import { JobMatches } from '../../components/company/JobMatches';
-import { FormInput, FormSelect, FormTextarea } from '../../components/ui/FormField';
+import { Form } from '../../components/ui/Form';
+import { FormInput } from '../../components/ui/FormInput';
+import { FormSelect } from '../../components/ui/FormSelect';
+import { FormTextarea } from '../../components/ui/FormTextarea';
 import { LoadingSpinner } from '../../components/ui/LoadingFallback';
 import { useIndustries } from '../../hooks/useIndustries';
 import { ApiError, api } from '../../lib/api';
@@ -41,12 +44,7 @@ export function CompanyJobs() {
     queryFn: () => api<Job[]>('/jobs/me'),
   });
 
-  const {
-    register,
-    handleSubmit,
-    reset,
-    formState: { errors },
-  } = useForm<JobForm>({
+  const methods = useForm<JobForm>({
     resolver: zodResolver(jobSchema),
     defaultValues: {
       title: '',
@@ -71,7 +69,7 @@ export function CompanyJobs() {
       queryClient.invalidateQueries({ queryKey: ['jobs'] });
       setShowForm(false);
       setEditingJobId(null);
-      reset();
+      methods.reset();
     },
     onError: (err) => {
       setError(err instanceof ApiError ? (err.serverMessage ?? err.message) : 'Failed to create job');
@@ -89,7 +87,7 @@ export function CompanyJobs() {
       queryClient.invalidateQueries({ queryKey: ['jobs'] });
       setShowForm(false);
       setEditingJobId(null);
-      reset();
+      methods.reset();
     },
     onError: (err) => {
       setError(err instanceof ApiError ? (err.serverMessage ?? err.message) : 'Failed to update job');
@@ -113,7 +111,7 @@ export function CompanyJobs() {
   const isSaving = createMutation.isPending || updateMutation.isPending;
 
   function openCreateForm() {
-    reset({
+    methods.reset({
       title: '',
       description: '',
       industry: 'Technology',
@@ -128,7 +126,7 @@ export function CompanyJobs() {
   }
 
   function openEditForm(job: Job) {
-    reset({
+    methods.reset({
       title: job.title,
       description: job.description,
       industry: job.industry,
@@ -145,7 +143,7 @@ export function CompanyJobs() {
   function closeForm() {
     setShowForm(false);
     setEditingJobId(null);
-    reset();
+    methods.reset();
   }
 
   function onSubmit(data: JobForm) {
@@ -177,55 +175,27 @@ export function CompanyJobs() {
       )}
 
       {showForm && (
-        <form onSubmit={handleSubmit(onSubmit)} className="card bg-base-200 p-4 space-y-3">
+        <Form methods={methods} onSubmit={onSubmit} className="card bg-base-200 p-4 space-y-3">
           <h2 className="font-semibold text-lg">{editingJobId ? 'Edit Job' : 'New Job'}</h2>
-          <FormInput label="Job Title" registration={register('title')} error={errors.title} placeholder="Job Title" />
-          <FormTextarea
-            label="Job Description"
-            registration={register('description')}
-            error={errors.description}
-            placeholder="Job Description"
-            rows={4}
-          />
+          <FormInput label="Job Title" name="title" placeholder="Job Title" />
+          <FormTextarea label="Job Description" name="description" placeholder="Job Description" rows={4} />
           <FormSelect
             label="Industry"
-            registration={register('industry')}
-            error={errors.industry}
+            name="industry"
             options={industries
               .filter((ind): ind is typeof ind & { name: string } => ind.name != null)
               .map((ind) => ({ value: ind.name, label: ind.name }))}
           />
-          <FormSelect
-            label="Experience Level"
-            registration={register('experienceLevel')}
-            error={errors.experienceLevel}
-            options={EXPERIENCE_LEVEL_OPTIONS}
-          />
-          <FormInput
-            label="Tags (comma-separated)"
-            registration={register('tags')}
-            error={errors.tags}
-            placeholder="e.g. remote, full-time"
-          />
+          <FormSelect label="Experience Level" name="experienceLevel" options={EXPERIENCE_LEVEL_OPTIONS} />
+          <FormInput label="Tags (comma-separated)" name="tags" placeholder="e.g. remote, full-time" />
           <FormInput
             label="Required Skills (comma-separated)"
-            registration={register('requiredSkills')}
-            error={errors.requiredSkills}
+            name="requiredSkills"
             placeholder="e.g. React, TypeScript"
           />
           <div className="flex gap-2">
-            <FormInput
-              label="Location"
-              registration={register('location')}
-              error={errors.location}
-              placeholder="Location"
-            />
-            <FormInput
-              label="Salary Range"
-              registration={register('salaryRange')}
-              error={errors.salaryRange}
-              placeholder="e.g. $80k-$120k"
-            />
+            <FormInput label="Location" name="location" placeholder="Location" />
+            <FormInput label="Salary Range" name="salaryRange" placeholder="e.g. $80k-$120k" />
           </div>
           <div className="flex gap-2">
             <button type="submit" className="btn btn-primary" disabled={isSaving}>
@@ -235,7 +205,7 @@ export function CompanyJobs() {
               Cancel
             </button>
           </div>
-        </form>
+        </Form>
       )}
 
       <div className="space-y-2">

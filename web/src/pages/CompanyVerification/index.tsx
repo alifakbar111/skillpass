@@ -5,7 +5,9 @@ import { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { Link } from 'react-router-dom';
 import { CompanyOnboarding } from '../../components/onboarding/CompanyOnboarding';
-import { FormInput, FormTextarea } from '../../components/ui/FormField';
+import { Form } from '../../components/ui/Form';
+import { FormInput } from '../../components/ui/FormInput';
+import { FormTextarea } from '../../components/ui/FormTextarea';
 import { LoadingSpinner } from '../../components/ui/LoadingFallback';
 import { ApiError, api } from '../../lib/api';
 import { type VerificationForm, verificationSchema } from '../../lib/schemas';
@@ -14,11 +16,7 @@ export function CompanyVerification() {
   const queryClient = useQueryClient();
   const [queryErrorDismissed, setQueryErrorDismissed] = useState(false);
 
-  const {
-    register,
-    handleSubmit,
-    formState: { errors },
-  } = useForm<VerificationForm>({
+  const methods = useForm<VerificationForm>({
     resolver: zodResolver(verificationSchema),
   });
 
@@ -146,24 +144,15 @@ export function CompanyVerification() {
           ? 'Your verification was rejected. Please review and resubmit your details below.'
           : 'Your verification details are on file. You can update and resubmit them if needed.'}
       </p>
-      <form onSubmit={handleSubmit(onSubmit)} className="card bg-base-200 p-4 space-y-4">
-        <FormInput
-          label="Business Registration Number"
-          registration={register('businessRegistration')}
-          error={errors.businessRegistration}
-        />
-        <FormInput
-          label="Company Website"
-          registration={register('website')}
-          error={errors.website}
-          placeholder="https://example.com"
-        />
-        <FormTextarea label="Office Address" registration={register('address')} error={errors.address} rows={3} />
-        <FormInput label="Contact Person & Title" registration={register('contact')} error={errors.contact} />
+      <Form methods={methods} onSubmit={onSubmit} className="card bg-base-200 p-4 space-y-4">
+        <FormInput label="Business Registration Number" name="businessRegistration" />
+        <FormInput label="Company Website" name="website" placeholder="https://example.com" />
+        <FormTextarea label="Office Address" name="address" rows={3} />
+        <FormInput label="Contact Person & Title" name="contact" />
         <button type="submit" className="btn btn-primary" disabled={submitMutation.isPending}>
           {submitMutation.isPending ? <LoadingSpinner /> : 'Resubmit Verification'}
         </button>
-      </form>
+      </Form>
     </div>
   );
 }
