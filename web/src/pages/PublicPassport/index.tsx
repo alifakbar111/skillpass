@@ -40,7 +40,7 @@ export function PublicPassport() {
       <div ref={printRef} className="space-y-4">
         <div className="card bg-base-200 p-6">
           <div className="flex items-center gap-4 mb-4">
-            <div className="avatar placeholder">
+            <div className="avatar avatar-placeholder">
               {data.avatarUrl ? (
                 <div className="w-20 rounded-full">
                   <img src={data.avatarUrl} alt={`${data.name} avatar`} />

@@ -89,7 +89,7 @@ export function CompanySearch() {
           const content = (
             // biome-ignore lint/correctness/useJsxKeyInIterable: keys are on the returned Link/div below, not this extracted fragment
             <div className="flex items-center gap-3">
-              <div className="avatar placeholder">
+              <div className="avatar avatar-placeholder">
                 <div className="bg-neutral text-neutral-content rounded-full w-12">
                   <span>{c.name?.charAt(0)}</span>
                 </div>
