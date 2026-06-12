@@ -43,6 +43,16 @@ const ForgotPassword = lazy(() => import('./pages/ForgotPassword').then((m) => (
 const ResetPassword = lazy(() => import('./pages/ResetPassword').then((m) => ({ default: m.ResetPassword })));
 const VerifyEmail = lazy(() => import('./pages/VerifyEmail').then((m) => ({ default: m.VerifyEmail })));
 
+const HRISLayout = lazy(() => import('./components/hris/HRISLayout'));
+const EmployeeList = lazy(() => import('./pages/hris/EmployeeList'));
+const EmployeeCreate = lazy(() => import('./pages/hris/EmployeeCreate'));
+const EmployeeDetail = lazy(() => import('./pages/hris/EmployeeDetail'));
+const BranchManagement = lazy(() => import('./pages/hris/BranchManagement'));
+const DepartmentManagement = lazy(() => import('./pages/hris/DepartmentManagement'));
+const PositionManagement = lazy(() => import('./pages/hris/PositionManagement'));
+const OrgChart = lazy(() => import('./pages/hris/OrgChart'));
+const RoleManagement = lazy(() => import('./pages/hris/RoleManagement'));
+
 const router = createBrowserRouter([
   {
     element: <RootLayout />,
@@ -160,6 +170,25 @@ const router = createBrowserRouter([
             <AdminVerifications />
           </ProtectedRoute>
         ),
+      },
+      {
+        path: '/hris',
+        element: (
+          <ProtectedRoute requiredRole="company">
+            <HRISLayout />
+          </ProtectedRoute>
+        ),
+        children: [
+          { index: true, element: <EmployeeList /> },
+          { path: 'employees', element: <EmployeeList /> },
+          { path: 'employees/new', element: <EmployeeCreate /> },
+          { path: 'employees/:id', element: <EmployeeDetail /> },
+          { path: 'branches', element: <BranchManagement /> },
+          { path: 'departments', element: <DepartmentManagement /> },
+          { path: 'positions', element: <PositionManagement /> },
+          { path: 'org-chart', element: <OrgChart /> },
+          { path: 'roles', element: <RoleManagement /> },
+        ],
       },
     ],
   },
