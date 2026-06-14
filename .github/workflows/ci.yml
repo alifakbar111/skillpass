@@ -32,7 +32,7 @@ jobs:
       - name: Generate Swagger docs
         run: |
           go install github.com/swaggo/swag/cmd/swag@latest
-          cd server-go && swag init -g cmd/server/main.go
+          cd server-go && swag init -g cmd/server/main.go --parseDependency
       # -p 1: test packages share one DB and truncate tables for isolation,
       # so they must not run in parallel.
       # ./docs/... is swag-generated code with no tests — exclude it.

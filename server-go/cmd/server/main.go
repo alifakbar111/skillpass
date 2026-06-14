@@ -15,9 +15,11 @@ package main
 import (
 	"context"
 	"log"
+	"net/http"
 
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
+	"github.com/google/uuid"
 	"github.com/joho/godotenv"
 	swaggerFiles "github.com/swaggo/files"
 	ginSwagger "github.com/swaggo/gin-swagger"
@@ -31,10 +33,14 @@ import (
 	"skillpass-server-go/internal/email"
 	"skillpass-server-go/internal/evaluation"
 	"skillpass-server-go/internal/handlers"
+	"skillpass-server-go/internal/hris/employee"
+	"skillpass-server-go/internal/hris/org"
+	"skillpass-server-go/internal/spdid"
 	"skillpass-server-go/internal/lib"
 	"skillpass-server-go/internal/matching"
 	"skillpass-server-go/internal/middleware"
 	"skillpass-server-go/internal/notification"
+	"skillpass-server-go/internal/rbac"
 	"skillpass-server-go/internal/resume"
 	"skillpass-server-go/internal/storage"
 	"skillpass-server-go/internal/webhook"
@@ -234,6 +240,136 @@ func main() {
 		matchesCompanyGroup.Use(m)
 	}
 	matchesCompanyGroup.GET("/matches", matchHandler.MatchCandidates)
+
+	// ── HRIS routes ──
+	rbacService := rbac.NewService(database)
+	empHandler := employee.NewHandler(database)
+	orgHandler := org.NewHandler(database)
+
+	hris := api.Group("/hris")
+	hris.Use(middleware.AuthRequired(cfg.JWTSecret), rbac.RequireCompanyMember(rbacService))
+
+	hrisEmployees := hris.Group("/employees")
+	hrisEmployees.GET("", rbac.RequirePermission(rbacService, "employee.view", "employee.view_team"), empHandler.List)
+	hrisEmployees.POST("", rbac.RequirePermission(rbacService, "employee.create"), empHandler.Create)
+	hrisEmployees.GET("/:id", rbac.RequirePermission(rbacService, "employee.view", "employee.view_team", "employee.view_self"), empHandler.Get)
+	hrisEmployees.PUT("/:id", rbac.RequirePermission(rbacService, "employee.update"), empHandler.Update)
+
+	hrisBranches := hris.Group("/branches")
+	hrisBranches.GET("", rbac.RequirePermission(rbacService, "org.view"), orgHandler.ListBranches)
+	hrisBranches.POST("", rbac.RequirePermission(rbacService, "org.manage"), orgHandler.CreateBranch)
+	hrisBranches.GET("/:id", rbac.RequirePermission(rbacService, "org.view"), orgHandler.GetBranch)
+	hrisBranches.PUT("/:id", rbac.RequirePermission(rbacService, "org.manage"), orgHandler.UpdateBranch)
+	hrisBranches.DELETE("/:id", rbac.RequirePermission(rbacService, "org.manage"), orgHandler.DeleteBranch)
+
+	hrisDepts := hris.Group("/departments")
+	hrisDepts.GET("", rbac.RequirePermission(rbacService, "org.view"), orgHandler.ListDepartments)
+	hrisDepts.POST("", rbac.RequirePermission(rbacService, "org.manage"), orgHandler.CreateDepartment)
+	hrisDepts.PUT("/:id", rbac.RequirePermission(rbacService, "org.manage"), orgHandler.UpdateDepartment)
+	hrisDepts.DELETE("/:id", rbac.RequirePermission(rbacService, "org.manage"), orgHandler.DeleteDepartment)
+
+	hrisPositions := hris.Group("/positions")
+	hrisPositions.GET("", rbac.RequirePermission(rbacService, "org.view"), orgHandler.ListPositions)
+	hrisPositions.POST("", rbac.RequirePermission(rbacService, "org.manage"), orgHandler.CreatePosition)
+	hrisPositions.PUT("/:id", rbac.RequirePermission(rbacService, "org.manage"), orgHandler.UpdatePosition)
+	hrisPositions.DELETE("/:id", rbac.RequirePermission(rbacService, "org.manage"), orgHandler.DeletePosition)
+
+	hris.GET("/org/tree", rbac.RequirePermission(rbacService, "org.view"), orgHandler.GetOrgTree)
+	hris.GET("/org/chart", rbac.RequirePermission(rbacService, "org.view"), orgHandler.GetOrgChart)
+
+	// SP-DID
+	spdidHandler := spdid.NewHandler(database)
+	hrisEmployees.POST("/:id/did", rbac.RequirePermission(rbacService, "org.manage"), spdidHandler.CreateDID)
+	hrisEmployees.GET("/:id/did", rbac.RequirePermission(rbacService, "employee.view"), spdidHandler.GetDID)
+
+	// Working Calendars
+	hrisCalendars := hris.Group("/working-calendars")
+	hrisCalendars.POST("", rbac.RequirePermission(rbacService, "org.manage"), orgHandler.CreateCalendar)
+	hrisCalendars.GET("", rbac.RequirePermission(rbacService, "org.view"), orgHandler.ListCalendars)
+	hrisCalendars.PUT("/:id", rbac.RequirePermission(rbacService, "org.manage"), orgHandler.UpdateCalendar)
+	hrisCalendars.DELETE("/:id", rbac.RequirePermission(rbacService, "org.manage"), orgHandler.DeleteCalendar)
+
+	hrisRoles := hris.Group("/roles")
+	hrisRoles.GET("", rbac.RequirePermission(rbacService, "org.view"), func(c *gin.Context) {
+		cid, err := uuid.Parse(c.GetString("companyId"))
+		if err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid company ID"})
+			return
+		}
+		roles, err := rbacService.ListRoles(c.Request.Context(), cid)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to list roles"})
+			return
+		}
+		c.JSON(http.StatusOK, roles)
+	})
+
+	hrisEmployeeRoles := hris.Group("/employees/:id/roles")
+	hrisEmployeeRoles.POST("", rbac.RequirePermission(rbacService, "roles.manage"), func(c *gin.Context) {
+		companyID, err := uuid.Parse(c.GetString("companyId"))
+		if err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid company ID"})
+			return
+		}
+		employeeID, err := uuid.Parse(c.Param("id"))
+		if err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid employee ID"})
+			return
+		}
+		var req struct {
+			RoleID uuid.UUID `json:"roleId" binding:"required"`
+		}
+		if err := c.ShouldBindJSON(&req); err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+			return
+		}
+		if err := rbacService.AssignRole(c.Request.Context(), companyID, employeeID, req.RoleID); err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to assign role"})
+			return
+		}
+		c.JSON(http.StatusOK, gin.H{"message": "Role assigned"})
+	})
+	hrisEmployeeRoles.DELETE("/:roleId", rbac.RequirePermission(rbacService, "roles.manage"), func(c *gin.Context) {
+		companyID, err := uuid.Parse(c.GetString("companyId"))
+		if err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid company ID"})
+			return
+		}
+		employeeID, err := uuid.Parse(c.Param("id"))
+		if err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid employee ID"})
+			return
+		}
+		roleID, err := uuid.Parse(c.Param("roleId"))
+		if err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid role ID"})
+			return
+		}
+		if err := rbacService.RemoveRole(c.Request.Context(), companyID, employeeID, roleID); err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to remove role"})
+			return
+		}
+		c.JSON(http.StatusOK, gin.H{"message": "Role removed"})
+	})
+
+	hris.GET("/me/permissions", func(c *gin.Context) {
+		employeeID, err := uuid.Parse(c.GetString("employeeId"))
+		if err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid employee ID"})
+			return
+		}
+		perms, err := rbacService.GetEmployeePermissions(c.Request.Context(), employeeID)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to get permissions"})
+			return
+		}
+		roles, err := rbacService.GetEmployeeRoles(c.Request.Context(), employeeID)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to get roles"})
+			return
+		}
+		c.JSON(http.StatusOK, gin.H{"permissions": perms, "roles": roles})
+	})
 
 	// Swagger UI
 	r.GET("/docs/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
