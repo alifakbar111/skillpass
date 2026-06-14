@@ -35,6 +35,7 @@ import (
 	"skillpass-server-go/internal/handlers"
 	"skillpass-server-go/internal/hris/employee"
 	"skillpass-server-go/internal/hris/org"
+	"skillpass-server-go/internal/spdid"
 	"skillpass-server-go/internal/lib"
 	"skillpass-server-go/internal/matching"
 	"skillpass-server-go/internal/middleware"
@@ -274,6 +275,19 @@ func main() {
 	hrisPositions.DELETE("/:id", rbac.RequirePermission(rbacService, "org.manage"), orgHandler.DeletePosition)
 
 	hris.GET("/org/tree", rbac.RequirePermission(rbacService, "org.view"), orgHandler.GetOrgTree)
+	hris.GET("/org/chart", rbac.RequirePermission(rbacService, "org.view"), orgHandler.GetOrgChart)
+
+	// SP-DID
+	spdidHandler := spdid.NewHandler(database)
+	hrisEmployees.POST("/:id/did", rbac.RequirePermission(rbacService, "org.manage"), spdidHandler.CreateDID)
+	hrisEmployees.GET("/:id/did", rbac.RequirePermission(rbacService, "employee.view"), spdidHandler.GetDID)
+
+	// Working Calendars
+	hrisCalendars := hris.Group("/working-calendars")
+	hrisCalendars.POST("", rbac.RequirePermission(rbacService, "org.manage"), orgHandler.CreateCalendar)
+	hrisCalendars.GET("", rbac.RequirePermission(rbacService, "org.view"), orgHandler.ListCalendars)
+	hrisCalendars.PUT("/:id", rbac.RequirePermission(rbacService, "org.manage"), orgHandler.UpdateCalendar)
+	hrisCalendars.DELETE("/:id", rbac.RequirePermission(rbacService, "org.manage"), orgHandler.DeleteCalendar)
 
 	hrisRoles := hris.Group("/roles")
 	hrisRoles.GET("", rbac.RequirePermission(rbacService, "org.view"), func(c *gin.Context) {
