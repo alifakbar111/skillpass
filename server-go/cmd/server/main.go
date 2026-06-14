@@ -35,6 +35,8 @@ import (
 	"skillpass-server-go/internal/handlers"
 	"skillpass-server-go/internal/hris/attendance"
 	"skillpass-server-go/internal/hris/employee"
+	"skillpass-server-go/internal/hris/holiday"
+	"skillpass-server-go/internal/hris/leave"
 	"skillpass-server-go/internal/hris/org"
 	"skillpass-server-go/internal/hris/shift"
 	"skillpass-server-go/internal/spdid"
@@ -315,6 +317,34 @@ func main() {
 	hrisExceptions.POST("", rbac.RequirePermission(rbacService, "attendance.clock"), attHandler.CreateException)
 	hrisExceptions.GET("", rbac.RequirePermission(rbacService, "attendance.view"), attHandler.ListExceptions)
 	hrisExceptions.PUT("/:id/review", rbac.RequirePermission(rbacService, "attendance.manage"), attHandler.ReviewException)
+
+	// Leave Types
+	leaveHandler := leave.NewHandler(database)
+	hrisLeaveTypes := hris.Group("/leave-types")
+	hrisLeaveTypes.GET("", rbac.RequirePermission(rbacService, "org.view"), leaveHandler.ListTypes)
+	hrisLeaveTypes.POST("", rbac.RequirePermission(rbacService, "org.manage"), leaveHandler.CreateType)
+	hrisLeaveTypes.PUT("/:id", rbac.RequirePermission(rbacService, "org.manage"), leaveHandler.UpdateType)
+	hrisLeaveTypes.DELETE("/:id", rbac.RequirePermission(rbacService, "org.manage"), leaveHandler.DeleteType)
+
+	// Leave Balances
+	hrisEmployees.GET("/:id/leave-balances", rbac.RequirePermission(rbacService, "employee.view", "employee.view_self"), leaveHandler.GetBalances)
+	hrisEmployees.POST("/:id/leave-balances/init", rbac.RequirePermission(rbacService, "employee.update"), leaveHandler.InitBalances)
+
+	// Leave Requests
+	hrisLeave := hris.Group("/leave-requests")
+	hrisLeave.POST("", rbac.RequirePermission(rbacService, "leave.request"), leaveHandler.CreateRequest)
+	hrisLeave.GET("", rbac.RequirePermission(rbacService, "leave.view"), leaveHandler.ListRequests)
+	hrisLeave.GET("/my", rbac.RequirePermission(rbacService, "leave.request"), leaveHandler.MyRequests)
+	hrisLeave.PUT("/:id/review", rbac.RequirePermission(rbacService, "leave.manage"), leaveHandler.ReviewRequest)
+	hrisLeave.PUT("/:id/cancel", rbac.RequirePermission(rbacService, "leave.request"), leaveHandler.CancelRequest)
+
+	// Holidays
+	holidayHandler := holiday.NewHandler(database)
+	hrisHolidays := hris.Group("/holidays")
+	hrisHolidays.GET("", rbac.RequirePermission(rbacService, "org.view"), holidayHandler.List)
+	hrisHolidays.POST("", rbac.RequirePermission(rbacService, "org.manage"), holidayHandler.Create)
+	hrisHolidays.PUT("/:id", rbac.RequirePermission(rbacService, "org.manage"), holidayHandler.Update)
+	hrisHolidays.DELETE("/:id", rbac.RequirePermission(rbacService, "org.manage"), holidayHandler.Delete)
 
 	hrisRoles := hris.Group("/roles")
 	hrisRoles.GET("", rbac.RequirePermission(rbacService, "org.view"), func(c *gin.Context) {
