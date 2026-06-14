@@ -3,10 +3,15 @@ import {
   Briefcase,
   Building2,
   Calendar,
+  CalendarCheck,
+  CalendarDays,
+  CalendarOff,
   Clock,
   ClockArrowUp,
+  FileText,
   MapPin,
   Network,
+  PalmtreeIcon,
   Shield,
   Users,
 } from 'lucide-react';
@@ -24,6 +29,11 @@ const links = [
   { to: '/hris/attendance', label: 'Attendance', icon: Calendar },
   { to: '/hris/my-attendance', label: 'My Attendance', icon: Calendar },
   { to: '/hris/attendance-exceptions', label: 'Exceptions', icon: AlertTriangle },
+  { to: '/hris/leave-types', label: 'Leave Types', icon: FileText },
+  { to: '/hris/leave-request', label: 'Leave Request', icon: CalendarOff },
+  { to: '/hris/leave-approval', label: 'Leave Approval', icon: CalendarCheck },
+  { to: '/hris/leave-balance', label: 'Leave Balance', icon: CalendarDays },
+  { to: '/hris/holidays', label: 'Holidays', icon: PalmtreeIcon },
 ];
 
 export default function HRISSidebar() {
