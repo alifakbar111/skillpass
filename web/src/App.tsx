@@ -57,6 +57,11 @@ const ClockInPage = lazy(() => import('./pages/hris/ClockIn'));
 const AttendanceDashboard = lazy(() => import('./pages/hris/AttendanceDashboard'));
 const MyAttendance = lazy(() => import('./pages/hris/MyAttendance'));
 const AttendanceExceptions = lazy(() => import('./pages/hris/AttendanceExceptions'));
+const LeaveTypes = lazy(() => import('./pages/hris/LeaveTypes'));
+const LeaveRequest = lazy(() => import('./pages/hris/LeaveRequest'));
+const LeaveApproval = lazy(() => import('./pages/hris/LeaveApproval'));
+const LeaveBalance = lazy(() => import('./pages/hris/LeaveBalance'));
+const Holidays = lazy(() => import('./pages/hris/Holidays'));
 
 const router = createBrowserRouter([
   {
@@ -198,6 +203,11 @@ const router = createBrowserRouter([
           { path: 'attendance', element: <AttendanceDashboard /> },
           { path: 'my-attendance', element: <MyAttendance /> },
           { path: 'attendance-exceptions', element: <AttendanceExceptions /> },
+          { path: 'leave-types', element: <LeaveTypes /> },
+          { path: 'leave-request', element: <LeaveRequest /> },
+          { path: 'leave-approval', element: <LeaveApproval /> },
+          { path: 'leave-balance', element: <LeaveBalance /> },
+          { path: 'holidays', element: <Holidays /> },
         ],
       },
     ],
