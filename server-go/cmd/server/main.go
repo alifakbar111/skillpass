@@ -33,8 +33,10 @@ import (
 	"skillpass-server-go/internal/email"
 	"skillpass-server-go/internal/evaluation"
 	"skillpass-server-go/internal/handlers"
+	"skillpass-server-go/internal/hris/attendance"
 	"skillpass-server-go/internal/hris/employee"
 	"skillpass-server-go/internal/hris/org"
+	"skillpass-server-go/internal/hris/shift"
 	"skillpass-server-go/internal/spdid"
 	"skillpass-server-go/internal/lib"
 	"skillpass-server-go/internal/matching"
@@ -288,6 +290,31 @@ func main() {
 	hrisCalendars.GET("", rbac.RequirePermission(rbacService, "org.view"), orgHandler.ListCalendars)
 	hrisCalendars.PUT("/:id", rbac.RequirePermission(rbacService, "org.manage"), orgHandler.UpdateCalendar)
 	hrisCalendars.DELETE("/:id", rbac.RequirePermission(rbacService, "org.manage"), orgHandler.DeleteCalendar)
+
+	// Shift Templates
+	shiftHandler := shift.NewHandler(database)
+	hrisShifts := hris.Group("/shifts")
+	hrisShifts.GET("", rbac.RequirePermission(rbacService, "org.view"), shiftHandler.ListTemplates)
+	hrisShifts.POST("", rbac.RequirePermission(rbacService, "org.manage"), shiftHandler.CreateTemplate)
+	hrisShifts.PUT("/:id", rbac.RequirePermission(rbacService, "org.manage"), shiftHandler.UpdateTemplate)
+	hrisShifts.DELETE("/:id", rbac.RequirePermission(rbacService, "org.manage"), shiftHandler.DeleteTemplate)
+	hrisEmployees.POST("/:id/shifts", rbac.RequirePermission(rbacService, "employee.update"), shiftHandler.AssignShift)
+	hrisEmployees.GET("/:id/shifts", rbac.RequirePermission(rbacService, "employee.view"), shiftHandler.ListEmployeeShifts)
+
+	// Attendance
+	attHandler := attendance.NewHandler(database)
+	hrisAttendance := hris.Group("/attendance")
+	hrisAttendance.POST("/clock-in", rbac.RequirePermission(rbacService, "attendance.clock"), attHandler.ClockIn)
+	hrisAttendance.POST("/clock-out", rbac.RequirePermission(rbacService, "attendance.clock"), attHandler.ClockOut)
+	hrisAttendance.GET("/dashboard", rbac.RequirePermission(rbacService, "attendance.view"), attHandler.Dashboard)
+	hrisAttendance.GET("/my", rbac.RequirePermission(rbacService, "attendance.view_self"), attHandler.MyAttendance)
+	hrisAttendance.GET("/ws", attHandler.Hub().HandleWS)
+
+	// Attendance Exceptions
+	hrisExceptions := hris.Group("/attendance-exceptions")
+	hrisExceptions.POST("", rbac.RequirePermission(rbacService, "attendance.clock"), attHandler.CreateException)
+	hrisExceptions.GET("", rbac.RequirePermission(rbacService, "attendance.view"), attHandler.ListExceptions)
+	hrisExceptions.PUT("/:id/review", rbac.RequirePermission(rbacService, "attendance.manage"), attHandler.ReviewException)
 
 	hrisRoles := hris.Group("/roles")
 	hrisRoles.GET("", rbac.RequirePermission(rbacService, "org.view"), func(c *gin.Context) {
