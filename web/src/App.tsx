@@ -52,6 +52,11 @@ const DepartmentManagement = lazy(() => import('./pages/hris/DepartmentManagemen
 const PositionManagement = lazy(() => import('./pages/hris/PositionManagement'));
 const OrgChart = lazy(() => import('./pages/hris/OrgChart'));
 const RoleManagement = lazy(() => import('./pages/hris/RoleManagement'));
+const ShiftConfig = lazy(() => import('./pages/hris/ShiftConfig'));
+const ClockInPage = lazy(() => import('./pages/hris/ClockIn'));
+const AttendanceDashboard = lazy(() => import('./pages/hris/AttendanceDashboard'));
+const MyAttendance = lazy(() => import('./pages/hris/MyAttendance'));
+const AttendanceExceptions = lazy(() => import('./pages/hris/AttendanceExceptions'));
 
 const router = createBrowserRouter([
   {
@@ -188,6 +193,11 @@ const router = createBrowserRouter([
           { path: 'positions', element: <PositionManagement /> },
           { path: 'org-chart', element: <OrgChart /> },
           { path: 'roles', element: <RoleManagement /> },
+          { path: 'shifts', element: <ShiftConfig /> },
+          { path: 'clock-in', element: <ClockInPage /> },
+          { path: 'attendance', element: <AttendanceDashboard /> },
+          { path: 'my-attendance', element: <MyAttendance /> },
+          { path: 'attendance-exceptions', element: <AttendanceExceptions /> },
         ],
       },
     ],
