@@ -3,6 +3,7 @@ package org
 import (
 	"database/sql"
 	"net/http"
+	"strconv"
 
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
@@ -228,4 +229,81 @@ func (h *Handler) GetOrgTree(c *gin.Context) {
 		return
 	}
 	c.JSON(http.StatusOK, tree)
+}
+
+// ============================================================
+// Enhanced Org Chart (employee-level)
+// ============================================================
+
+func (h *Handler) GetOrgChart(c *gin.Context) {
+	chart, err := h.svc.GetOrgChart(c.Request.Context(), companyID(c))
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to get org chart"})
+		return
+	}
+	c.JSON(http.StatusOK, chart)
+}
+
+// ============================================================
+// Working Calendars
+// ============================================================
+
+func (h *Handler) CreateCalendar(c *gin.Context) {
+	var req CreateCalendarRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+	wc, err := h.svc.CreateCalendar(c.Request.Context(), companyID(c), req)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create calendar"})
+		return
+	}
+	c.JSON(http.StatusCreated, wc)
+}
+
+func (h *Handler) ListCalendars(c *gin.Context) {
+	var yearPtr *int
+	if y := c.Query("year"); y != "" {
+		n, err := strconv.Atoi(y)
+		if err == nil {
+			yearPtr = &n
+		}
+	}
+	calendars, err := h.svc.ListCalendars(c.Request.Context(), companyID(c), yearPtr)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to list calendars"})
+		return
+	}
+	c.JSON(http.StatusOK, calendars)
+}
+
+func (h *Handler) UpdateCalendar(c *gin.Context) {
+	id, ok := parseID(c)
+	if !ok {
+		return
+	}
+	var req UpdateCalendarRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+	wc, err := h.svc.UpdateCalendar(c.Request.Context(), companyID(c), id, req)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to update calendar"})
+		return
+	}
+	c.JSON(http.StatusOK, wc)
+}
+
+func (h *Handler) DeleteCalendar(c *gin.Context) {
+	id, ok := parseID(c)
+	if !ok {
+		return
+	}
+	if err := h.svc.DeleteCalendar(c.Request.Context(), companyID(c), id); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to delete calendar"})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"message": "Calendar deleted"})
 }
