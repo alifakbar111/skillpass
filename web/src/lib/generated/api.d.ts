@@ -3386,7 +3386,7 @@ export interface components {
             id?: string;
             industry?: string;
             userId?: string;
-            verificationDocs?: number[];
+            verificationDocs?: Record<string, never>[];
             verificationStatus?: string;
             verifiedAt?: string;
             website?: string;

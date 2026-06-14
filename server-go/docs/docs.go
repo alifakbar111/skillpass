@@ -3201,7 +3201,7 @@ const docTemplate = `{
                 "verificationDocs": {
                     "type": "array",
                     "items": {
-                        "type": "integer"
+                        "type": "object"
                     }
                 },
                 "verificationStatus": {
