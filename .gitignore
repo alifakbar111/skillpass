@@ -1,5 +1,8 @@
 node_modules/
-dist/
+dist/*
+!server-go/internal/static/dist/
+server-go/internal/static/dist/*
+!server-go/internal/static/dist/.gitkeep
 drizzle/
 .env
 *.log
