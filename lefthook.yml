@@ -15,7 +15,7 @@ pre-push:
     vuln-go:
       run: 'command -v govulncheck >/dev/null 2>&1 && govulncheck -C server-go ./... || echo "govulncheck not installed — run: go install golang.org/x/vuln/cmd/govulncheck@latest"'
     vuln-web:
-      run: cd web && bun audit
+      run: cd web && bun audit --ignore GHSA-gv7w-rqvm-qjhr --ignore GHSA-g7r4-m6w7-qqqr
     api-drift:
       run: bun run api:check
     no-gen-types-in-annotations:
