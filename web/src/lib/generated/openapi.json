@@ -9,11 +9,6 @@
     "paths": {
         "/admin/verifications/pending": {
             "get": {
-                "security": [
-                    {
-                        "BearerAuth": []
-                    }
-                ],
                 "description": "Get all companies with pending verification status. Requires admin role.",
                 "tags": [
                     "admin"
@@ -51,16 +46,16 @@
                             }
                         }
                     }
-                }
-            }
-        },
-        "/admin/verifications/{id}": {
-            "post": {
+                },
                 "security": [
                     {
                         "BearerAuth": []
                     }
-                ],
+                ]
+            }
+        },
+        "/admin/verifications/{id}": {
+            "post": {
                 "description": "Process a company verification request (approve or reject). Requires admin role.",
                 "tags": [
                     "admin"
@@ -126,16 +121,16 @@
                             }
                         }
                     }
-                }
-            }
-        },
-        "/applications/me": {
-            "get": {
+                },
                 "security": [
                     {
                         "BearerAuth": []
                     }
-                ],
+                ]
+            }
+        },
+        "/applications/me": {
+            "get": {
                 "description": "Get all applications for the authenticated jobseeker (kanban-style data with job title and company name)",
                 "tags": [
                     "applications"
@@ -181,16 +176,16 @@
                             }
                         }
                     }
-                }
-            }
-        },
-        "/applications/{id}/messages": {
-            "get": {
+                },
                 "security": [
                     {
                         "BearerAuth": []
                     }
-                ],
+                ]
+            }
+        },
+        "/applications/{id}/messages": {
+            "get": {
                 "description": "Company lists the message thread for an application it owns",
                 "tags": [
                     "applications"
@@ -247,14 +242,14 @@
                             }
                         }
                     }
-                }
-            },
-            "post": {
+                },
                 "security": [
                     {
                         "BearerAuth": []
                     }
-                ],
+                ]
+            },
+            "post": {
                 "description": "Company adds a note/message to an application it owns (visible to the candidate)",
                 "tags": [
                     "applications"
@@ -337,16 +332,16 @@
                             }
                         }
                     }
-                }
-            }
-        },
-        "/applications/{id}/status": {
-            "put": {
+                },
                 "security": [
                     {
                         "BearerAuth": []
                     }
-                ],
+                ]
+            }
+        },
+        "/applications/{id}/status": {
+            "put": {
                 "description": "Update an application's status (reviewed, interviewed, offered, rejected). Company action for verified companies.",
                 "tags": [
                     "applications"
@@ -429,7 +424,12 @@
                             }
                         }
                     }
-                }
+                },
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ]
             }
         },
         "/auth/forgot-password": {
@@ -532,11 +532,6 @@
         },
         "/auth/logout": {
             "post": {
-                "security": [
-                    {
-                        "BearerAuth": []
-                    }
-                ],
                 "description": "Revoke all refresh tokens for the authenticated user and clear the refresh cookie.",
                 "tags": [
                     "auth"
@@ -553,16 +548,16 @@
                             }
                         }
                     }
-                }
-            }
-        },
-        "/auth/me": {
-            "get": {
+                },
                 "security": [
                     {
                         "BearerAuth": []
                     }
-                ],
+                ]
+            }
+        },
+        "/auth/me": {
+            "get": {
                 "description": "Return the authenticated user's account info (works for all roles, unlike /profiles/me which is jobseeker-only).",
                 "tags": [
                     "auth"
@@ -592,7 +587,12 @@
                             }
                         }
                     }
-                }
+                },
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ]
             }
         },
         "/auth/refresh": {
@@ -689,11 +689,6 @@
         },
         "/auth/resend-verification": {
             "post": {
-                "security": [
-                    {
-                        "BearerAuth": []
-                    }
-                ],
                 "description": "Send a fresh verification link to the authenticated user's email.",
                 "tags": [
                     "auth"
@@ -726,7 +721,12 @@
                             }
                         }
                     }
-                }
+                },
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ]
             }
         },
         "/auth/reset-password": {
@@ -835,11 +835,6 @@
         },
         "/candidates/matches": {
             "get": {
-                "security": [
-                    {
-                        "BearerAuth": []
-                    }
-                ],
                 "description": "Get candidate recommendations for a specific job posting based on skill matching",
                 "tags": [
                     "matching"
@@ -896,16 +891,16 @@
                             }
                         }
                     }
-                }
-            }
-        },
-        "/company/analytics": {
-            "get": {
+                },
                 "security": [
                     {
                         "BearerAuth": []
                     }
-                ],
+                ]
+            }
+        },
+        "/company/analytics": {
+            "get": {
                 "description": "Aggregate hiring metrics for the authenticated verified company: jobs, applications by status, time-to-decision, per-job funnels",
                 "tags": [
                     "analytics"
@@ -948,16 +943,16 @@
                             }
                         }
                     }
-                }
-            }
-        },
-        "/company/applications": {
-            "get": {
+                },
                 "security": [
                     {
                         "BearerAuth": []
                     }
-                ],
+                ]
+            }
+        },
+        "/company/applications": {
+            "get": {
                 "description": "Get all applications for jobs owned by the authenticated verified company",
                 "tags": [
                     "applications"
@@ -1003,16 +998,16 @@
                             }
                         }
                     }
-                }
-            }
-        },
-        "/company/profile": {
-            "get": {
+                },
                 "security": [
                     {
                         "BearerAuth": []
                     }
-                ],
+                ]
+            }
+        },
+        "/company/profile": {
+            "get": {
                 "description": "Get the authenticated company's profile",
                 "tags": [
                     "companies"
@@ -1056,14 +1051,14 @@
                             }
                         }
                     }
-                }
-            },
-            "put": {
+                },
                 "security": [
                     {
                         "BearerAuth": []
                     }
-                ],
+                ]
+            },
+            "put": {
                 "description": "Update the authenticated company's profile fields (company name, website, industry, description)",
                 "tags": [
                     "companies"
@@ -1131,16 +1126,16 @@
                             }
                         }
                     }
-                }
-            }
-        },
-        "/company/verification": {
-            "post": {
+                },
                 "security": [
                     {
                         "BearerAuth": []
                     }
-                ],
+                ]
+            }
+        },
+        "/company/verification": {
+            "post": {
                 "description": "Submit business verification documents for company approval",
                 "tags": [
                     "companies"
@@ -1207,16 +1202,16 @@
                             }
                         }
                     }
-                }
-            }
-        },
-        "/company/verification-status": {
-            "get": {
+                },
                 "security": [
                     {
                         "BearerAuth": []
                     }
-                ],
+                ]
+            }
+        },
+        "/company/verification-status": {
+            "get": {
                 "description": "Get the current verification status for the authenticated company",
                 "tags": [
                     "companies"
@@ -1246,16 +1241,16 @@
                             }
                         }
                     }
-                }
-            }
-        },
-        "/company/webhooks": {
-            "get": {
+                },
                 "security": [
                     {
                         "BearerAuth": []
                     }
-                ],
+                ]
+            }
+        },
+        "/company/webhooks": {
+            "get": {
                 "description": "List the authenticated company's registered webhooks (secrets omitted)",
                 "tags": [
                     "webhooks"
@@ -1288,14 +1283,14 @@
                             }
                         }
                     }
-                }
-            },
-            "post": {
+                },
                 "security": [
                     {
                         "BearerAuth": []
                     }
-                ],
+                ]
+            },
+            "post": {
                 "description": "Register a webhook URL. The signing secret is returned once — store it; events are signed with HMAC-SHA256 in the X-SkillPass-Signature header.",
                 "tags": [
                     "webhooks"
@@ -1354,16 +1349,16 @@
                             }
                         }
                     }
-                }
-            }
-        },
-        "/company/webhooks/{id}": {
-            "delete": {
+                },
                 "security": [
                     {
                         "BearerAuth": []
                     }
-                ],
+                ]
+            }
+        },
+        "/company/webhooks/{id}": {
+            "delete": {
                 "description": "Delete a webhook owned by the authenticated company",
                 "tags": [
                     "webhooks"
@@ -1420,16 +1415,16 @@
                             }
                         }
                     }
-                }
-            }
-        },
-        "/evaluate/me": {
-            "post": {
+                },
                 "security": [
                     {
                         "BearerAuth": []
                     }
-                ],
+                ]
+            }
+        },
+        "/evaluate/me": {
+            "post": {
                 "description": "Trigger a fresh AI evaluation of the authenticated jobseeker's profile and experiences",
                 "tags": [
                     "evaluation"
@@ -1472,16 +1467,16 @@
                             }
                         }
                     }
-                }
-            }
-        },
-        "/evaluate/me/career-path": {
-            "post": {
+                },
                 "security": [
                     {
                         "BearerAuth": []
                     }
-                ],
+                ]
+            }
+        },
+        "/evaluate/me/career-path": {
+            "post": {
                 "description": "Generate AI career path recommendations from the authenticated jobseeker's profile and latest evaluation",
                 "tags": [
                     "evaluation"
@@ -1524,16 +1519,16 @@
                             }
                         }
                     }
-                }
-            }
-        },
-        "/evaluate/me/results": {
-            "get": {
+                },
                 "security": [
                     {
                         "BearerAuth": []
                     }
-                ],
+                ]
+            }
+        },
+        "/evaluate/me/results": {
+            "get": {
                 "description": "Get the most recent AI evaluation result for the authenticated jobseeker",
                 "tags": [
                     "evaluation"
@@ -1576,7 +1571,12 @@
                             }
                         }
                     }
-                }
+                },
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ]
             }
         },
         "/health": {
@@ -1685,11 +1685,6 @@
                 }
             },
             "post": {
-                "security": [
-                    {
-                        "BearerAuth": []
-                    }
-                ],
                 "description": "Create a new job posting for the authenticated company",
                 "tags": [
                     "jobs"
@@ -1730,16 +1725,16 @@
                             }
                         }
                     }
-                }
-            }
-        },
-        "/jobs/matches": {
-            "get": {
+                },
                 "security": [
                     {
                         "BearerAuth": []
                     }
-                ],
+                ]
+            }
+        },
+        "/jobs/matches": {
+            "get": {
                 "description": "Get job recommendations based on the authenticated jobseeker's skills and AI evaluation",
                 "tags": [
                     "matching"
@@ -1772,16 +1767,16 @@
                             }
                         }
                     }
-                }
-            }
-        },
-        "/jobs/me": {
-            "get": {
+                },
                 "security": [
                     {
                         "BearerAuth": []
                     }
-                ],
+                ]
+            }
+        },
+        "/jobs/me": {
+            "get": {
                 "description": "Get all job postings for the authenticated company",
                 "tags": [
                     "jobs"
@@ -1801,7 +1796,12 @@
                             }
                         }
                     }
-                }
+                },
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ]
             }
         },
         "/jobs/{id}": {
@@ -1849,11 +1849,6 @@
                 }
             },
             "put": {
-                "security": [
-                    {
-                        "BearerAuth": []
-                    }
-                ],
                 "description": "Update specific fields of a job posting owned by the authenticated company",
                 "tags": [
                     "jobs"
@@ -1918,14 +1913,14 @@
                             }
                         }
                     }
-                }
-            },
-            "delete": {
+                },
                 "security": [
                     {
                         "BearerAuth": []
                     }
-                ],
+                ]
+            },
+            "delete": {
                 "description": "Delete a job posting owned by the authenticated company",
                 "tags": [
                     "jobs"
@@ -1966,16 +1961,16 @@
                             }
                         }
                     }
-                }
-            }
-        },
-        "/jobs/{id}/apply": {
-            "post": {
+                },
                 "security": [
                     {
                         "BearerAuth": []
                     }
-                ],
+                ]
+            }
+        },
+        "/jobs/{id}/apply": {
+            "post": {
                 "description": "Apply the authenticated jobseeker to a job posting",
                 "tags": [
                     "applications"
@@ -2055,16 +2050,16 @@
                             }
                         }
                     }
-                }
-            }
-        },
-        "/jobs/{id}/skills-gap": {
-            "get": {
+                },
                 "security": [
                     {
                         "BearerAuth": []
                     }
-                ],
+                ]
+            }
+        },
+        "/jobs/{id}/skills-gap": {
+            "get": {
                 "description": "Compare the authenticated jobseeker's evaluated skills against a job's required skills",
                 "tags": [
                     "matching"
@@ -2118,16 +2113,16 @@
                             }
                         }
                     }
-                }
-            }
-        },
-        "/notifications/me": {
-            "get": {
+                },
                 "security": [
                     {
                         "BearerAuth": []
                     }
-                ],
+                ]
+            }
+        },
+        "/notifications/me": {
+            "get": {
                 "description": "Get recent notifications and unread count for the authenticated user",
                 "tags": [
                     "notifications"
@@ -2157,16 +2152,16 @@
                             }
                         }
                     }
-                }
-            }
-        },
-        "/notifications/read-all": {
-            "put": {
+                },
                 "security": [
                     {
                         "BearerAuth": []
                     }
-                ],
+                ]
+            }
+        },
+        "/notifications/read-all": {
+            "put": {
                 "description": "Mark all unread notifications as read for the authenticated user",
                 "tags": [
                     "notifications"
@@ -2199,16 +2194,16 @@
                             }
                         }
                     }
-                }
-            }
-        },
-        "/notifications/{id}/read": {
-            "put": {
+                },
                 "security": [
                     {
                         "BearerAuth": []
                     }
-                ],
+                ]
+            }
+        },
+        "/notifications/{id}/read": {
+            "put": {
                 "description": "Mark a single notification as read",
                 "tags": [
                     "notifications"
@@ -2265,7 +2260,12 @@
                             }
                         }
                     }
-                }
+                },
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ]
             }
         },
         "/p/{username}": {
@@ -2315,11 +2315,6 @@
         },
         "/profiles/me": {
             "get": {
-                "security": [
-                    {
-                        "BearerAuth": []
-                    }
-                ],
                 "description": "Get the authenticated jobseeker's full profile (including experiences)",
                 "tags": [
                     "profiles"
@@ -2362,14 +2357,14 @@
                             }
                         }
                     }
-                }
-            },
-            "put": {
+                },
                 "security": [
                     {
                         "BearerAuth": []
                     }
-                ],
+                ]
+            },
+            "put": {
                 "description": "Update the authenticated jobseeker's profile fields (headline, about, years of experience, slug)",
                 "tags": [
                     "profiles"
@@ -2449,16 +2444,16 @@
                             }
                         }
                     }
-                }
-            }
-        },
-        "/profiles/me/analytics": {
-            "get": {
+                },
                 "security": [
                     {
                         "BearerAuth": []
                     }
-                ],
+                ]
+            }
+        },
+        "/profiles/me/analytics": {
+            "get": {
                 "description": "Application counts by status, response rate, and passport views for the authenticated jobseeker",
                 "tags": [
                     "analytics"
@@ -2501,16 +2496,16 @@
                             }
                         }
                     }
-                }
-            }
-        },
-        "/profiles/me/avatar": {
-            "post": {
+                },
                 "security": [
                     {
                         "BearerAuth": []
                     }
-                ],
+                ]
+            }
+        },
+        "/profiles/me/avatar": {
+            "post": {
                 "description": "Upload a profile image (png/jpeg/webp, max 2MB) as multipart field \"file\". Updates the user's avatarUrl.",
                 "tags": [
                     "profiles"
@@ -2576,16 +2571,16 @@
                             }
                         }
                     }
-                }
-            }
-        },
-        "/profiles/me/experience": {
-            "post": {
+                },
                 "security": [
                     {
                         "BearerAuth": []
                     }
-                ],
+                ]
+            }
+        },
+        "/profiles/me/experience": {
+            "post": {
                 "description": "Add a new employment, gig, education, certification, project, or volunteering entry to the profile",
                 "tags": [
                     "profiles"
@@ -2639,16 +2634,16 @@
                             }
                         }
                     }
-                }
-            }
-        },
-        "/profiles/me/experience/{id}": {
-            "put": {
+                },
                 "security": [
                     {
                         "BearerAuth": []
                     }
-                ],
+                ]
+            }
+        },
+        "/profiles/me/experience/{id}": {
+            "put": {
                 "description": "Update specific fields of an experience entry owned by the authenticated jobseeker",
                 "tags": [
                     "profiles"
@@ -2726,14 +2721,14 @@
                             }
                         }
                     }
-                }
-            },
-            "delete": {
+                },
                 "security": [
                     {
                         "BearerAuth": []
                     }
-                ],
+                ]
+            },
+            "delete": {
                 "description": "Delete an experience entry owned by the authenticated jobseeker",
                 "tags": [
                     "profiles"
@@ -2800,16 +2795,16 @@
                             }
                         }
                     }
-                }
-            }
-        },
-        "/profiles/me/resume-parse": {
-            "post": {
+                },
                 "security": [
                     {
                         "BearerAuth": []
                     }
-                ],
+                ]
+            }
+        },
+        "/profiles/me/resume-parse": {
+            "post": {
                 "description": "Extract structured profile data (headline, about, experiences) from pasted resume text using AI. Does not modify the profile — the client reviews and saves entries.",
                 "tags": [
                     "profiles"
@@ -2881,16 +2876,16 @@
                             }
                         }
                     }
-                }
-            }
-        },
-        "/profiles/me/resume-upload": {
-            "post": {
+                },
                 "security": [
                     {
                         "BearerAuth": []
                     }
-                ],
+                ]
+            }
+        },
+        "/profiles/me/resume-upload": {
+            "post": {
                 "description": "Upload a PDF resume as multipart field \"file\"; its text is extracted and parsed by AI into structured experiences. Text-based PDFs only (scanned PDFs need OCR and are rejected as unreadable).",
                 "tags": [
                     "profiles"
@@ -2966,7 +2961,12 @@
                             }
                         }
                     }
-                }
+                },
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ]
             }
         },
         "/profiles/{username}": {
@@ -3016,11 +3016,6 @@
         },
         "/search/candidates": {
             "get": {
-                "security": [
-                    {
-                        "BearerAuth": []
-                    }
-                ],
                 "description": "Search for jobseeker candidates by keyword, skills, and industry. Requires verified company auth.",
                 "tags": [
                     "search"
@@ -3082,7 +3077,12 @@
                             }
                         }
                     }
-                }
+                },
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ]
             }
         },
         "/tags": {

@@ -2,10 +2,12 @@
   "name": "skillpass",
   "private": true,
   "scripts": {
-    "dev": "concurrently -n server,web -c cyan,green \"go -C server-go run ./cmd/server/\" \"bun --cwd web dev\"",
-    "dev:server": "go -C server-go run ./cmd/server/",
+    "dev": "concurrently -n server,web -c cyan,green \"bun run dev:server\" \"bun --cwd web dev\"",
+    "dev:server": "go -C server-go run -tags dev ./cmd/server/",
     "dev:web": "bun --cwd web dev",
     "build": "bun --cwd web build",
+    "build:server": "bun run build && rm -rf server-go/internal/static/dist && cp -r web/dist server-go/internal/static/dist && cd server-go && go build -o ../skillpass ./cmd/server",
+    "start": "./skillpass",
     "db:migrate": "go -C server-go run ./cmd/migrate/",
     "db:seed": "go -C server-go run ./cmd/seed/",
     "db:generate": "cd server-go && jet -dsn=postgres://postgres:postgres@localhost:5432/skillpass?sslmode=disable -schema=public -path=./.gen",
@@ -22,8 +24,8 @@
     "test:server": "go -C server-go test ./... -count=1 -p=1"
   },
   "devDependencies": {
-    "@biomejs/biome": "^2.4.16",
-    "concurrently": "^9.2.1",
+    "@biomejs/biome": "^2.5.0",
+    "concurrently": "^10.0.3",
     "lefthook": "^2.1.9",
     "openapi-typescript": "^7.13.0",
     "swagger2openapi": "^7.0.8",
