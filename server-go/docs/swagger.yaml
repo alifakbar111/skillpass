@@ -339,7 +339,7 @@ definitions:
         type: string
       verificationDocs:
         items:
-          type: integer
+          type: object
         type: array
       verificationStatus:
         type: string

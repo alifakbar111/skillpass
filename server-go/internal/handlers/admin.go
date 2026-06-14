@@ -27,7 +27,7 @@ type PendingCompany struct {
 	Industry           string          `json:"industry"`
 	Description        *string         `json:"description"`
 	VerificationStatus string          `json:"verificationStatus"`
-	VerificationDocs   json.RawMessage `json:"verificationDocs"`
+	VerificationDocs   json.RawMessage `json:"verificationDocs" swaggertype:"array,object"`
 	VerifiedAt         *time.Time      `json:"verifiedAt"`
 	CreatedAt          time.Time       `json:"createdAt"`
 } //@name PendingCompany
