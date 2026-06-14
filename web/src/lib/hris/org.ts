@@ -94,3 +94,18 @@ export function deletePosition(id: string): Promise<void> {
 export function getOrgTree(): Promise<OrgNode[]> {
   return api<OrgNode[]>('/hris/org/tree');
 }
+
+export interface OrgChartNode {
+  id: string;
+  name: string;
+  positionName?: string;
+  level?: string;
+  departmentId?: string;
+  photoUrl?: string;
+  managerId?: string;
+  children: OrgChartNode[];
+}
+
+export function getOrgChart(): Promise<OrgChartNode[]> {
+  return api<OrgChartNode[]>('/hris/org/chart');
+}

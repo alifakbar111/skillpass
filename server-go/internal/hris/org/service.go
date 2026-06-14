@@ -3,6 +3,7 @@ package org
 import (
 	"context"
 	"database/sql"
+	"fmt"
 	"time"
 
 	"github.com/google/uuid"
@@ -363,6 +364,254 @@ func (s *Service) GetOrgTree(ctx context.Context, companyID uuid.UUID) ([]OrgNod
 	}
 
 	return buildTree(flatNodes), nil
+}
+
+// ============================================================
+// Working Calendars
+// ============================================================
+
+type WorkingCalendar struct {
+	ID              uuid.UUID  `json:"id"`
+	CompanyID       uuid.UUID  `json:"companyId"`
+	BranchID        *uuid.UUID `json:"branchId"`
+	Year            int        `json:"year"`
+	DefaultWorkDays []int      `json:"defaultWorkDays"`
+	CreatedAt       time.Time  `json:"createdAt"`
+}
+
+type CreateCalendarRequest struct {
+	BranchID        *uuid.UUID `json:"branchId"`
+	Year            int        `json:"year" binding:"required"`
+	DefaultWorkDays []int      `json:"defaultWorkDays" binding:"required"`
+}
+
+type UpdateCalendarRequest struct {
+	DefaultWorkDays []int `json:"defaultWorkDays" binding:"required"`
+}
+
+func (s *Service) CreateCalendar(ctx context.Context, companyID uuid.UUID, req CreateCalendarRequest) (*WorkingCalendar, error) {
+	var wc WorkingCalendar
+	err := s.db.QueryRowContext(ctx, `
+		INSERT INTO working_calendars (company_id, branch_id, year, default_work_days)
+		VALUES ($1, $2, $3, $4)
+		RETURNING id, company_id, branch_id, year, default_work_days, created_at`,
+		companyID, req.BranchID, req.Year, pqIntArray(req.DefaultWorkDays),
+	).Scan(&wc.ID, &wc.CompanyID, &wc.BranchID, &wc.Year, pqIntArrayScanner(&wc.DefaultWorkDays), &wc.CreatedAt)
+	if err != nil {
+		return nil, err
+	}
+	return &wc, nil
+}
+
+func (s *Service) ListCalendars(ctx context.Context, companyID uuid.UUID, year *int) ([]WorkingCalendar, error) {
+	query := `SELECT id, company_id, branch_id, year, default_work_days, created_at
+		FROM working_calendars WHERE company_id = $1`
+	args := []interface{}{companyID}
+	if year != nil {
+		query += ` AND year = $2`
+		args = append(args, *year)
+	}
+	query += ` ORDER BY year DESC`
+
+	rows, err := s.db.QueryContext(ctx, query, args...)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var calendars []WorkingCalendar
+	for rows.Next() {
+		var wc WorkingCalendar
+		if err := rows.Scan(&wc.ID, &wc.CompanyID, &wc.BranchID, &wc.Year, pqIntArrayScanner(&wc.DefaultWorkDays), &wc.CreatedAt); err != nil {
+			return nil, err
+		}
+		calendars = append(calendars, wc)
+	}
+	if calendars == nil {
+		calendars = []WorkingCalendar{}
+	}
+	return calendars, rows.Err()
+}
+
+func (s *Service) UpdateCalendar(ctx context.Context, companyID, calendarID uuid.UUID, req UpdateCalendarRequest) (*WorkingCalendar, error) {
+	_, err := s.db.ExecContext(ctx, `
+		UPDATE working_calendars SET default_work_days = $3
+		WHERE id = $1 AND company_id = $2`,
+		calendarID, companyID, pqIntArray(req.DefaultWorkDays),
+	)
+	if err != nil {
+		return nil, err
+	}
+
+	var wc WorkingCalendar
+	err = s.db.QueryRowContext(ctx, `
+		SELECT id, company_id, branch_id, year, default_work_days, created_at
+		FROM working_calendars WHERE id = $1 AND company_id = $2`,
+		calendarID, companyID,
+	).Scan(&wc.ID, &wc.CompanyID, &wc.BranchID, &wc.Year, pqIntArrayScanner(&wc.DefaultWorkDays), &wc.CreatedAt)
+	if err != nil {
+		return nil, err
+	}
+	return &wc, nil
+}
+
+func (s *Service) DeleteCalendar(ctx context.Context, companyID, calendarID uuid.UUID) error {
+	_, err := s.db.ExecContext(ctx,
+		`DELETE FROM working_calendars WHERE id = $1 AND company_id = $2`,
+		calendarID, companyID)
+	return err
+}
+
+// ============================================================
+// Enhanced Org Chart (employee-level recursive tree)
+// ============================================================
+
+type OrgChartNode struct {
+	ID           uuid.UUID      `json:"id"`
+	Name         string         `json:"name"`
+	PositionName *string        `json:"positionName"`
+	Level        *string        `json:"level"`
+	DepartmentID *uuid.UUID     `json:"departmentId"`
+	PhotoURL     *string        `json:"photoUrl"`
+	ManagerID    *uuid.UUID     `json:"managerId"`
+	Children     []OrgChartNode `json:"children"`
+}
+
+func (s *Service) GetOrgChart(ctx context.Context, companyID uuid.UUID) ([]OrgChartNode, error) {
+	rows, err := s.db.QueryContext(ctx, `
+		WITH RECURSIVE org_tree AS (
+			SELECT e.id, e.first_name || ' ' || e.last_name AS name, e.manager_id,
+				   e.department_id, p.name AS position_name, p.level::text AS level
+			FROM employees e
+			LEFT JOIN positions p ON p.id = e.position_id
+			WHERE e.company_id = $1 AND e.employment_status = 'active' AND e.manager_id IS NULL
+			UNION ALL
+			SELECT e.id, e.first_name || ' ' || e.last_name, e.manager_id,
+				   e.department_id, p.name, p.level::text
+			FROM employees e
+			LEFT JOIN positions p ON p.id = e.position_id
+			JOIN org_tree ot ON e.manager_id = ot.id
+			WHERE e.employment_status = 'active'
+		)
+		SELECT id, name, manager_id, department_id, position_name, level FROM org_tree`,
+		companyID,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var flatNodes []OrgChartNode
+	for rows.Next() {
+		var n OrgChartNode
+		if err := rows.Scan(&n.ID, &n.Name, &n.ManagerID, &n.DepartmentID, &n.PositionName, &n.Level); err != nil {
+			return nil, err
+		}
+		flatNodes = append(flatNodes, n)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+
+	return buildChartTree(flatNodes), nil
+}
+
+func buildChartTree(nodes []OrgChartNode) []OrgChartNode {
+	nodeMap := make(map[uuid.UUID]*OrgChartNode)
+	for i := range nodes {
+		nodes[i].Children = []OrgChartNode{}
+		nodeMap[nodes[i].ID] = &nodes[i]
+	}
+
+	var roots []OrgChartNode
+	for i := range nodes {
+		if nodes[i].ManagerID == nil {
+			roots = append(roots, nodes[i])
+		} else if parent, ok := nodeMap[*nodes[i].ManagerID]; ok {
+			parent.Children = append(parent.Children, nodes[i])
+		} else {
+			roots = append(roots, nodes[i])
+		}
+	}
+	if roots == nil {
+		roots = []OrgChartNode{}
+	}
+	return roots
+}
+
+// ============================================================
+// Int array helpers for PostgreSQL
+// ============================================================
+
+type pqIntArray []int
+
+func (a pqIntArray) Value() (interface{}, error) {
+	if a == nil {
+		return "{}", nil
+	}
+	s := "{"
+	for i, v := range a {
+		if i > 0 {
+			s += ","
+		}
+		s += fmt.Sprintf("%d", v)
+	}
+	s += "}"
+	return s, nil
+}
+
+type intArrayScanner struct {
+	dest *[]int
+}
+
+func pqIntArrayScanner(dest *[]int) *intArrayScanner {
+	return &intArrayScanner{dest: dest}
+}
+
+func (s *intArrayScanner) Scan(src interface{}) error {
+	if src == nil {
+		*s.dest = []int{}
+		return nil
+	}
+	var str string
+	switch v := src.(type) {
+	case []byte:
+		str = string(v)
+	case string:
+		str = v
+	default:
+		return fmt.Errorf("unsupported type for int array: %T", src)
+	}
+	// Parse PostgreSQL array format: {1,2,3,4,5}
+	str = str[1 : len(str)-1] // strip braces
+	if str == "" {
+		*s.dest = []int{}
+		return nil
+	}
+	parts := splitComma(str)
+	result := make([]int, len(parts))
+	for i, p := range parts {
+		var n int
+		_, err := fmt.Sscanf(p, "%d", &n)
+		if err != nil {
+			return err
+		}
+		result[i] = n
+	}
+	*s.dest = result
+	return nil
+}
+
+func splitComma(s string) []string {
+	var result []string
+	start := 0
+	for i := 0; i <= len(s); i++ {
+		if i == len(s) || s[i] == ',' {
+			result = append(result, s[start:i])
+			start = i + 1
+		}
+	}
+	return result
 }
 
 func buildTree(nodes []OrgNode) []OrgNode {
