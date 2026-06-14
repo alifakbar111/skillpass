@@ -17,11 +17,6 @@ const docTemplate = `{
     "paths": {
         "/admin/verifications/pending": {
             "get": {
-                "security": [
-                    {
-                        "BearerAuth": []
-                    }
-                ],
                 "description": "Get all companies with pending verification status. Requires admin role.",
                 "produces": [
                     "application/json"
@@ -54,16 +49,16 @@ const docTemplate = `{
                             }
                         }
                     }
-                }
-            }
-        },
-        "/admin/verifications/{id}": {
-            "post": {
+                },
                 "security": [
                     {
                         "BearerAuth": []
                     }
-                ],
+                ]
+            }
+        },
+        "/admin/verifications/{id}": {
+            "post": {
                 "description": "Process a company verification request (approve or reject). Requires admin role.",
                 "consumes": [
                     "application/json"
@@ -119,16 +114,16 @@ const docTemplate = `{
                             }
                         }
                     }
-                }
-            }
-        },
-        "/applications/me": {
-            "get": {
+                },
                 "security": [
                     {
                         "BearerAuth": []
                     }
-                ],
+                ]
+            }
+        },
+        "/applications/me": {
+            "get": {
                 "description": "Get all applications for the authenticated jobseeker (kanban-style data with job title and company name)",
                 "produces": [
                     "application/json"
@@ -165,16 +160,16 @@ const docTemplate = `{
                             }
                         }
                     }
-                }
-            }
-        },
-        "/applications/{id}/messages": {
-            "get": {
+                },
                 "security": [
                     {
                         "BearerAuth": []
                     }
-                ],
+                ]
+            }
+        },
+        "/applications/{id}/messages": {
+            "get": {
                 "description": "Company lists the message thread for an application it owns",
                 "produces": [
                     "application/json"
@@ -220,14 +215,14 @@ const docTemplate = `{
                             }
                         }
                     }
-                }
-            },
-            "post": {
+                },
                 "security": [
                     {
                         "BearerAuth": []
                     }
-                ],
+                ]
+            },
+            "post": {
                 "description": "Company adds a note/message to an application it owns (visible to the candidate)",
                 "consumes": [
                     "application/json"
@@ -296,16 +291,16 @@ const docTemplate = `{
                             }
                         }
                     }
-                }
-            }
-        },
-        "/applications/{id}/status": {
-            "put": {
+                },
                 "security": [
                     {
                         "BearerAuth": []
                     }
-                ],
+                ]
+            }
+        },
+        "/applications/{id}/status": {
+            "put": {
                 "description": "Update an application's status (reviewed, interviewed, offered, rejected). Company action for verified companies.",
                 "consumes": [
                     "application/json"
@@ -374,7 +369,12 @@ const docTemplate = `{
                             }
                         }
                     }
-                }
+                },
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ]
             }
         },
         "/auth/forgot-password": {
@@ -473,11 +473,6 @@ const docTemplate = `{
         },
         "/auth/logout": {
             "post": {
-                "security": [
-                    {
-                        "BearerAuth": []
-                    }
-                ],
                 "description": "Revoke all refresh tokens for the authenticated user and clear the refresh cookie.",
                 "produces": [
                     "application/json"
@@ -493,16 +488,16 @@ const docTemplate = `{
                             "$ref": "#/definitions/MessageResponse"
                         }
                     }
-                }
-            }
-        },
-        "/auth/me": {
-            "get": {
+                },
                 "security": [
                     {
                         "BearerAuth": []
                     }
-                ],
+                ]
+            }
+        },
+        "/auth/me": {
+            "get": {
                 "description": "Return the authenticated user's account info (works for all roles, unlike /profiles/me which is jobseeker-only).",
                 "produces": [
                     "application/json"
@@ -527,7 +522,12 @@ const docTemplate = `{
                             }
                         }
                     }
-                }
+                },
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ]
             }
         },
         "/auth/refresh": {
@@ -613,11 +613,6 @@ const docTemplate = `{
         },
         "/auth/resend-verification": {
             "post": {
-                "security": [
-                    {
-                        "BearerAuth": []
-                    }
-                ],
                 "description": "Send a fresh verification link to the authenticated user's email.",
                 "produces": [
                     "application/json"
@@ -645,7 +640,12 @@ const docTemplate = `{
                             }
                         }
                     }
-                }
+                },
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ]
             }
         },
         "/auth/reset-password": {
@@ -745,11 +745,6 @@ const docTemplate = `{
         },
         "/candidates/matches": {
             "get": {
-                "security": [
-                    {
-                        "BearerAuth": []
-                    }
-                ],
                 "description": "Get candidate recommendations for a specific job posting based on skill matching",
                 "produces": [
                     "application/json"
@@ -795,16 +790,16 @@ const docTemplate = `{
                             }
                         }
                     }
-                }
-            }
-        },
-        "/company/analytics": {
-            "get": {
+                },
                 "security": [
                     {
                         "BearerAuth": []
                     }
-                ],
+                ]
+            }
+        },
+        "/company/analytics": {
+            "get": {
                 "description": "Aggregate hiring metrics for the authenticated verified company: jobs, applications by status, time-to-decision, per-job funnels",
                 "produces": [
                     "application/json"
@@ -838,16 +833,16 @@ const docTemplate = `{
                             }
                         }
                     }
-                }
-            }
-        },
-        "/company/applications": {
-            "get": {
+                },
                 "security": [
                     {
                         "BearerAuth": []
                     }
-                ],
+                ]
+            }
+        },
+        "/company/applications": {
+            "get": {
                 "description": "Get all applications for jobs owned by the authenticated verified company",
                 "produces": [
                     "application/json"
@@ -884,16 +879,16 @@ const docTemplate = `{
                             }
                         }
                     }
-                }
-            }
-        },
-        "/company/profile": {
-            "get": {
+                },
                 "security": [
                     {
                         "BearerAuth": []
                     }
-                ],
+                ]
+            }
+        },
+        "/company/profile": {
+            "get": {
                 "description": "Get the authenticated company's profile",
                 "produces": [
                     "application/json"
@@ -928,14 +923,14 @@ const docTemplate = `{
                             }
                         }
                     }
-                }
-            },
-            "put": {
+                },
                 "security": [
                     {
                         "BearerAuth": []
                     }
-                ],
+                ]
+            },
+            "put": {
                 "description": "Update the authenticated company's profile fields (company name, website, industry, description)",
                 "consumes": [
                     "application/json"
@@ -993,16 +988,16 @@ const docTemplate = `{
                             }
                         }
                     }
-                }
-            }
-        },
-        "/company/verification": {
-            "post": {
+                },
                 "security": [
                     {
                         "BearerAuth": []
                     }
-                ],
+                ]
+            }
+        },
+        "/company/verification": {
+            "post": {
                 "description": "Submit business verification documents for company approval",
                 "consumes": [
                     "application/json"
@@ -1059,16 +1054,16 @@ const docTemplate = `{
                             }
                         }
                     }
-                }
-            }
-        },
-        "/company/verification-status": {
-            "get": {
+                },
                 "security": [
                     {
                         "BearerAuth": []
                     }
-                ],
+                ]
+            }
+        },
+        "/company/verification-status": {
+            "get": {
                 "description": "Get the current verification status for the authenticated company",
                 "produces": [
                     "application/json"
@@ -1093,16 +1088,16 @@ const docTemplate = `{
                             }
                         }
                     }
-                }
-            }
-        },
-        "/company/webhooks": {
-            "get": {
+                },
                 "security": [
                     {
                         "BearerAuth": []
                     }
-                ],
+                ]
+            }
+        },
+        "/company/webhooks": {
+            "get": {
                 "description": "List the authenticated company's registered webhooks (secrets omitted)",
                 "produces": [
                     "application/json"
@@ -1130,14 +1125,14 @@ const docTemplate = `{
                             }
                         }
                     }
-                }
-            },
-            "post": {
+                },
                 "security": [
                     {
                         "BearerAuth": []
                     }
-                ],
+                ]
+            },
+            "post": {
                 "description": "Register a webhook URL. The signing secret is returned once — store it; events are signed with HMAC-SHA256 in the X-SkillPass-Signature header.",
                 "consumes": [
                     "application/json"
@@ -1190,16 +1185,16 @@ const docTemplate = `{
                             }
                         }
                     }
-                }
-            }
-        },
-        "/company/webhooks/{id}": {
-            "delete": {
+                },
                 "security": [
                     {
                         "BearerAuth": []
                     }
-                ],
+                ]
+            }
+        },
+        "/company/webhooks/{id}": {
+            "delete": {
                 "description": "Delete a webhook owned by the authenticated company",
                 "produces": [
                     "application/json"
@@ -1245,16 +1240,16 @@ const docTemplate = `{
                             }
                         }
                     }
-                }
-            }
-        },
-        "/evaluate/me": {
-            "post": {
+                },
                 "security": [
                     {
                         "BearerAuth": []
                     }
-                ],
+                ]
+            }
+        },
+        "/evaluate/me": {
+            "post": {
                 "description": "Trigger a fresh AI evaluation of the authenticated jobseeker's profile and experiences",
                 "produces": [
                     "application/json"
@@ -1288,16 +1283,16 @@ const docTemplate = `{
                             }
                         }
                     }
-                }
-            }
-        },
-        "/evaluate/me/career-path": {
-            "post": {
+                },
                 "security": [
                     {
                         "BearerAuth": []
                     }
-                ],
+                ]
+            }
+        },
+        "/evaluate/me/career-path": {
+            "post": {
                 "description": "Generate AI career path recommendations from the authenticated jobseeker's profile and latest evaluation",
                 "produces": [
                     "application/json"
@@ -1331,16 +1326,16 @@ const docTemplate = `{
                             }
                         }
                     }
-                }
-            }
-        },
-        "/evaluate/me/results": {
-            "get": {
+                },
                 "security": [
                     {
                         "BearerAuth": []
                     }
-                ],
+                ]
+            }
+        },
+        "/evaluate/me/results": {
+            "get": {
                 "description": "Get the most recent AI evaluation result for the authenticated jobseeker",
                 "produces": [
                     "application/json"
@@ -1374,7 +1369,12 @@ const docTemplate = `{
                             }
                         }
                     }
-                }
+                },
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ]
             }
         },
         "/health": {
@@ -1472,11 +1472,6 @@ const docTemplate = `{
                 }
             },
             "post": {
-                "security": [
-                    {
-                        "BearerAuth": []
-                    }
-                ],
                 "description": "Create a new job posting for the authenticated company",
                 "consumes": [
                     "application/json"
@@ -1515,16 +1510,16 @@ const docTemplate = `{
                             }
                         }
                     }
-                }
-            }
-        },
-        "/jobs/matches": {
-            "get": {
+                },
                 "security": [
                     {
                         "BearerAuth": []
                     }
-                ],
+                ]
+            }
+        },
+        "/jobs/matches": {
+            "get": {
                 "description": "Get job recommendations based on the authenticated jobseeker's skills and AI evaluation",
                 "produces": [
                     "application/json"
@@ -1552,16 +1547,16 @@ const docTemplate = `{
                             }
                         }
                     }
-                }
-            }
-        },
-        "/jobs/me": {
-            "get": {
+                },
                 "security": [
                     {
                         "BearerAuth": []
                     }
-                ],
+                ]
+            }
+        },
+        "/jobs/me": {
+            "get": {
                 "description": "Get all job postings for the authenticated company",
                 "produces": [
                     "application/json"
@@ -1580,7 +1575,12 @@ const docTemplate = `{
                             }
                         }
                     }
-                }
+                },
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ]
             }
         },
         "/jobs/{id}": {
@@ -1621,11 +1621,6 @@ const docTemplate = `{
                 }
             },
             "put": {
-                "security": [
-                    {
-                        "BearerAuth": []
-                    }
-                ],
                 "description": "Update specific fields of a job posting owned by the authenticated company",
                 "consumes": [
                     "application/json"
@@ -1680,14 +1675,14 @@ const docTemplate = `{
                             }
                         }
                     }
-                }
-            },
-            "delete": {
+                },
                 "security": [
                     {
                         "BearerAuth": []
                     }
-                ],
+                ]
+            },
+            "delete": {
                 "description": "Delete a job posting owned by the authenticated company",
                 "produces": [
                     "application/json"
@@ -1721,16 +1716,16 @@ const docTemplate = `{
                             }
                         }
                     }
-                }
-            }
-        },
-        "/jobs/{id}/apply": {
-            "post": {
+                },
                 "security": [
                     {
                         "BearerAuth": []
                     }
-                ],
+                ]
+            }
+        },
+        "/jobs/{id}/apply": {
+            "post": {
                 "description": "Apply the authenticated jobseeker to a job posting",
                 "produces": [
                     "application/json"
@@ -1791,16 +1786,16 @@ const docTemplate = `{
                             }
                         }
                     }
-                }
-            }
-        },
-        "/jobs/{id}/skills-gap": {
-            "get": {
+                },
                 "security": [
                     {
                         "BearerAuth": []
                     }
-                ],
+                ]
+            }
+        },
+        "/jobs/{id}/skills-gap": {
+            "get": {
                 "description": "Compare the authenticated jobseeker's evaluated skills against a job's required skills",
                 "produces": [
                     "application/json"
@@ -1843,16 +1838,16 @@ const docTemplate = `{
                             }
                         }
                     }
-                }
-            }
-        },
-        "/notifications/me": {
-            "get": {
+                },
                 "security": [
                     {
                         "BearerAuth": []
                     }
-                ],
+                ]
+            }
+        },
+        "/notifications/me": {
+            "get": {
                 "description": "Get recent notifications and unread count for the authenticated user",
                 "produces": [
                     "application/json"
@@ -1877,16 +1872,16 @@ const docTemplate = `{
                             }
                         }
                     }
-                }
-            }
-        },
-        "/notifications/read-all": {
-            "put": {
+                },
                 "security": [
                     {
                         "BearerAuth": []
                     }
-                ],
+                ]
+            }
+        },
+        "/notifications/read-all": {
+            "put": {
                 "description": "Mark all unread notifications as read for the authenticated user",
                 "produces": [
                     "application/json"
@@ -1914,16 +1909,16 @@ const docTemplate = `{
                             }
                         }
                     }
-                }
-            }
-        },
-        "/notifications/{id}/read": {
-            "put": {
+                },
                 "security": [
                     {
                         "BearerAuth": []
                     }
-                ],
+                ]
+            }
+        },
+        "/notifications/{id}/read": {
+            "put": {
                 "description": "Mark a single notification as read",
                 "produces": [
                     "application/json"
@@ -1969,7 +1964,12 @@ const docTemplate = `{
                             }
                         }
                     }
-                }
+                },
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ]
             }
         },
         "/p/{username}": {
@@ -2012,11 +2012,6 @@ const docTemplate = `{
         },
         "/profiles/me": {
             "get": {
-                "security": [
-                    {
-                        "BearerAuth": []
-                    }
-                ],
                 "description": "Get the authenticated jobseeker's full profile (including experiences)",
                 "produces": [
                     "application/json"
@@ -2050,14 +2045,14 @@ const docTemplate = `{
                             }
                         }
                     }
-                }
-            },
-            "put": {
+                },
                 "security": [
                     {
                         "BearerAuth": []
                     }
-                ],
+                ]
+            },
+            "put": {
                 "description": "Update the authenticated jobseeker's profile fields (headline, about, years of experience, slug)",
                 "consumes": [
                     "application/json"
@@ -2123,16 +2118,16 @@ const docTemplate = `{
                             }
                         }
                     }
-                }
-            }
-        },
-        "/profiles/me/analytics": {
-            "get": {
+                },
                 "security": [
                     {
                         "BearerAuth": []
                     }
-                ],
+                ]
+            }
+        },
+        "/profiles/me/analytics": {
+            "get": {
                 "description": "Application counts by status, response rate, and passport views for the authenticated jobseeker",
                 "produces": [
                     "application/json"
@@ -2166,16 +2161,16 @@ const docTemplate = `{
                             }
                         }
                     }
-                }
-            }
-        },
-        "/profiles/me/avatar": {
-            "post": {
+                },
                 "security": [
                     {
                         "BearerAuth": []
                     }
-                ],
+                ]
+            }
+        },
+        "/profiles/me/avatar": {
+            "post": {
                 "description": "Upload a profile image (png/jpeg/webp, max 2MB) as multipart field \"file\". Updates the user's avatarUrl.",
                 "consumes": [
                     "multipart/form-data"
@@ -2224,16 +2219,16 @@ const docTemplate = `{
                             }
                         }
                     }
-                }
-            }
-        },
-        "/profiles/me/experience": {
-            "post": {
+                },
                 "security": [
                     {
                         "BearerAuth": []
                     }
-                ],
+                ]
+            }
+        },
+        "/profiles/me/experience": {
+            "post": {
                 "description": "Add a new employment, gig, education, certification, project, or volunteering entry to the profile",
                 "consumes": [
                     "application/json"
@@ -2281,16 +2276,16 @@ const docTemplate = `{
                             }
                         }
                     }
-                }
-            }
-        },
-        "/profiles/me/experience/{id}": {
-            "put": {
+                },
                 "security": [
                     {
                         "BearerAuth": []
                     }
-                ],
+                ]
+            }
+        },
+        "/profiles/me/experience/{id}": {
+            "put": {
                 "description": "Update specific fields of an experience entry owned by the authenticated jobseeker",
                 "consumes": [
                     "application/json"
@@ -2354,14 +2349,14 @@ const docTemplate = `{
                             }
                         }
                     }
-                }
-            },
-            "delete": {
+                },
                 "security": [
                     {
                         "BearerAuth": []
                     }
-                ],
+                ]
+            },
+            "delete": {
                 "description": "Delete an experience entry owned by the authenticated jobseeker",
                 "produces": [
                     "application/json"
@@ -2413,16 +2408,16 @@ const docTemplate = `{
                             }
                         }
                     }
-                }
-            }
-        },
-        "/profiles/me/resume-parse": {
-            "post": {
+                },
                 "security": [
                     {
                         "BearerAuth": []
                     }
-                ],
+                ]
+            }
+        },
+        "/profiles/me/resume-parse": {
+            "post": {
                 "description": "Extract structured profile data (headline, about, experiences) from pasted resume text using AI. Does not modify the profile — the client reviews and saves entries.",
                 "consumes": [
                     "application/json"
@@ -2484,16 +2479,16 @@ const docTemplate = `{
                             }
                         }
                     }
-                }
-            }
-        },
-        "/profiles/me/resume-upload": {
-            "post": {
+                },
                 "security": [
                     {
                         "BearerAuth": []
                     }
-                ],
+                ]
+            }
+        },
+        "/profiles/me/resume-upload": {
+            "post": {
                 "description": "Upload a PDF resume as multipart field \"file\"; its text is extracted and parsed by AI into structured experiences. Text-based PDFs only (scanned PDFs need OCR and are rejected as unreadable).",
                 "consumes": [
                     "multipart/form-data"
@@ -2548,7 +2543,12 @@ const docTemplate = `{
                             }
                         }
                     }
-                }
+                },
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ]
             }
         },
         "/profiles/{username}": {
@@ -2591,11 +2591,6 @@ const docTemplate = `{
         },
         "/search/candidates": {
             "get": {
-                "security": [
-                    {
-                        "BearerAuth": []
-                    }
-                ],
                 "description": "Search for jobseeker candidates by keyword, skills, and industry. Requires verified company auth.",
                 "produces": [
                     "application/json"
@@ -2646,7 +2641,12 @@ const docTemplate = `{
                             }
                         }
                     }
-                }
+                },
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ]
             }
         },
         "/tags": {

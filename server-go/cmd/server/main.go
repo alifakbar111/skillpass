@@ -238,7 +238,17 @@ func main() {
 	// Swagger UI
 	r.GET("/docs/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
 
-	log.Printf("SkillPass API (Go) running at http://localhost:%s", cfg.Port)
+	// Serve static files (production: embedded SPA, dev: no-op)
+	if cfg.ServeStatic {
+		setupStatic(r)
+	}
+
+	log.Printf("SkillPass API running at http://localhost:%s", cfg.Port)
+	if cfg.ServeStatic {
+		log.Printf("Frontend served from embedded files at http://localhost:%s", cfg.Port)
+	} else {
+		log.Printf("Frontend: use Vite dev server (bun run dev:web)")
+	}
 	log.Printf("Swagger UI at http://localhost:%s/docs/index.html", cfg.Port)
 	if err := r.Run(":" + cfg.Port); err != nil {
 		log.Fatalf("Failed to start server: %v", err)

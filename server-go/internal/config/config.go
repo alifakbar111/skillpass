@@ -7,6 +7,7 @@ type Config struct {
 	JWTSecret   string
 	DatabaseURL string
 	CORSOrigin  string
+	ServeStatic bool
 }
 
 func Load() *Config {
@@ -25,6 +26,7 @@ func Load() *Config {
 		JWTSecret:   jwtSecret,
 		DatabaseURL: dbURL,
 		CORSOrigin:  getEnv("CORS_ORIGIN", "http://localhost:4200"),
+		ServeStatic: getEnv("SERVE_STATIC", "true") == "true",
 	}
 }
 
