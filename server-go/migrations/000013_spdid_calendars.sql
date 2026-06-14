@@ -1,7 +1,7 @@
 -- Sprint 2: SP-DID stub + working calendars
 
 -- SP-DID records (stub, no blockchain in Phase 1)
-CREATE TABLE sp_did_records (
+CREATE TABLE IF NOT EXISTS sp_did_records (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   company_id UUID NOT NULL REFERENCES companies(id),
   employee_id UUID NOT NULL UNIQUE REFERENCES employees(id),
@@ -9,11 +9,11 @@ CREATE TABLE sp_did_records (
   status TEXT NOT NULL DEFAULT 'active' CHECK (status IN ('active', 'revoked')),
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
-CREATE INDEX idx_spdid_company ON sp_did_records(company_id);
-CREATE INDEX idx_spdid_employee ON sp_did_records(employee_id);
+CREATE INDEX IF NOT EXISTS idx_spdid_company ON sp_did_records(company_id);
+CREATE INDEX IF NOT EXISTS idx_spdid_employee ON sp_did_records(employee_id);
 
 -- Working calendars (per-company or per-branch)
-CREATE TABLE working_calendars (
+CREATE TABLE IF NOT EXISTS working_calendars (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   company_id UUID NOT NULL REFERENCES companies(id),
   branch_id UUID REFERENCES branches(id),

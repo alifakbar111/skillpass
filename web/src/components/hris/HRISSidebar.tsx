@@ -1,5 +1,5 @@
+import { Briefcase, Building2, MapPin, Network, Shield, Users } from 'lucide-react';
 import { NavLink } from 'react-router-dom';
-import { Users, Building2, Network, MapPin, Briefcase, Shield } from 'lucide-react';
 
 const links = [
   { to: '/hris/employees', label: 'Employees', icon: Users },

@@ -17,8 +17,13 @@ func NewHandler(db *sql.DB) *Handler {
 	return &Handler{svc: NewService(db)}
 }
 
-func companyID(c *gin.Context) uuid.UUID {
-	return uuid.MustParse(c.GetString("companyId"))
+func companyID(c *gin.Context) (uuid.UUID, bool) {
+	id, err := uuid.Parse(c.GetString("companyId"))
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid company ID"})
+		return uuid.Nil, false
+	}
+	return id, true
 }
 
 func parseID(c *gin.Context) (uuid.UUID, bool) {
@@ -35,12 +40,16 @@ func parseID(c *gin.Context) (uuid.UUID, bool) {
 // ============================================================
 
 func (h *Handler) CreateBranch(c *gin.Context) {
-	var req CreateBranchRequest
-	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+	cid, ok := companyID(c)
+	if !ok {
 		return
 	}
-	b, err := h.svc.CreateBranch(c.Request.Context(), companyID(c), req)
+	var req CreateBranchRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request body"})
+		return
+	}
+	b, err := h.svc.CreateBranch(c.Request.Context(), cid, req)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create branch"})
 		return
@@ -49,7 +58,11 @@ func (h *Handler) CreateBranch(c *gin.Context) {
 }
 
 func (h *Handler) ListBranches(c *gin.Context) {
-	branches, err := h.svc.ListBranches(c.Request.Context(), companyID(c))
+	cid, ok := companyID(c)
+	if !ok {
+		return
+	}
+	branches, err := h.svc.ListBranches(c.Request.Context(), cid)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to list branches"})
 		return
@@ -62,7 +75,11 @@ func (h *Handler) GetBranch(c *gin.Context) {
 	if !ok {
 		return
 	}
-	b, err := h.svc.GetBranch(c.Request.Context(), companyID(c), id)
+	cid, ok := companyID(c)
+	if !ok {
+		return
+	}
+	b, err := h.svc.GetBranch(c.Request.Context(), cid, id)
 	if err != nil {
 		if err == sql.ErrNoRows {
 			c.JSON(http.StatusNotFound, gin.H{"error": "Branch not found"})
@@ -79,13 +96,21 @@ func (h *Handler) UpdateBranch(c *gin.Context) {
 	if !ok {
 		return
 	}
-	var req UpdateBranchRequest
-	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+	cid, ok := companyID(c)
+	if !ok {
 		return
 	}
-	b, err := h.svc.UpdateBranch(c.Request.Context(), companyID(c), id, req)
+	var req UpdateBranchRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request body"})
+		return
+	}
+	b, err := h.svc.UpdateBranch(c.Request.Context(), cid, id, req)
 	if err != nil {
+		if err == sql.ErrNoRows {
+			c.JSON(http.StatusNotFound, gin.H{"error": "Branch not found"})
+			return
+		}
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to update branch"})
 		return
 	}
@@ -97,7 +122,11 @@ func (h *Handler) DeleteBranch(c *gin.Context) {
 	if !ok {
 		return
 	}
-	if err := h.svc.DeleteBranch(c.Request.Context(), companyID(c), id); err != nil {
+	cid, ok := companyID(c)
+	if !ok {
+		return
+	}
+	if err := h.svc.DeleteBranch(c.Request.Context(), cid, id); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to deactivate branch"})
 		return
 	}
@@ -109,12 +138,16 @@ func (h *Handler) DeleteBranch(c *gin.Context) {
 // ============================================================
 
 func (h *Handler) CreateDepartment(c *gin.Context) {
-	var req CreateDepartmentRequest
-	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+	cid, ok := companyID(c)
+	if !ok {
 		return
 	}
-	d, err := h.svc.CreateDepartment(c.Request.Context(), companyID(c), req)
+	var req CreateDepartmentRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request body"})
+		return
+	}
+	d, err := h.svc.CreateDepartment(c.Request.Context(), cid, req)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create department"})
 		return
@@ -123,7 +156,11 @@ func (h *Handler) CreateDepartment(c *gin.Context) {
 }
 
 func (h *Handler) ListDepartments(c *gin.Context) {
-	depts, err := h.svc.ListDepartments(c.Request.Context(), companyID(c))
+	cid, ok := companyID(c)
+	if !ok {
+		return
+	}
+	depts, err := h.svc.ListDepartments(c.Request.Context(), cid)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to list departments"})
 		return
@@ -136,13 +173,21 @@ func (h *Handler) UpdateDepartment(c *gin.Context) {
 	if !ok {
 		return
 	}
-	var req UpdateDepartmentRequest
-	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+	cid, ok := companyID(c)
+	if !ok {
 		return
 	}
-	d, err := h.svc.UpdateDepartment(c.Request.Context(), companyID(c), id, req)
+	var req UpdateDepartmentRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request body"})
+		return
+	}
+	d, err := h.svc.UpdateDepartment(c.Request.Context(), cid, id, req)
 	if err != nil {
+		if err == sql.ErrNoRows {
+			c.JSON(http.StatusNotFound, gin.H{"error": "Department not found"})
+			return
+		}
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to update department"})
 		return
 	}
@@ -154,7 +199,11 @@ func (h *Handler) DeleteDepartment(c *gin.Context) {
 	if !ok {
 		return
 	}
-	if err := h.svc.DeleteDepartment(c.Request.Context(), companyID(c), id); err != nil {
+	cid, ok := companyID(c)
+	if !ok {
+		return
+	}
+	if err := h.svc.DeleteDepartment(c.Request.Context(), cid, id); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to delete department"})
 		return
 	}
@@ -166,12 +215,16 @@ func (h *Handler) DeleteDepartment(c *gin.Context) {
 // ============================================================
 
 func (h *Handler) CreatePosition(c *gin.Context) {
-	var req CreatePositionRequest
-	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+	cid, ok := companyID(c)
+	if !ok {
 		return
 	}
-	p, err := h.svc.CreatePosition(c.Request.Context(), companyID(c), req)
+	var req CreatePositionRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request body"})
+		return
+	}
+	p, err := h.svc.CreatePosition(c.Request.Context(), cid, req)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create position"})
 		return
@@ -180,7 +233,11 @@ func (h *Handler) CreatePosition(c *gin.Context) {
 }
 
 func (h *Handler) ListPositions(c *gin.Context) {
-	positions, err := h.svc.ListPositions(c.Request.Context(), companyID(c))
+	cid, ok := companyID(c)
+	if !ok {
+		return
+	}
+	positions, err := h.svc.ListPositions(c.Request.Context(), cid)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to list positions"})
 		return
@@ -193,13 +250,21 @@ func (h *Handler) UpdatePosition(c *gin.Context) {
 	if !ok {
 		return
 	}
-	var req UpdatePositionRequest
-	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+	cid, ok := companyID(c)
+	if !ok {
 		return
 	}
-	p, err := h.svc.UpdatePosition(c.Request.Context(), companyID(c), id, req)
+	var req UpdatePositionRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request body"})
+		return
+	}
+	p, err := h.svc.UpdatePosition(c.Request.Context(), cid, id, req)
 	if err != nil {
+		if err == sql.ErrNoRows {
+			c.JSON(http.StatusNotFound, gin.H{"error": "Position not found"})
+			return
+		}
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to update position"})
 		return
 	}
@@ -211,7 +276,11 @@ func (h *Handler) DeletePosition(c *gin.Context) {
 	if !ok {
 		return
 	}
-	if err := h.svc.DeletePosition(c.Request.Context(), companyID(c), id); err != nil {
+	cid, ok := companyID(c)
+	if !ok {
+		return
+	}
+	if err := h.svc.DeletePosition(c.Request.Context(), cid, id); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to delete position"})
 		return
 	}
@@ -223,7 +292,11 @@ func (h *Handler) DeletePosition(c *gin.Context) {
 // ============================================================
 
 func (h *Handler) GetOrgTree(c *gin.Context) {
-	tree, err := h.svc.GetOrgTree(c.Request.Context(), companyID(c))
+	cid, ok := companyID(c)
+	if !ok {
+		return
+	}
+	tree, err := h.svc.GetOrgTree(c.Request.Context(), cid)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to get org tree"})
 		return
@@ -236,7 +309,11 @@ func (h *Handler) GetOrgTree(c *gin.Context) {
 // ============================================================
 
 func (h *Handler) GetOrgChart(c *gin.Context) {
-	chart, err := h.svc.GetOrgChart(c.Request.Context(), companyID(c))
+	cid, ok := companyID(c)
+	if !ok {
+		return
+	}
+	chart, err := h.svc.GetOrgChart(c.Request.Context(), cid)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to get org chart"})
 		return
@@ -249,12 +326,16 @@ func (h *Handler) GetOrgChart(c *gin.Context) {
 // ============================================================
 
 func (h *Handler) CreateCalendar(c *gin.Context) {
-	var req CreateCalendarRequest
-	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+	cid, ok := companyID(c)
+	if !ok {
 		return
 	}
-	wc, err := h.svc.CreateCalendar(c.Request.Context(), companyID(c), req)
+	var req CreateCalendarRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request body"})
+		return
+	}
+	wc, err := h.svc.CreateCalendar(c.Request.Context(), cid, req)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create calendar"})
 		return
@@ -263,6 +344,10 @@ func (h *Handler) CreateCalendar(c *gin.Context) {
 }
 
 func (h *Handler) ListCalendars(c *gin.Context) {
+	cid, ok := companyID(c)
+	if !ok {
+		return
+	}
 	var yearPtr *int
 	if y := c.Query("year"); y != "" {
 		n, err := strconv.Atoi(y)
@@ -270,7 +355,7 @@ func (h *Handler) ListCalendars(c *gin.Context) {
 			yearPtr = &n
 		}
 	}
-	calendars, err := h.svc.ListCalendars(c.Request.Context(), companyID(c), yearPtr)
+	calendars, err := h.svc.ListCalendars(c.Request.Context(), cid, yearPtr)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to list calendars"})
 		return
@@ -283,12 +368,16 @@ func (h *Handler) UpdateCalendar(c *gin.Context) {
 	if !ok {
 		return
 	}
-	var req UpdateCalendarRequest
-	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+	cid, ok := companyID(c)
+	if !ok {
 		return
 	}
-	wc, err := h.svc.UpdateCalendar(c.Request.Context(), companyID(c), id, req)
+	var req UpdateCalendarRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request body"})
+		return
+	}
+	wc, err := h.svc.UpdateCalendar(c.Request.Context(), cid, id, req)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to update calendar"})
 		return
@@ -301,7 +390,11 @@ func (h *Handler) DeleteCalendar(c *gin.Context) {
 	if !ok {
 		return
 	}
-	if err := h.svc.DeleteCalendar(c.Request.Context(), companyID(c), id); err != nil {
+	cid, ok := companyID(c)
+	if !ok {
+		return
+	}
+	if err := h.svc.DeleteCalendar(c.Request.Context(), cid, id); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to delete calendar"})
 		return
 	}

@@ -3,6 +3,7 @@ package rbac
 import (
 	"context"
 	"database/sql"
+	"fmt"
 
 	"github.com/google/uuid"
 )
@@ -49,6 +50,7 @@ func (s *Service) HasPermission(ctx context.Context, employeeID uuid.UUID, permC
 	return exists, nil
 }
 
+// TODO: Cache permission check per-request or per-session to avoid DB hit on every HRIS request
 func (s *Service) HasAnyPermission(ctx context.Context, employeeID uuid.UUID, permCodes []string) (bool, error) {
 	var exists bool
 	err := s.db.QueryRowContext(ctx,
@@ -124,18 +126,27 @@ func (s *Service) GetEmployeePermissions(ctx context.Context, employeeID uuid.UU
 	return codes, rows.Err()
 }
 
-func (s *Service) AssignRole(ctx context.Context, employeeID, roleID uuid.UUID) error {
+func (s *Service) AssignRole(ctx context.Context, companyID, employeeID, roleID uuid.UUID) error {
 	_, err := s.db.ExecContext(ctx,
-		`INSERT INTO employee_roles (employee_id, role_id) VALUES ($1, $2) ON CONFLICT DO NOTHING`,
-		employeeID, roleID,
+		`INSERT INTO employee_roles (employee_id, role_id)
+		 SELECT $3, $4
+		 FROM employees e, hris_roles r
+		 WHERE e.id = $3 AND e.company_id = $1
+		   AND r.id = $4 AND r.company_id = $1
+		 ON CONFLICT DO NOTHING`,
+		companyID, employeeID, employeeID, roleID,
 	)
 	return err
 }
 
-func (s *Service) RemoveRole(ctx context.Context, employeeID, roleID uuid.UUID) error {
+func (s *Service) RemoveRole(ctx context.Context, companyID, employeeID, roleID uuid.UUID) error {
 	_, err := s.db.ExecContext(ctx,
-		`DELETE FROM employee_roles WHERE employee_id = $1 AND role_id = $2`,
-		employeeID, roleID,
+		`DELETE FROM employee_roles er
+		 USING employees e, hris_roles r
+		 WHERE er.employee_id = e.id AND er.role_id = r.id
+		   AND e.id = $3 AND e.company_id = $1
+		   AND r.id = $4 AND r.company_id = $1`,
+		companyID, employeeID, employeeID, roleID,
 	)
 	return err
 }
@@ -182,7 +193,12 @@ func (s *Service) EnsureCompanyRoles(ctx context.Context, companyID uuid.UUID) e
 }
 
 func (s *Service) seedRolePermissions(ctx context.Context, companyID uuid.UUID) error {
-	rolePerms := map[string][]string{
+	type rolePerm struct {
+		role string
+		perm string
+	}
+	var pairs []rolePerm
+	for roleName, perms := range map[string][]string{
 		"Company Admin": {
 			"employee.view", "employee.create", "employee.update", "employee.delete",
 			"attendance.view", "attendance.manage", "attendance.clock", "attendance.approve", "attendance.export",
@@ -258,21 +274,36 @@ func (s *Service) seedRolePermissions(ctx context.Context, companyID uuid.UUID) 
 			"documents.view",
 			"org.view",
 		},
-	}
-
-	for roleName, perms := range rolePerms {
+	} {
 		for _, perm := range perms {
-			_, err := s.db.ExecContext(ctx, `
-				INSERT INTO role_permissions (role_id, permission_id)
-				SELECT r.id, p.id
-				FROM hris_roles r, permissions p
-				WHERE r.company_id = $1 AND r.name = $2 AND p.code = $3
-				ON CONFLICT DO NOTHING
-			`, companyID, roleName, perm)
-			if err != nil {
-				return err
-			}
+			pairs = append(pairs, rolePerm{role: roleName, perm: perm})
 		}
 	}
-	return nil
+
+	if len(pairs) == 0 {
+		return nil
+	}
+
+	query := `
+		INSERT INTO role_permissions (role_id, permission_id)
+		SELECT r.id, p.id
+		FROM hris_roles r
+		CROSS JOIN permissions p
+		WHERE r.company_id = $1 AND r.is_system = true
+		  AND (r.name, p.code) IN (`
+	args := []any{companyID}
+	argIdx := 2
+	for i, pair := range pairs {
+		if i > 0 {
+			query += ","
+		}
+		query += fmt.Sprintf("($%d,$%d)", argIdx, argIdx+1)
+		args = append(args, pair.role, pair.perm)
+		argIdx += 2
+	}
+	query += `)
+		ON CONFLICT DO NOTHING`
+
+	_, err := s.db.ExecContext(ctx, query, args...)
+	return err
 }

@@ -5,6 +5,7 @@ import (
 	"crypto/sha256"
 	"database/sql"
 	"encoding/hex"
+	"fmt"
 	"time"
 
 	"github.com/google/uuid"
@@ -33,10 +34,22 @@ func GenerateDID(companyID, employeeID uuid.UUID) string {
 }
 
 func (s *Service) CreateDID(ctx context.Context, companyID, employeeID uuid.UUID) (*DIDRecord, error) {
+	var exists bool
+	err := s.db.QueryRowContext(ctx,
+		`SELECT EXISTS(SELECT 1 FROM employees WHERE id = $1 AND company_id = $2)`,
+		employeeID, companyID,
+	).Scan(&exists)
+	if err != nil {
+		return nil, err
+	}
+	if !exists {
+		return nil, fmt.Errorf("employee not found in this company")
+	}
+
 	didStr := GenerateDID(companyID, employeeID)
 
 	var r DIDRecord
-	err := s.db.QueryRowContext(ctx,
+	err = s.db.QueryRowContext(ctx,
 		`INSERT INTO sp_did_records (company_id, employee_id, did_string)
 		 VALUES ($1, $2, $3)
 		 RETURNING id, company_id, employee_id, did_string, status, created_at`,
@@ -48,12 +61,12 @@ func (s *Service) CreateDID(ctx context.Context, companyID, employeeID uuid.UUID
 	return &r, nil
 }
 
-func (s *Service) GetDID(ctx context.Context, employeeID uuid.UUID) (*DIDRecord, error) {
+func (s *Service) GetDID(ctx context.Context, companyID, employeeID uuid.UUID) (*DIDRecord, error) {
 	var r DIDRecord
 	err := s.db.QueryRowContext(ctx,
 		`SELECT id, company_id, employee_id, did_string, status, created_at
-		 FROM sp_did_records WHERE employee_id = $1`,
-		employeeID,
+		 FROM sp_did_records WHERE employee_id = $1 AND company_id = $2`,
+		employeeID, companyID,
 	).Scan(&r.ID, &r.CompanyID, &r.EmployeeID, &r.DIDString, &r.Status, &r.CreatedAt)
 	if err != nil {
 		return nil, err
@@ -61,10 +74,10 @@ func (s *Service) GetDID(ctx context.Context, employeeID uuid.UUID) (*DIDRecord,
 	return &r, nil
 }
 
-func (s *Service) RevokeDID(ctx context.Context, employeeID uuid.UUID) error {
+func (s *Service) RevokeDID(ctx context.Context, companyID, employeeID uuid.UUID) error {
 	_, err := s.db.ExecContext(ctx,
-		`UPDATE sp_did_records SET status = 'revoked' WHERE employee_id = $1`,
-		employeeID,
+		`UPDATE sp_did_records SET status = 'revoked' WHERE employee_id = $1 AND company_id = $2`,
+		employeeID, companyID,
 	)
 	return err
 }

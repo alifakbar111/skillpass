@@ -1,10 +1,10 @@
 import { useQuery } from '@tanstack/react-query';
+import { ChevronLeft, ChevronRight, Plus, Search } from 'lucide-react';
+import { useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
-import { Plus, Search, ChevronLeft, ChevronRight } from 'lucide-react';
+import { usePermissions } from '@/hooks/usePermissions';
 import { listEmployees } from '@/lib/hris/employees';
 import { listDepartments } from '@/lib/hris/org';
-import { usePermissions } from '@/hooks/usePermissions';
-import { useState } from 'react';
 
 export default function EmployeeList() {
   const [searchParams, setSearchParams] = useSearchParams();

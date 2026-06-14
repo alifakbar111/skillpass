@@ -1,7 +1,7 @@
 import { useQuery } from '@tanstack/react-query';
 import { ChevronDown, ChevronRight, Users } from 'lucide-react';
-import { getOrgTree, type OrgNode } from '@/lib/hris/org';
 import { useState } from 'react';
+import { getOrgTree, type OrgNode } from '@/lib/hris/org';
 
 export default function OrgChart() {
   const { data: tree, isLoading } = useQuery({
@@ -38,12 +38,10 @@ function TreeNode({ node, depth }: { node: OrgNode; depth: number }) {
 
   return (
     <div style={{ marginLeft: depth * 24 }}>
-      <div
+      <button
+        type="button"
         className="flex items-center gap-2 py-2 px-3 rounded-lg hover:bg-base-200 cursor-pointer"
         onClick={() => hasChildren && setOpen(!open)}
-        onKeyDown={(e) => e.key === 'Enter' && hasChildren && setOpen(!open)}
-        tabIndex={0}
-        role="button"
       >
         {hasChildren ? (
           open ? (
@@ -62,10 +60,10 @@ function TreeNode({ node, depth }: { node: OrgNode; depth: number }) {
             {node.employeeCount}
           </span>
         )}
-      </div>
+      </button>
       {open && hasChildren && (
         <div>
-          {node.children!.map((child) => (
+          {(node.children ?? []).map((child) => (
             <TreeNode key={child.id} node={child} depth={depth + 1} />
           ))}
         </div>

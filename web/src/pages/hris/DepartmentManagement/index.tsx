@@ -1,8 +1,8 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Plus, Pencil, Trash2 } from 'lucide-react';
-import { listDepartments, createDepartment, updateDepartment, deleteDepartment, type Department } from '@/lib/hris/org';
-import { usePermissions } from '@/hooks/usePermissions';
+import { Pencil, Plus, Trash2 } from 'lucide-react';
 import { useRef, useState } from 'react';
+import { usePermissions } from '@/hooks/usePermissions';
+import { createDepartment, type Department, deleteDepartment, listDepartments, updateDepartment } from '@/lib/hris/org';
 
 export default function DepartmentManagement() {
   const qc = useQueryClient();

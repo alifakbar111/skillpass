@@ -17,7 +17,11 @@ func NewHandler(db *sql.DB) *Handler {
 }
 
 func (h *Handler) CreateDID(c *gin.Context) {
-	companyID := uuid.MustParse(c.GetString("companyId"))
+	companyID, err := uuid.Parse(c.GetString("companyId"))
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid company ID"})
+		return
+	}
 	employeeID, err := uuid.Parse(c.Param("id"))
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid employee ID"})
@@ -33,13 +37,18 @@ func (h *Handler) CreateDID(c *gin.Context) {
 }
 
 func (h *Handler) GetDID(c *gin.Context) {
+	companyID, err := uuid.Parse(c.GetString("companyId"))
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid company ID"})
+		return
+	}
 	employeeID, err := uuid.Parse(c.Param("id"))
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid employee ID"})
 		return
 	}
 
-	r, err := h.svc.GetDID(c.Request.Context(), employeeID)
+	r, err := h.svc.GetDID(c.Request.Context(), companyID, employeeID)
 	if err != nil {
 		if err == sql.ErrNoRows {
 			c.JSON(http.StatusNotFound, gin.H{"error": "DID not found"})

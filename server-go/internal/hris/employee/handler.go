@@ -17,12 +17,24 @@ func NewHandler(db *sql.DB) *Handler {
 	return &Handler{svc: NewService(db)}
 }
 
+func mustParseCompanyID(c *gin.Context) (uuid.UUID, bool) {
+	id, err := uuid.Parse(c.GetString("companyId"))
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid company ID"})
+		return uuid.Nil, false
+	}
+	return id, true
+}
+
 func (h *Handler) Create(c *gin.Context) {
-	companyID := mustParseCompanyID(c)
+	companyID, ok := mustParseCompanyID(c)
+	if !ok {
+		return
+	}
 
 	var req CreateRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request body"})
 		return
 	}
 
@@ -36,7 +48,10 @@ func (h *Handler) Create(c *gin.Context) {
 }
 
 func (h *Handler) Get(c *gin.Context) {
-	companyID := mustParseCompanyID(c)
+	companyID, ok := mustParseCompanyID(c)
+	if !ok {
+		return
+	}
 	employeeID, err := uuid.Parse(c.Param("id"))
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid employee ID"})
@@ -57,7 +72,10 @@ func (h *Handler) Get(c *gin.Context) {
 }
 
 func (h *Handler) List(c *gin.Context) {
-	companyID := mustParseCompanyID(c)
+	companyID, ok := mustParseCompanyID(c)
+	if !ok {
+		return
+	}
 
 	page, _ := strconv.Atoi(c.DefaultQuery("page", "1"))
 	pageSize, _ := strconv.Atoi(c.DefaultQuery("pageSize", "20"))
@@ -93,7 +111,10 @@ func (h *Handler) List(c *gin.Context) {
 }
 
 func (h *Handler) Update(c *gin.Context) {
-	companyID := mustParseCompanyID(c)
+	companyID, ok := mustParseCompanyID(c)
+	if !ok {
+		return
+	}
 	employeeID, err := uuid.Parse(c.Param("id"))
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid employee ID"})
@@ -102,7 +123,7 @@ func (h *Handler) Update(c *gin.Context) {
 
 	var req UpdateRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request body"})
 		return
 	}
 
@@ -117,8 +138,4 @@ func (h *Handler) Update(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, emp)
-}
-
-func mustParseCompanyID(c *gin.Context) uuid.UUID {
-	return uuid.MustParse(c.GetString("companyId"))
 }

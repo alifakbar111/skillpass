@@ -472,7 +472,6 @@ type OrgChartNode struct {
 	PositionName *string        `json:"positionName"`
 	Level        *string        `json:"level"`
 	DepartmentID *uuid.UUID     `json:"departmentId"`
-	PhotoURL     *string        `json:"photoUrl"`
 	ManagerID    *uuid.UUID     `json:"managerId"`
 	Children     []OrgChartNode `json:"children"`
 }

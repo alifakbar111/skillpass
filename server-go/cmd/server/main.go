@@ -291,8 +291,12 @@ func main() {
 
 	hrisRoles := hris.Group("/roles")
 	hrisRoles.GET("", rbac.RequirePermission(rbacService, "org.view"), func(c *gin.Context) {
-		companyID := uuid.MustParse(c.GetString("companyId"))
-		roles, err := rbacService.ListRoles(c.Request.Context(), companyID)
+		cid, err := uuid.Parse(c.GetString("companyId"))
+		if err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid company ID"})
+			return
+		}
+		roles, err := rbacService.ListRoles(c.Request.Context(), cid)
 		if err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to list roles"})
 			return
@@ -302,6 +306,11 @@ func main() {
 
 	hrisEmployeeRoles := hris.Group("/employees/:id/roles")
 	hrisEmployeeRoles.POST("", rbac.RequirePermission(rbacService, "roles.manage"), func(c *gin.Context) {
+		companyID, err := uuid.Parse(c.GetString("companyId"))
+		if err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid company ID"})
+			return
+		}
 		employeeID, err := uuid.Parse(c.Param("id"))
 		if err != nil {
 			c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid employee ID"})
@@ -314,13 +323,18 @@ func main() {
 			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 			return
 		}
-		if err := rbacService.AssignRole(c.Request.Context(), employeeID, req.RoleID); err != nil {
+		if err := rbacService.AssignRole(c.Request.Context(), companyID, employeeID, req.RoleID); err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to assign role"})
 			return
 		}
 		c.JSON(http.StatusOK, gin.H{"message": "Role assigned"})
 	})
 	hrisEmployeeRoles.DELETE("/:roleId", rbac.RequirePermission(rbacService, "roles.manage"), func(c *gin.Context) {
+		companyID, err := uuid.Parse(c.GetString("companyId"))
+		if err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid company ID"})
+			return
+		}
 		employeeID, err := uuid.Parse(c.Param("id"))
 		if err != nil {
 			c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid employee ID"})
@@ -331,7 +345,7 @@ func main() {
 			c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid role ID"})
 			return
 		}
-		if err := rbacService.RemoveRole(c.Request.Context(), employeeID, roleID); err != nil {
+		if err := rbacService.RemoveRole(c.Request.Context(), companyID, employeeID, roleID); err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to remove role"})
 			return
 		}
@@ -339,7 +353,11 @@ func main() {
 	})
 
 	hris.GET("/me/permissions", func(c *gin.Context) {
-		employeeID := uuid.MustParse(c.GetString("employeeId"))
+		employeeID, err := uuid.Parse(c.GetString("employeeId"))
+		if err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid employee ID"})
+			return
+		}
 		perms, err := rbacService.GetEmployeePermissions(c.Request.Context(), employeeID)
 		if err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to get permissions"})

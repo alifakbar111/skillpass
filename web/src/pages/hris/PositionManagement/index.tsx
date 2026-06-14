@@ -1,15 +1,15 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Plus, Pencil, Trash2 } from 'lucide-react';
+import { Pencil, Plus, Trash2 } from 'lucide-react';
+import { useRef, useState } from 'react';
+import { usePermissions } from '@/hooks/usePermissions';
 import {
-  listPositions,
   createPosition,
-  updatePosition,
   deletePosition,
   listDepartments,
+  listPositions,
   type Position,
+  updatePosition,
 } from '@/lib/hris/org';
-import { usePermissions } from '@/hooks/usePermissions';
-import { useRef, useState } from 'react';
 
 export default function PositionManagement() {
   const qc = useQueryClient();

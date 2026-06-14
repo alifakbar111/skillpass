@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/google/uuid"
@@ -134,27 +135,19 @@ type ListParams struct {
 
 func (s *Service) generateEmployeeID(ctx context.Context, tx *sql.Tx, companyID uuid.UUID) (string, error) {
 	var prefix string
-	var seq, padding int
+	var nextVal, padding int
 
 	err := tx.QueryRowContext(ctx,
-		`INSERT INTO employee_id_configs (company_id) VALUES ($1)
-		 ON CONFLICT (company_id) DO UPDATE SET next_sequence = employee_id_configs.next_sequence
+		`UPDATE employee_id_configs SET next_sequence = next_sequence + 1
+		 WHERE company_id = $1
 		 RETURNING prefix, next_sequence, padding`,
 		companyID,
-	).Scan(&prefix, &seq, &padding)
+	).Scan(&prefix, &nextVal, &padding)
 	if err != nil {
 		return "", err
 	}
 
-	_, err = tx.ExecContext(ctx,
-		`UPDATE employee_id_configs SET next_sequence = next_sequence + 1 WHERE company_id = $1`,
-		companyID,
-	)
-	if err != nil {
-		return "", err
-	}
-
-	return fmt.Sprintf("%s%0*d", prefix, padding, seq), nil
+	return fmt.Sprintf("%s%0*d", prefix, padding, nextVal), nil
 }
 
 func (s *Service) Create(ctx context.Context, companyID uuid.UUID, req CreateRequest) (*Employee, error) {
@@ -401,7 +394,7 @@ func (s *Service) Update(ctx context.Context, companyID, employeeID uuid.UUID, r
 	addField("base_salary", req.BaseSalary)
 
 	query := fmt.Sprintf("UPDATE employees SET %s WHERE company_id = $1 AND id = $2",
-		joinStrings(setClauses, ", "))
+		strings.Join(setClauses, ", "))
 
 	result, err := s.db.ExecContext(ctx, query, args...)
 	if err != nil {
@@ -413,15 +406,4 @@ func (s *Service) Update(ctx context.Context, companyID, employeeID uuid.UUID, r
 	}
 
 	return s.Get(ctx, companyID, employeeID)
-}
-
-func joinStrings(strs []string, sep string) string {
-	result := ""
-	for i, s := range strs {
-		if i > 0 {
-			result += sep
-		}
-		result += s
-	}
-	return result
 }

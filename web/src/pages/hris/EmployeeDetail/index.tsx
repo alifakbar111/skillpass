@@ -1,10 +1,10 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { useParams, useNavigate } from 'react-router-dom';
 import { ArrowLeft, Save } from 'lucide-react';
-import { getEmployee, updateEmployee, type UpdateEmployeeRequest } from '@/lib/hris/employees';
-import { listDepartments, listPositions, listBranches } from '@/lib/hris/org';
-import { usePermissions } from '@/hooks/usePermissions';
 import { useState } from 'react';
+import { useNavigate, useParams } from 'react-router-dom';
+import { usePermissions } from '@/hooks/usePermissions';
+import { getEmployee, type UpdateEmployeeRequest, updateEmployee } from '@/lib/hris/employees';
+import { listBranches, listDepartments, listPositions } from '@/lib/hris/org';
 
 export default function EmployeeDetail() {
   const { id } = useParams<{ id: string }>();
@@ -17,7 +17,7 @@ export default function EmployeeDetail() {
 
   const { data: emp, isLoading } = useQuery({
     queryKey: ['hris', 'employee', id],
-    queryFn: () => getEmployee(id!),
+    queryFn: () => getEmployee(id ?? ''),
     enabled: !!id,
   });
 
@@ -26,7 +26,7 @@ export default function EmployeeDetail() {
   const { data: branches } = useQuery({ queryKey: ['hris', 'branches'], queryFn: listBranches });
 
   const mutation = useMutation({
-    mutationFn: (data: UpdateEmployeeRequest) => updateEmployee(id!, data),
+    mutationFn: (data: UpdateEmployeeRequest) => updateEmployee(id ?? '', data),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['hris', 'employee', id] });
       qc.invalidateQueries({ queryKey: ['hris', 'employees'] });
@@ -40,8 +40,11 @@ export default function EmployeeDetail() {
     e.preventDefault();
     const fd = new FormData(e.currentTarget);
     const data: UpdateEmployeeRequest = {};
+    const nullableFields = ['departmentId', 'positionId', 'branchId'];
     for (const [key, val] of fd.entries()) {
-      if (val !== '' && val !== emp?.[key as keyof typeof emp]?.toString()) {
+      if (nullableFields.includes(key)) {
+        (data as Record<string, unknown>)[key] = val === '' ? null : val;
+      } else if (val !== '' && val !== emp?.[key as keyof typeof emp]?.toString()) {
         (data as Record<string, unknown>)[key] = key === 'baseSalary' ? Number(val) : val;
       }
     }
@@ -106,11 +109,12 @@ export default function EmployeeDetail() {
             <div className="card-body">
               <h2 className="card-title text-base">Employment</h2>
               <div className="form-control">
-                <label className="label">
+                <label className="label" htmlFor="empStatus">
                   <span className="label-text text-xs">Status</span>
                 </label>
                 {editing ? (
                   <select
+                    id="empStatus"
                     name="employmentStatus"
                     className="select select-bordered select-sm"
                     defaultValue={emp.employmentStatus}
@@ -125,11 +129,12 @@ export default function EmployeeDetail() {
                 )}
               </div>
               <div className="form-control">
-                <label className="label">
+                <label className="label" htmlFor="empType">
                   <span className="label-text text-xs">Type</span>
                 </label>
                 {editing ? (
                   <select
+                    id="empType"
                     name="employmentType"
                     className="select select-bordered select-sm"
                     defaultValue={emp.employmentType}
@@ -145,11 +150,12 @@ export default function EmployeeDetail() {
               </div>
               <Field label="Join Date" name="joinDate" value={emp.joinDate} type="date" editing={editing} />
               <div className="form-control">
-                <label className="label">
+                <label className="label" htmlFor="empDept">
                   <span className="label-text text-xs">Department</span>
                 </label>
                 {editing ? (
                   <select
+                    id="empDept"
                     name="departmentId"
                     className="select select-bordered select-sm"
                     defaultValue={emp.departmentId ?? ''}
@@ -166,11 +172,12 @@ export default function EmployeeDetail() {
                 )}
               </div>
               <div className="form-control">
-                <label className="label">
+                <label className="label" htmlFor="empPos">
                   <span className="label-text text-xs">Position</span>
                 </label>
                 {editing ? (
                   <select
+                    id="empPos"
                     name="positionId"
                     className="select select-bordered select-sm"
                     defaultValue={emp.positionId ?? ''}
@@ -187,11 +194,12 @@ export default function EmployeeDetail() {
                 )}
               </div>
               <div className="form-control">
-                <label className="label">
+                <label className="label" htmlFor="empBranch">
                   <span className="label-text text-xs">Branch</span>
                 </label>
                 {editing ? (
                   <select
+                    id="empBranch"
                     name="branchId"
                     className="select select-bordered select-sm"
                     defaultValue={emp.branchId ?? ''}
@@ -284,11 +292,11 @@ function Field({
 }) {
   return (
     <div className="form-control">
-      <label className="label">
+      <label className="label" htmlFor={name}>
         <span className="label-text text-xs">{label}</span>
       </label>
       {editing ? (
-        <input name={name} type={type} className="input input-bordered input-sm" defaultValue={value ?? ''} />
+        <input id={name} name={name} type={type} className="input input-bordered input-sm" defaultValue={value ?? ''} />
       ) : (
         <p className="text-sm">{value || '-'}</p>
       )}

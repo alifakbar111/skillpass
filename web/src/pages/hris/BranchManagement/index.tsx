@@ -1,8 +1,8 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Plus, Pencil, Trash2, MapPin } from 'lucide-react';
-import { listBranches, createBranch, updateBranch, deleteBranch, type Branch } from '@/lib/hris/org';
-import { usePermissions } from '@/hooks/usePermissions';
+import { MapPin, Pencil, Plus, Trash2 } from 'lucide-react';
 import { useRef, useState } from 'react';
+import { usePermissions } from '@/hooks/usePermissions';
+import { type Branch, createBranch, deleteBranch, listBranches, updateBranch } from '@/lib/hris/org';
 
 export default function BranchManagement() {
   const qc = useQueryClient();
