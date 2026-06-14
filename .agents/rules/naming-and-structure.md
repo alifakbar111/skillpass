@@ -5,3 +5,4 @@
 - Go structs: PascalCase with JSON tags (`json:"camelCase"`)
 - Frontend path alias: `@/*` → `web/src/*`
 - DB tables: `snake_case`, generated as PascalCase by go-jet
+- **Plan files**: `docs/plans/YYYY-MM-DD-<description>.md`

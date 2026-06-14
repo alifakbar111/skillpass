@@ -14,6 +14,14 @@
 - Deterministic checks: git hooks (`lefthook.yml`)
 - Docs output: specs go to `docs/specs/`, plans go to `docs/plans/`
 
+### MiMo Orchestrator
+
+- Orchestrator skill: `.agents/skills/mimo-orchestrator/SKILL.md`
+- Dispatch templates: `.agents/skills/mimo-orchestrator/dispatch-templates.md`
+- Configuration: `.mimocode/config.json`
+- Agent registry: `.agents/agents/*.md` (auto-discovered)
+- Subagent types: `explore` (read-only), `general` (full capabilities)
+
 ### Per-Tool Enablement (opencode)
 
 **Setup:**

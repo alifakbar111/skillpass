@@ -1,0 +1,79 @@
+{
+  "version": "1.0.0",
+  "project": "skillpass",
+  "orchestrator": {
+    "enabled": true,
+    "agentRegistry": ".agents/agents/*.md",
+    "skillRegistry": ".agents/skills/",
+    "defaultSubagentType": "general",
+    "explorationSubagentType": "explore",
+    "timeouts": {
+      "default": 600000,
+      "exploration": 300000,
+      "scaffolding": 900000
+    }
+  },
+  "dispatch": {
+    "parallelThreshold": 2,
+    "maxConcurrentAgents": 5,
+    "retryAttempts": 1,
+    "conflictResolution": "escalate"
+  },
+  "agents": {
+    "bug-hunter": {
+      "type": "explore",
+      "scope": "read-only",
+      "timeout": 300000
+    },
+    "security-auditor": {
+      "type": "general",
+      "scope": "audit",
+      "timeout": 600000
+    },
+    "code-reviewer": {
+      "type": "general",
+      "scope": "review",
+      "timeout": 600000
+    },
+    "go-scaffolder": {
+      "type": "general",
+      "scope": "create",
+      "timeout": 900000
+    },
+    "react-scaffolder": {
+      "type": "general",
+      "scope": "create",
+      "timeout": 900000
+    },
+    "db-migration": {
+      "type": "general",
+      "scope": "create",
+      "timeout": 300000
+    },
+    "test-runner": {
+      "type": "general",
+      "scope": "execute",
+      "timeout": 600000
+    },
+    "planner": {
+      "type": "general",
+      "scope": "orchestrate",
+      "timeout": 300000
+    },
+    "agent-manager": {
+      "type": "general",
+      "scope": "orchestrate",
+      "timeout": 300000
+    },
+    "ui-ux-designer": {
+      "type": "general",
+      "scope": "create",
+      "timeout": 600000
+    }
+  },
+  "logging": {
+    "enabled": true,
+    "level": "info",
+    "dispatchLog": ".mimocode/dispatch.log"
+  }
+}
