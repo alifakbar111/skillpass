@@ -3,17 +3,17 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Pencil, Plus, Users, X } from 'lucide-react';
 import { useState } from 'react';
 import { useForm } from 'react-hook-form';
+import { JobMatches } from '@/components/company/JobMatches';
+import { Form } from '@/components/ui/Form';
+import { FormInput } from '@/components/ui/FormInput';
+import { FormSelect } from '@/components/ui/FormSelect';
+import { FormTextarea } from '@/components/ui/FormTextarea';
+import { LoadingSpinner } from '@/components/ui/LoadingFallback';
+import { useIndustries } from '@/hooks/useIndustries';
+import { ApiError, api } from '@/lib/api';
 import type { Job } from '@/lib/api-types';
-import { JobMatches } from '../../components/company/JobMatches';
-import { Form } from '../../components/ui/Form';
-import { FormInput } from '../../components/ui/FormInput';
-import { FormSelect } from '../../components/ui/FormSelect';
-import { FormTextarea } from '../../components/ui/FormTextarea';
-import { LoadingSpinner } from '../../components/ui/LoadingFallback';
-import { useIndustries } from '../../hooks/useIndustries';
-import { ApiError, api } from '../../lib/api';
-import { EXPERIENCE_LEVEL_OPTIONS } from '../../lib/constants';
-import { type JobForm, jobSchema } from '../../lib/schemas';
+import { EXPERIENCE_LEVEL_OPTIONS } from '@/lib/constants';
+import { type JobForm, jobSchema } from '@/lib/schemas';
 
 function parseFormData(data: JobForm) {
   const tags = data.tags

@@ -1,5 +1,5 @@
 import { Outlet } from 'react-router-dom';
-import HRISSidebar from './HRISSidebar';
+import HRISSidebar from '@/components/hris/HRISSidebar';
 
 export default function HRISLayout() {
   return (

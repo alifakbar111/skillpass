@@ -1,7 +1,7 @@
 import { useQuery } from '@tanstack/react-query';
-import { LoadingFallback } from '../../../components/ui/LoadingFallback';
-import { useAuth } from '../../../hooks/useAuth';
-import { api } from '../../../lib/api';
+import { LoadingFallback } from '@/components/ui/LoadingFallback';
+import { useAuth } from '@/hooks/useAuth';
+import { api } from '@/lib/api';
 import type { Feedback } from '../../../lib/feedback';
 
 async function getCompanyFeedback(): Promise<Feedback[]> {
@@ -54,8 +54,8 @@ export function FeedbackHistoryPage() {
                   <div className="mt-4">
                     <h3 className="font-semibold text-sm mb-2">Skill Ratings Given</h3>
                     <div className="grid grid-cols-2 gap-2">
-                      {item.ratingAreas.map((area, i) => (
-                        <div key={i} className="flex items-center gap-2">
+                      {item.ratingAreas.map((area) => (
+                        <div key={area.skill} className="flex items-center gap-2">
                           <span className="text-sm">{area.skill}</span>
                           <div className="badge badge-primary badge-sm">{area.rating}/5</div>
                         </div>

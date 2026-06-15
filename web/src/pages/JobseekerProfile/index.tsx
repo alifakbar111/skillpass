@@ -3,19 +3,19 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Plus, Trash2, X } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { useForm } from 'react-hook-form';
+import { AvatarUploader } from '@/components/jobseeker/AvatarUploader';
+import { JobseekerOnboarding } from '@/components/onboarding/JobseekerOnboarding';
+import { Form } from '@/components/ui/Form';
+import { FormInput } from '@/components/ui/FormInput';
+import { FormNumberInput } from '@/components/ui/FormNumberInput';
+import { FormSelect } from '@/components/ui/FormSelect';
+import { FormTextarea } from '@/components/ui/FormTextarea';
+import { LoadingFallback, LoadingSpinner } from '@/components/ui/LoadingFallback';
+import { useAuth } from '@/hooks/useAuth';
+import { ApiError, api } from '@/lib/api';
 import type { Experience, Profile } from '@/lib/api-types';
-import { AvatarUploader } from '../../components/jobseeker/AvatarUploader';
-import { JobseekerOnboarding } from '../../components/onboarding/JobseekerOnboarding';
-import { Form } from '../../components/ui/Form';
-import { FormInput } from '../../components/ui/FormInput';
-import { FormNumberInput } from '../../components/ui/FormNumberInput';
-import { FormSelect } from '../../components/ui/FormSelect';
-import { FormTextarea } from '../../components/ui/FormTextarea';
-import { LoadingFallback, LoadingSpinner } from '../../components/ui/LoadingFallback';
-import { useAuth } from '../../hooks/useAuth';
-import { ApiError, api } from '../../lib/api';
-import { type ExperienceForm, experienceSchema, type ProfileForm, profileSchema } from '../../lib/schemas';
-import { ResumeImport } from './ResumeImport';
+import { type ExperienceForm, experienceSchema, type ProfileForm, profileSchema } from '@/lib/schemas';
+import { ResumeImport } from '@/pages/JobseekerProfile/ResumeImport';
 
 const EXPERIENCE_TYPES = [
   { value: 'employment', label: 'Employment' },

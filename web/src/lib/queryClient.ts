@@ -1,5 +1,5 @@
 import { MutationCache, QueryCache, QueryClient } from '@tanstack/react-query';
-import { clearTokens, isAuthError } from './api';
+import { clearTokens, isAuthError } from '@/lib/api';
 
 export const AUTH_LOGOUT_EVENT = 'auth:logout';
 

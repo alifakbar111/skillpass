@@ -1,8 +1,8 @@
 import { useQuery } from '@tanstack/react-query';
-import { LoadingFallback } from '../../../components/ui/LoadingFallback';
-import { useAuth } from '../../../hooks/useAuth';
+import { LoadingFallback } from '@/components/ui/LoadingFallback';
+import { useAuth } from '@/hooks/useAuth';
+import { getCareerPrediction, getSkillGap } from '@/lib/career';
 import type { SkillGapItem } from '../../../lib/career';
-import { getCareerPrediction, getSkillGap } from '../../../lib/career';
 
 export function CareerPage() {
   const { user } = useAuth();
@@ -51,8 +51,8 @@ export function CareerPage() {
             {skillGap && skillGap.skills.length > 0 ? (
               <div className="space-y-3">
                 <p className="text-sm text-base-content/60">Industry: {skillGap.industry || 'Not specified'}</p>
-                {skillGap.skills.map((skill: SkillGapItem, i: number) => (
-                  <div key={i} className="flex items-center gap-4">
+                {skillGap.skills.map((skill: SkillGapItem) => (
+                  <div key={skill.skill} className="flex items-center gap-4">
                     <span className="w-24 text-sm font-medium">{skill.skill}</span>
                     <div className="flex-1">
                       <div className="h-4 bg-base-300 rounded-full overflow-hidden">
@@ -84,8 +84,8 @@ export function CareerPage() {
                 <div>
                   <h3 className="font-semibold text-sm mb-2">Strengths</h3>
                   <div className="flex flex-wrap gap-2">
-                    {prediction.strengths.map((s, i) => (
-                      <span key={i} className="badge badge-success badge-outline">
+                    {prediction.strengths.map((s) => (
+                      <span key={s} className="badge badge-success badge-outline">
                         {s}
                       </span>
                     ))}
@@ -94,8 +94,8 @@ export function CareerPage() {
                 <div>
                   <h3 className="font-semibold text-sm mb-2">Areas to Develop</h3>
                   <div className="flex flex-wrap gap-2">
-                    {prediction.weaknesses.map((w, i) => (
-                      <span key={i} className="badge badge-warning badge-outline">
+                    {prediction.weaknesses.map((w) => (
+                      <span key={w} className="badge badge-warning badge-outline">
                         {w}
                       </span>
                     ))}
@@ -104,8 +104,8 @@ export function CareerPage() {
                 <div>
                   <h3 className="font-semibold text-sm mb-2">Recommendations</h3>
                   <ul className="list-disc list-inside text-sm space-y-1">
-                    {prediction.recommendations.map((r, i) => (
-                      <li key={i}>{r}</li>
+                    {prediction.recommendations.map((r) => (
+                      <li key={r}>{r}</li>
                     ))}
                   </ul>
                 </div>

@@ -1,7 +1,7 @@
 import { Copy, Plus, Trash2, Webhook as WebhookIcon } from 'lucide-react';
 import { useEffect, useState } from 'react';
-import { ApiError } from '../../lib/api';
-import { createWebhook, deleteWebhook, getWebhooks, type Webhook } from '../../lib/webhooks';
+import { ApiError } from '@/lib/api';
+import { createWebhook, deleteWebhook, getWebhooks, type Webhook } from '@/lib/webhooks';
 
 export function WebhooksSection() {
   const [webhooks, setWebhooks] = useState<Webhook[]>([]);

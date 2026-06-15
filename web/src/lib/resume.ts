@@ -1,4 +1,4 @@
-import { api, apiUpload } from './api';
+import { api, apiUpload } from '@/lib/api';
 
 export interface ParsedExperience {
   type: string;

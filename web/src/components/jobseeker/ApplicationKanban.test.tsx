@@ -1,7 +1,7 @@
 import { render, screen } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
+import { ApplicationKanban } from '@/components/jobseeker/ApplicationKanban';
 import type { Application } from '../../lib/application';
-import { ApplicationKanban } from './ApplicationKanban';
 
 const baseApp: Application = {
   id: 'app-1',

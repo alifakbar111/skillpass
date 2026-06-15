@@ -1,9 +1,9 @@
 import { useQuery } from '@tanstack/react-query';
-import { LoadingFallback } from '../../../components/ui/LoadingFallback';
-import { useAuth } from '../../../hooks/useAuth';
-import { api } from '../../../lib/api';
+import { LoadingFallback } from '@/components/ui/LoadingFallback';
+import { useAuth } from '@/hooks/useAuth';
+import { api } from '@/lib/api';
+import { getCompanyReputation } from '@/lib/company-reviews';
 import type { CompanyReview } from '../../../lib/company-reviews';
-import { getCompanyReputation } from '../../../lib/company-reviews';
 
 async function getCompanyReviews(companyId: string): Promise<CompanyReview[]> {
   return api<CompanyReview[]>(`/companies/${companyId}/reviews`);

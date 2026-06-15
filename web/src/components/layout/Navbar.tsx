@@ -1,8 +1,8 @@
 import { useCallback, useEffect, useId, useRef, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { useAuth } from '../../hooks/useAuth';
-import { ThemeToggle } from '../ui/ThemeToggle';
-import { NotificationBell } from './NotificationBell';
+import { NotificationBell } from '@/components/layout/NotificationBell';
+import { ThemeToggle } from '@/components/ui/ThemeToggle';
+import { useAuth } from '@/hooks/useAuth';
 
 export function Navbar() {
   const { user, logout } = useAuth();

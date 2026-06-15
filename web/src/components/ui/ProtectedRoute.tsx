@@ -1,6 +1,6 @@
 import { Navigate } from 'react-router-dom';
-import { useAuth } from '../../hooks/useAuth';
-import { LoadingFallback } from './LoadingFallback';
+import { LoadingFallback } from '@/components/ui/LoadingFallback';
+import { useAuth } from '@/hooks/useAuth';
 
 interface Props {
   children: React.ReactNode;

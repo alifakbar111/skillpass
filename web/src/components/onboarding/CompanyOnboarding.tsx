@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
-import { api } from '../../lib/api';
-import { ChecklistCard, type ChecklistStep } from './ChecklistCard';
+import { ChecklistCard, type ChecklistStep } from '@/components/onboarding/ChecklistCard';
+import { api } from '@/lib/api';
 
 // CompanyOnboarding composes its state from existing endpoints — no
 // dedicated backend. Shown on the verification page (the company's first stop).

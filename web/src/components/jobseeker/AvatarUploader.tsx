@@ -1,6 +1,6 @@
 import { Camera } from 'lucide-react';
 import { useRef, useState } from 'react';
-import { ApiError, apiUpload } from '../../lib/api';
+import { ApiError, apiUpload } from '@/lib/api';
 
 interface Props {
   name: string;

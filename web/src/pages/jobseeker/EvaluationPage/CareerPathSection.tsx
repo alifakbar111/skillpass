@@ -1,7 +1,7 @@
 import { Compass } from 'lucide-react';
 import { useState } from 'react';
-import { ApiError } from '../../../lib/api';
-import { type CareerPathResult, getCareerPath } from '../../../lib/evaluation';
+import { ApiError } from '@/lib/api';
+import { type CareerPathResult, getCareerPath } from '@/lib/evaluation';
 
 const READINESS_BADGE: Record<string, string> = {
   ready: 'badge-success',
