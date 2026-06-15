@@ -1,5 +1,12 @@
 basePath: /api/v1
 definitions:
+  AISuggestion:
+    properties:
+      area:
+        type: string
+      tip:
+        type: string
+    type: object
   ApplicationMessage:
     properties:
       body:
@@ -150,6 +157,15 @@ definitions:
     - title
     - type
     type: object
+  CreateFeedbackRequest:
+    properties:
+      content:
+        type: string
+      ratingAreas:
+        items:
+          $ref: '#/definitions/RatingArea'
+        type: array
+    type: object
   CreateJobRequest:
     properties:
       description:
@@ -242,6 +258,27 @@ definitions:
         type: string
       url:
         type: string
+    type: object
+  Feedback:
+    properties:
+      aiSuggestions:
+        items:
+          $ref: '#/definitions/AISuggestion'
+        type: array
+      companyId:
+        type: string
+      content:
+        type: string
+      createdAt:
+        type: string
+      id:
+        type: string
+      profileId:
+        type: string
+      ratingAreas:
+        items:
+          $ref: '#/definitions/RatingArea'
+        type: array
     type: object
   IndustryResponse:
     properties:
@@ -394,6 +431,15 @@ definitions:
       viewCount:
         type: integer
       yearsOfExperience:
+        type: integer
+    type: object
+  RatingArea:
+    properties:
+      area:
+        type: string
+      notes:
+        type: string
+      score:
         type: integer
     type: object
   RefreshResponse:
@@ -699,6 +745,151 @@ definitions:
         type: integer
       status:
         type: string
+    type: object
+  internal_career.CareerPath:
+    properties:
+      createdAt:
+        type: string
+      description:
+        type: string
+      id:
+        type: string
+      industry:
+        type: string
+      skillRequirements:
+        items:
+          $ref: '#/definitions/internal_career.SkillRequirement'
+        type: array
+      title:
+        type: string
+      typicalProgression:
+        items:
+          $ref: '#/definitions/internal_career.ProgressionStep'
+        type: array
+    type: object
+  internal_career.CareerPrediction:
+    properties:
+      currentPosition:
+        type: string
+      estimatedTimeline:
+        type: string
+      predictedPaths:
+        items:
+          $ref: '#/definitions/internal_career.PredictedPath'
+        type: array
+      skillDevelopment:
+        items:
+          $ref: '#/definitions/internal_career.SkillDevelopment'
+        type: array
+    type: object
+  internal_career.PredictedPath:
+    properties:
+      confidence:
+        type: number
+      reasoning:
+        type: string
+      title:
+        type: string
+    type: object
+  internal_career.ProgressionStep:
+    properties:
+      description:
+        type: string
+      duration:
+        type: string
+      title:
+        type: string
+    type: object
+  internal_career.SkillDevelopment:
+    properties:
+      actions:
+        items:
+          type: string
+        type: array
+      current:
+        type: integer
+      skill:
+        type: string
+      target:
+        type: integer
+    type: object
+  internal_career.SkillGapItem:
+    properties:
+      gap:
+        type: integer
+      required:
+        type: boolean
+      requiredLevel:
+        type: string
+      skill:
+        type: string
+      userLevel:
+        type: integer
+    type: object
+  internal_career.SkillGapResult:
+    properties:
+      matchingSkills:
+        items:
+          $ref: '#/definitions/internal_career.SkillGapItem'
+        type: array
+      missingSkills:
+        items:
+          $ref: '#/definitions/internal_career.SkillGapItem'
+        type: array
+      overallMatch:
+        type: number
+      profileId:
+        type: string
+    type: object
+  internal_career.SkillRequirement:
+    properties:
+      level:
+        type: string
+      name:
+        type: string
+      required:
+        type: boolean
+    type: object
+  internal_companyreviews.CompanyReview:
+    properties:
+      candidateId:
+        type: string
+      companyId:
+        type: string
+      createdAt:
+        type: string
+      id:
+        type: string
+      interactionType:
+        type: string
+      rating:
+        type: integer
+      review:
+        type: string
+    type: object
+  internal_companyreviews.CreateReviewRequest:
+    properties:
+      interactionType:
+        type: string
+      rating:
+        maximum: 5
+        minimum: 1
+        type: integer
+      review:
+        maxLength: 5000
+        type: string
+    required:
+    - interactionType
+    - rating
+    type: object
+  internal_companyreviews.Reputation:
+    properties:
+      averageRate:
+        type: number
+      companyId:
+        type: string
+      reviewCount:
+        type: integer
     type: object
   internal_matching.SkillsGap:
     properties:
@@ -1316,6 +1507,199 @@ paths:
       summary: Match candidates for a job
       tags:
       - matching
+  /career/path/me:
+    get:
+      description: Generate AI-powered career path prediction for the authenticated
+        jobseeker
+      parameters:
+      - description: Industry context for prediction
+        in: query
+        name: industry
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/internal_career.CareerPrediction'
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Get AI career path prediction
+      tags:
+      - career
+  /career/paths:
+    get:
+      description: Get all career paths, optionally filtered by industry
+      parameters:
+      - description: Filter by industry
+        in: query
+        name: industry
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/internal_career.CareerPath'
+            type: array
+      summary: List career paths
+      tags:
+      - career
+  /career/skill-gap/me:
+    get:
+      description: Compare authenticated jobseeker's skills against career path requirements
+      parameters:
+      - description: Industry to compare against
+        in: query
+        name: industry
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/internal_career.SkillGapResult'
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Get skill gap analysis
+      tags:
+      - career
+  /companies/{id}/reputation:
+    get:
+      description: Get aggregated review score for a company
+      parameters:
+      - description: Company UUID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/internal_companyreviews.Reputation'
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Get company reputation
+      tags:
+      - company-reviews
+  /companies/{id}/reviews:
+    get:
+      description: Get all reviews for a company
+      parameters:
+      - description: Company UUID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/internal_companyreviews.CompanyReview'
+            type: array
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: List reviews for a company
+      tags:
+      - company-reviews
+    post:
+      consumes:
+      - application/json
+      description: Candidate rates and reviews a company after applying or interviewing
+      parameters:
+      - description: Company UUID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Review payload
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/internal_companyreviews.CreateReviewRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/internal_companyreviews.CompanyReview'
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Review a company
+      tags:
+      - company-reviews
   /company/analytics:
     get:
       description: 'Aggregate hiring metrics for the authenticated verified company:
@@ -1689,6 +2073,134 @@ paths:
       summary: Get latest evaluation
       tags:
       - evaluation
+  /feedback/{profile_id}:
+    post:
+      consumes:
+      - application/json
+      description: Company submits feedback for a jobseeker profile
+      parameters:
+      - description: Jobseeker profile ID
+        in: path
+        name: profile_id
+        required: true
+        type: string
+      - description: Feedback payload
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/CreateFeedbackRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/Feedback'
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Submit feedback for a candidate
+      tags:
+      - feedback
+  /feedback/company:
+    get:
+      description: Company retrieves all feedback they have submitted
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/Feedback'
+            type: array
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Get feedback for current company
+      tags:
+      - feedback
+  /feedback/me:
+    get:
+      description: Jobseeker retrieves all feedback submitted for their profile
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/Feedback'
+            type: array
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Get feedback for current user's profile
+      tags:
+      - feedback
+  /feedback/suggestions/me:
+    get:
+      description: Jobseeker retrieves aggregated AI suggestions from all feedback
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/AISuggestion'
+            type: array
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Get AI suggestions for current user
+      tags:
+      - feedback
   /health:
     get:
       description: Returns server health status with current timestamp

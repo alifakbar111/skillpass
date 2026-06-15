@@ -12,6 +12,7 @@ server-go/seed
 server-go/server
 .qwen/
 docs/
+!server-go/docs/
 .kilo/
 .vscode/
 
