@@ -43,6 +43,16 @@ const ForgotPassword = lazy(() => import('./pages/ForgotPassword').then((m) => (
 const ResetPassword = lazy(() => import('./pages/ResetPassword').then((m) => ({ default: m.ResetPassword })));
 const VerifyEmail = lazy(() => import('./pages/VerifyEmail').then((m) => ({ default: m.VerifyEmail })));
 
+const FeedbackPage = lazy(() => import('./pages/jobseeker/FeedbackPage').then((m) => ({ default: m.FeedbackPage })));
+const CareerPage = lazy(() => import('./pages/jobseeker/CareerPage').then((m) => ({ default: m.CareerPage })));
+const AnalyticsPage = lazy(() => import('./pages/jobseeker/AnalyticsPage').then((m) => ({ default: m.AnalyticsPage })));
+const FeedbackHistoryPage = lazy(() =>
+  import('./pages/company/FeedbackHistoryPage').then((m) => ({ default: m.FeedbackHistoryPage })),
+);
+const ReputationPage = lazy(() =>
+  import('./pages/company/ReputationPage').then((m) => ({ default: m.ReputationPage })),
+);
+
 const HRISLayout = lazy(() => import('./components/hris/HRISLayout'));
 const EmployeeList = lazy(() => import('./pages/hris/EmployeeList'));
 const EmployeeCreate = lazy(() => import('./pages/hris/EmployeeCreate'));
@@ -104,6 +114,30 @@ const router = createBrowserRouter([
         ),
       },
       {
+        path: '/jobseeker/feedback',
+        element: (
+          <ProtectedRoute requiredRole="jobseeker">
+            <FeedbackPage />
+          </ProtectedRoute>
+        ),
+      },
+      {
+        path: '/jobseeker/career',
+        element: (
+          <ProtectedRoute requiredRole="jobseeker">
+            <CareerPage />
+          </ProtectedRoute>
+        ),
+      },
+      {
+        path: '/jobseeker/analytics',
+        element: (
+          <ProtectedRoute requiredRole="jobseeker">
+            <AnalyticsPage />
+          </ProtectedRoute>
+        ),
+      },
+      {
         path: '/company/profile',
         element: (
           <ProtectedRoute requiredRole="company">
@@ -148,6 +182,22 @@ const router = createBrowserRouter([
         element: (
           <ProtectedRoute requiredRole="company">
             <CompanyAnalytics />
+          </ProtectedRoute>
+        ),
+      },
+      {
+        path: '/company/feedback',
+        element: (
+          <ProtectedRoute requiredRole="company">
+            <FeedbackHistoryPage />
+          </ProtectedRoute>
+        ),
+      },
+      {
+        path: '/company/reputation',
+        element: (
+          <ProtectedRoute requiredRole="company">
+            <ReputationPage />
           </ProtectedRoute>
         ),
       },
