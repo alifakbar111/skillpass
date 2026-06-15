@@ -1,10 +1,10 @@
-import { ChevronDown, ExternalLink, MessageSquare, User } from 'lucide-react';
+import { ExternalLink, MessageSquare, User } from 'lucide-react';
 import { Fragment, useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
+import { LoadingFallback } from '@/components/ui/LoadingFallback';
+import { ApiError, api } from '@/lib/api';
 import type { CompanyApplicationResult as CompanyApplication } from '@/lib/api-types';
-import { LoadingFallback } from '../../components/ui/LoadingFallback';
-import { ApiError, api } from '../../lib/api';
-import { ApplicationNotes } from './ApplicationNotes';
+import { ApplicationNotes } from '@/pages/CompanyApplications/ApplicationNotes';
 
 const STATUS_OPTIONS = ['reviewed', 'interviewed', 'offered', 'rejected'] as const;
 
@@ -102,7 +102,7 @@ export function CompanyApplications() {
                     <tr>
                       <td>
                         <div className="flex items-center gap-3">
-                          <div className="avatar placeholder">
+                          <div className="avatar avatar-placeholder">
                             <div className="bg-neutral text-neutral-content w-8 rounded-full">
                               <User size={16} />
                             </div>
@@ -137,31 +137,27 @@ export function CompanyApplications() {
                           </button>
 
                           {app.status !== 'rejected' && app.status !== 'offered' && (
-                            <div className="dropdown dropdown-end">
-                              {/* biome-ignore lint/a11y/useSemanticElements: DaisyUI dropdown trigger uses a role="button" div by design */}
-                              <div tabIndex={0} role="button" className="btn btn-xs btn-outline">
-                                {updating === app.id ? (
-                                  <span className="loading loading-spinner loading-xs" />
-                                ) : (
-                                  <>
-                                    Move <ChevronDown size={12} />
-                                  </>
-                                )}
-                              </div>
-                              <ul
-                                // biome-ignore lint/a11y/noNoninteractiveTabindex: DaisyUI dropdown content needs tabIndex to receive focus
-                                tabIndex={0}
-                                className="dropdown-content menu p-2 shadow bg-base-200 rounded-box w-40 z-10"
-                              >
-                                {STATUS_OPTIONS.filter((s) => s !== app.status).map((s) => (
-                                  <li key={s}>
-                                    <button type="button" onClick={() => app.id && handleStatusChange(app.id, s)}>
-                                      {s.charAt(0).toUpperCase() + s.slice(1)}
-                                    </button>
-                                  </li>
-                                ))}
-                              </ul>
-                            </div>
+                            <select
+                              className="select select-xs select-bordered w-28"
+                              defaultValue=""
+                              disabled={updating === app.id}
+                              aria-label="Change status"
+                              onChange={(e) => {
+                                const newStatus = e.target.value;
+                                if (newStatus && app.id) {
+                                  handleStatusChange(app.id, newStatus);
+                                }
+                              }}
+                            >
+                              <option value="" disabled>
+                                {updating === app.id ? 'Moving...' : 'Move'}
+                              </option>
+                              {STATUS_OPTIONS.filter((s) => s !== app.status).map((s) => (
+                                <option key={s} value={s}>
+                                  {s.charAt(0).toUpperCase() + s.slice(1)}
+                                </option>
+                              ))}
+                            </select>
                           )}
                         </div>
                       </td>

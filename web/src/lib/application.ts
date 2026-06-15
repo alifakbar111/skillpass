@@ -1,4 +1,4 @@
-import { api } from './api';
+import { api } from '@/lib/api';
 import type { ApplicationMessage, ApplicationResult } from './api-types';
 
 // ApplicationStatus is a client-side narrowing of the server's free-form

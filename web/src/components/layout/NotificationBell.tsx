@@ -6,7 +6,7 @@ import {
   markAllNotificationsRead,
   markNotificationRead,
   type Notification,
-} from '../../lib/notifications';
+} from '@/lib/notifications';
 
 const POLL_INTERVAL_MS = 60_000;
 

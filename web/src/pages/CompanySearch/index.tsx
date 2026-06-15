@@ -1,10 +1,10 @@
 import { useQuery } from '@tanstack/react-query';
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
+import { LoadingSpinner } from '@/components/ui/LoadingFallback';
+import { useIndustries } from '@/hooks/useIndustries';
+import { ApiError, api } from '@/lib/api';
 import type { CandidateResult as Candidate } from '@/lib/api-types';
-import { LoadingSpinner } from '../../components/ui/LoadingFallback';
-import { useIndustries } from '../../hooks/useIndustries';
-import { ApiError, api } from '../../lib/api';
 
 interface SearchParams {
   query: string;

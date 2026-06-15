@@ -4,13 +4,13 @@ import { X } from 'lucide-react';
 import { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { Link } from 'react-router-dom';
-import { CompanyOnboarding } from '../../components/onboarding/CompanyOnboarding';
-import { Form } from '../../components/ui/Form';
-import { FormInput } from '../../components/ui/FormInput';
-import { FormTextarea } from '../../components/ui/FormTextarea';
-import { LoadingSpinner } from '../../components/ui/LoadingFallback';
-import { ApiError, api } from '../../lib/api';
-import { type VerificationForm, verificationSchema } from '../../lib/schemas';
+import { CompanyOnboarding } from '@/components/onboarding/CompanyOnboarding';
+import { Form } from '@/components/ui/Form';
+import { FormInput } from '@/components/ui/FormInput';
+import { FormTextarea } from '@/components/ui/FormTextarea';
+import { LoadingSpinner } from '@/components/ui/LoadingFallback';
+import { ApiError, api } from '@/lib/api';
+import { type VerificationForm, verificationSchema } from '@/lib/schemas';
 
 export function CompanyVerification() {
   const queryClient = useQueryClient();

@@ -1,9 +1,9 @@
 import { useQuery } from '@tanstack/react-query';
-import { LoadingFallback } from '../../../components/ui/LoadingFallback';
-import { useAuth } from '../../../hooks/useAuth';
-import { getJobseekerAnalytics } from '../../../lib/analytics';
+import { LoadingFallback } from '@/components/ui/LoadingFallback';
+import { useAuth } from '@/hooks/useAuth';
+import { getJobseekerAnalytics } from '@/lib/analytics';
+import { getMyProfileViews } from '@/lib/profile-views';
 import type { ProfileView } from '../../../lib/profile-views';
-import { getMyProfileViews } from '../../../lib/profile-views';
 
 export function AnalyticsPage() {
   const { user } = useAuth();

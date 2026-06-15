@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { AuthError } from './api';
-import { handleQueryError } from './queryClient';
+import { AuthError } from '@/lib/api';
+import { handleQueryError } from '@/lib/queryClient';
 
 describe('handleQueryError', () => {
   afterEach(() => {

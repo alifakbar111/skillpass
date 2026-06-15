@@ -2,14 +2,14 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { useState } from 'react';
 import { useForm, useWatch } from 'react-hook-form';
 import { Link, useNavigate } from 'react-router-dom';
-import { Form } from '../../components/ui/Form';
-import { FormInput } from '../../components/ui/FormInput';
-import { FormTextarea } from '../../components/ui/FormTextarea';
-import { LoadingSpinner } from '../../components/ui/LoadingFallback';
-import { ToggleButtonGroup } from '../../components/ui/ToggleButtonGroup';
-import { useAuth } from '../../hooks/useAuth';
-import { ApiError } from '../../lib/api';
-import { type RegisterForm, registerSchema } from '../../lib/schemas';
+import { Form } from '@/components/ui/Form';
+import { FormInput } from '@/components/ui/FormInput';
+import { FormTextarea } from '@/components/ui/FormTextarea';
+import { LoadingSpinner } from '@/components/ui/LoadingFallback';
+import { ToggleButtonGroup } from '@/components/ui/ToggleButtonGroup';
+import { useAuth } from '@/hooks/useAuth';
+import { ApiError } from '@/lib/api';
+import { type RegisterForm, registerSchema } from '@/lib/schemas';
 
 export function Register() {
   const { register: authRegister } = useAuth();

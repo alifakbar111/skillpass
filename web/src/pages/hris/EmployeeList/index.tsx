@@ -81,12 +81,20 @@ export default function EmployeeList() {
             onChange={(e) => setSearch(e.target.value)}
             onKeyDown={(e) => e.key === 'Enter' && applyFilters()}
           />
-          <button type="button" className="btn btn-sm join-item" onClick={applyFilters}>
+          <button
+            type="button"
+            title="search"
+            aria-label="search"
+            className="btn btn-sm join-item"
+            onClick={applyFilters}
+          >
             <Search className="h-4 w-4" />
           </button>
         </div>
         <select
           className="select select-bordered select-sm"
+          name="select-status"
+          aria-label="select-status"
           value={status}
           onChange={(e) => {
             const params = new URLSearchParams(searchParams);
@@ -103,6 +111,8 @@ export default function EmployeeList() {
         </select>
         <select
           className="select select-bordered select-sm"
+          name="select-departments"
+          aria-label="select-departments"
           value={departmentId}
           onChange={(e) => {
             const params = new URLSearchParams(searchParams);
@@ -176,6 +186,8 @@ export default function EmployeeList() {
                 <button
                   type="button"
                   className="join-item btn btn-sm"
+                  title="btn-previous"
+                  aria-label="btn-previous"
                   disabled={page <= 1}
                   onClick={() => goToPage(page - 1)}
                 >
@@ -187,6 +199,8 @@ export default function EmployeeList() {
                 <button
                   type="button"
                   className="join-item btn btn-sm"
+                  title="btn-next"
+                  aria-label="btn-next"
                   disabled={page >= totalPages}
                   onClick={() => goToPage(page + 1)}
                 >

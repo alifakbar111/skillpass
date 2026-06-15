@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { LoadingSpinner } from '../../components/ui/LoadingFallback';
-import { ApiError, api } from '../../lib/api';
+import { LoadingSpinner } from '@/components/ui/LoadingFallback';
+import { ApiError, api } from '@/lib/api';
 
 export function ForgotPassword() {
   const [email, setEmail] = useState('');

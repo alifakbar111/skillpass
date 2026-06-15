@@ -1,9 +1,9 @@
 import { Briefcase, DollarSign, MapPin, Sparkles } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { LoadingFallback } from '../../components/ui/LoadingFallback';
-import { ApiError } from '../../lib/api';
-import { getJobMatches, type JobMatch } from '../../lib/matching';
+import { LoadingFallback } from '@/components/ui/LoadingFallback';
+import { ApiError } from '@/lib/api';
+import { getJobMatches, type JobMatch } from '@/lib/matching';
 
 function scoreBadgeClass(score: number): string {
   if (score >= 80) return 'badge-success';

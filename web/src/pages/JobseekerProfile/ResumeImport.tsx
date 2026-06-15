@@ -1,9 +1,9 @@
 import { Check, FileUp, Sparkles, Wand2 } from 'lucide-react';
 import { useRef, useState } from 'react';
+import { LoadingSpinner } from '@/components/ui/LoadingFallback';
+import { ApiError, api } from '@/lib/api';
 import type { Experience } from '@/lib/api-types';
-import { LoadingSpinner } from '../../components/ui/LoadingFallback';
-import { ApiError, api } from '../../lib/api';
-import { type ParsedExperience, type ParsedResume, parseResume, uploadResume } from '../../lib/resume';
+import { type ParsedExperience, type ParsedResume, parseResume, uploadResume } from '@/lib/resume';
 
 interface Props {
   onExperienceAdded: (exp: Experience) => void;

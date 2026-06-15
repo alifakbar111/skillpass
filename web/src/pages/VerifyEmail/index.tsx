@@ -1,9 +1,9 @@
 import { CheckCircle, XCircle } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
-import { LoadingFallback } from '../../components/ui/LoadingFallback';
-import { useAuth } from '../../hooks/useAuth';
-import { ApiError, api } from '../../lib/api';
+import { LoadingFallback } from '@/components/ui/LoadingFallback';
+import { useAuth } from '@/hooks/useAuth';
+import { ApiError, api } from '@/lib/api';
 
 export function VerifyEmail() {
   const [params] = useSearchParams();
