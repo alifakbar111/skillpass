@@ -130,6 +130,10 @@ func (s *Service) ListPaths(ctx context.Context, industry string) ([]CareerPath,
 		paths = append(paths, p)
 	}
 
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("iterate career paths: %w", err)
+	}
+
 	if paths == nil {
 		paths = []CareerPath{}
 	}
@@ -170,6 +174,10 @@ func (s *Service) GetSkillGap(ctx context.Context, profileID string, industry st
 		}
 	}
 
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("iterate career paths: %w", err)
+	}
+
 	// Get user's skill scores from latest evaluation
 	evalQuery := `
 		SELECT skill_scores
@@ -203,6 +211,15 @@ func (s *Service) GetSkillGap(ctx context.Context, profileID string, industry st
 		return nil, fmt.Errorf("unmarshal skill scores: %w", err)
 	}
 
+	if len(userScores) == 0 {
+		return &SkillGapResult{
+			ProfileID:      profileID,
+			MatchingSkills: []SkillGapItem{},
+			MissingSkills:  []SkillGapItem{},
+			OverallMatch:   0,
+		}, nil
+	}
+
 	userSkillMap := map[string]int{}
 	for _, s := range userScores {
 		userSkillMap[strings.ToLower(s.Skill)] = s.Score
@@ -215,13 +232,31 @@ func (s *Service) GetSkillGap(ctx context.Context, profileID string, industry st
 		userScore, hasSkill := userSkillMap[strings.ToLower(skillName)]
 
 		if hasSkill {
-			matching = append(matching, SkillGapItem{
-				Skill:         skillName,
-				Required:      req.Required,
-				RequiredLevel: req.Level,
-				UserLevel:     userScore,
-				Gap:           0,
-			})
+			requiredLevel := 0
+			if req.Level != "" {
+				fmt.Sscanf(req.Level, "%d", &requiredLevel)
+			}
+			gap := requiredLevel - userScore
+			if gap < 0 {
+				gap = 0
+			}
+			if gap == 0 {
+				matching = append(matching, SkillGapItem{
+					Skill:         skillName,
+					Required:      req.Required,
+					RequiredLevel: req.Level,
+					UserLevel:     userScore,
+					Gap:           0,
+				})
+			} else {
+				missing = append(missing, SkillGapItem{
+					Skill:         skillName,
+					Required:      req.Required,
+					RequiredLevel: req.Level,
+					UserLevel:     userScore,
+					Gap:           gap,
+				})
+			}
 		} else {
 			missing = append(missing, SkillGapItem{
 				Skill:         skillName,
@@ -288,6 +323,15 @@ func (s *Service) PredictPath(ctx context.Context, profileID string, industry st
 	var userScores []SkillScoreItem
 	if err := json.Unmarshal([]byte(skillScoresJSON), &userScores); err != nil {
 		return nil, fmt.Errorf("unmarshal skill scores: %w", err)
+	}
+
+	if len(userScores) == 0 {
+		return &CareerPrediction{
+			CurrentPosition:   "Unknown",
+			PredictedPaths:    []PredictedPath{},
+			SkillDevelopment:  []SkillDevelopment{},
+			EstimatedTimeline: "Unable to determine — no skill scores found",
+		}, nil
 	}
 
 	// Get profile info
