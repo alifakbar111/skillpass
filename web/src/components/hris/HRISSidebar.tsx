@@ -1,6 +1,7 @@
 import {
   AlertTriangle,
   Banknote,
+  BarChart3,
   Briefcase,
   Building2,
   Calculator,
@@ -8,8 +9,11 @@ import {
   CalendarCheck,
   CalendarDays,
   CalendarOff,
+  ClipboardCheck,
+  ClipboardList,
   Clock,
   ClockArrowUp,
+  Download,
   FileText,
   MapPin,
   Network,
@@ -40,6 +44,11 @@ const links = [
   { to: '/hris/salary-components', label: 'Salary Config', icon: Banknote },
   { to: '/hris/payroll-runs', label: 'Payroll Runs', icon: Calculator },
   { to: '/hris/my-payslips', label: 'My Payslips', icon: Receipt },
+  { to: '/hris/attendance-export', label: 'Export Attendance', icon: Download },
+  { to: '/hris/analytics', label: 'HR Analytics', icon: BarChart3 },
+  { to: '/hris/onboarding-templates', label: 'Onboard Templates', icon: ClipboardList },
+  { to: '/hris/onboarding-checklists', label: 'Onboarding', icon: ClipboardCheck },
+  { to: '/hris/my-onboarding', label: 'My Onboarding', icon: ClipboardCheck },
 ];
 
 export default function HRISSidebar() {

@@ -67,6 +67,11 @@ const EmployeeSalary = lazy(() => import('./pages/hris/EmployeeSalary'));
 const PayrollRuns = lazy(() => import('./pages/hris/PayrollRuns'));
 const PayslipView = lazy(() => import('./pages/hris/PayslipView'));
 const MyPayslips = lazy(() => import('./pages/hris/MyPayslips'));
+const AttendanceExport = lazy(() => import('./pages/hris/AttendanceExport'));
+const HRAnalytics = lazy(() => import('./pages/hris/HRAnalytics'));
+const OnboardingTemplates = lazy(() => import('./pages/hris/OnboardingTemplates'));
+const OnboardingChecklists = lazy(() => import('./pages/hris/OnboardingChecklists'));
+const MyOnboarding = lazy(() => import('./pages/hris/MyOnboarding'));
 
 const router = createBrowserRouter([
   {
@@ -218,6 +223,11 @@ const router = createBrowserRouter([
           { path: 'payroll-runs', element: <PayrollRuns /> },
           { path: 'payroll-runs/:runId/payslips', element: <PayslipView /> },
           { path: 'my-payslips', element: <MyPayslips /> },
+          { path: 'attendance-export', element: <AttendanceExport /> },
+          { path: 'analytics', element: <HRAnalytics /> },
+          { path: 'onboarding-templates', element: <OnboardingTemplates /> },
+          { path: 'onboarding-checklists', element: <OnboardingChecklists /> },
+          { path: 'my-onboarding', element: <MyOnboarding /> },
         ],
       },
     ],
