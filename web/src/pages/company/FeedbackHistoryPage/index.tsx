@@ -10,7 +10,12 @@ async function getCompanyFeedback(): Promise<Feedback[]> {
 
 export function FeedbackHistoryPage() {
   const { user } = useAuth();
-  const { data: feedback = [], isLoading } = useQuery({
+  const {
+    data: feedback = [],
+    isLoading,
+    isError,
+    error,
+  } = useQuery({
     queryKey: ['feedback', 'company'],
     enabled: !!user,
     queryFn: getCompanyFeedback,
@@ -22,6 +27,14 @@ export function FeedbackHistoryPage() {
       </div>
     );
   if (isLoading) return <LoadingFallback text="Loading feedback history" />;
+  if (isError)
+    return (
+      <div className="max-w-4xl mx-auto p-4">
+        <div className="alert alert-error">
+          <span>{error.message}</span>
+        </div>
+      </div>
+    );
   return (
     <div className="max-w-5xl mx-auto p-4 space-y-6">
       <h1 className="text-2xl font-bold">Feedback History</h1>
