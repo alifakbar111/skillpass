@@ -7,12 +7,22 @@ import { getMyProfileViews } from '../../../lib/profile-views';
 
 export function AnalyticsPage() {
   const { user } = useAuth();
-  const { data: views = [], isLoading: loadingViews } = useQuery({
+  const {
+    data: views = [],
+    isLoading: loadingViews,
+    isError: isErrorViews,
+    error: errorViews,
+  } = useQuery({
     queryKey: ['profile-views'],
     enabled: !!user,
     queryFn: getMyProfileViews,
   });
-  const { data: stats, isLoading: loadingStats } = useQuery({
+  const {
+    data: stats,
+    isLoading: loadingStats,
+    isError: isErrorStats,
+    error: errorStats,
+  } = useQuery({
     queryKey: ['jobseeker', 'analytics'],
     enabled: !!user,
     queryFn: () => getJobseekerAnalytics(),
@@ -24,6 +34,14 @@ export function AnalyticsPage() {
       </div>
     );
   if (loadingViews || loadingStats) return <LoadingFallback text="Loading analytics" />;
+  if (isErrorViews || isErrorStats)
+    return (
+      <div className="max-w-4xl mx-auto p-4">
+        <div className="alert alert-error">
+          <span>{errorViews?.message || errorStats?.message}</span>
+        </div>
+      </div>
+    );
   return (
     <div className="max-w-5xl mx-auto p-4 space-y-6">
       <h1 className="text-2xl font-bold">Analytics</h1>

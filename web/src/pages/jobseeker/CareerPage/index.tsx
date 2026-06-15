@@ -6,12 +6,22 @@ import { getCareerPrediction, getSkillGap } from '../../../lib/career';
 
 export function CareerPage() {
   const { user } = useAuth();
-  const { data: skillGap, isLoading: loadingGap } = useQuery({
+  const {
+    data: skillGap,
+    isLoading: loadingGap,
+    isError: isErrorGap,
+    error: errorGap,
+  } = useQuery({
     queryKey: ['career', 'skill-gap'],
     enabled: !!user,
     queryFn: getSkillGap,
   });
-  const { data: prediction, isLoading: loadingPrediction } = useQuery({
+  const {
+    data: prediction,
+    isLoading: loadingPrediction,
+    isError: isErrorPrediction,
+    error: errorPrediction,
+  } = useQuery({
     queryKey: ['career', 'prediction'],
     enabled: !!user,
     queryFn: getCareerPrediction,
@@ -23,6 +33,14 @@ export function CareerPage() {
       </div>
     );
   if (loadingGap || loadingPrediction) return <LoadingFallback text="Loading career insights" />;
+  if (isErrorGap || isErrorPrediction)
+    return (
+      <div className="max-w-4xl mx-auto p-4">
+        <div className="alert alert-error">
+          <span>{errorGap?.message || errorPrediction?.message}</span>
+        </div>
+      </div>
+    );
   return (
     <div className="max-w-5xl mx-auto p-4 space-y-6">
       <h1 className="text-2xl font-bold">Career Growth</h1>

@@ -6,12 +6,22 @@ import { getMyFeedback, getMySuggestions } from '../../../lib/feedback';
 
 export function FeedbackPage() {
   const { user } = useAuth();
-  const { data: feedback = [], isLoading: loadingFeedback } = useQuery({
+  const {
+    data: feedback = [],
+    isLoading: loadingFeedback,
+    isError: isErrorFeedback,
+    error: errorFeedback,
+  } = useQuery({
     queryKey: ['feedback', 'me'],
     enabled: !!user,
     queryFn: getMyFeedback,
   });
-  const { data: suggestions = [], isLoading: loadingSuggestions } = useQuery({
+  const {
+    data: suggestions = [],
+    isLoading: loadingSuggestions,
+    isError: isErrorSuggestions,
+    error: errorSuggestions,
+  } = useQuery({
     queryKey: ['feedback', 'suggestions'],
     enabled: !!user,
     queryFn: getMySuggestions,
@@ -23,6 +33,14 @@ export function FeedbackPage() {
       </div>
     );
   if (loadingFeedback || loadingSuggestions) return <LoadingFallback text="Loading feedback" />;
+  if (isErrorFeedback || isErrorSuggestions)
+    return (
+      <div className="max-w-4xl mx-auto p-4">
+        <div className="alert alert-error">
+          <span>{errorFeedback?.message || errorSuggestions?.message}</span>
+        </div>
+      </div>
+    );
   return (
     <div className="max-w-5xl mx-auto p-4 space-y-6">
       <h1 className="text-2xl font-bold">Feedback Received</h1>

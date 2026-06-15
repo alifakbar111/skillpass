@@ -2,15 +2,8 @@ import { useQuery } from '@tanstack/react-query';
 import { LoadingFallback } from '../../../components/ui/LoadingFallback';
 import { useAuth } from '../../../hooks/useAuth';
 import { api } from '../../../lib/api';
+import type { CompanyReview } from '../../../lib/company-reviews';
 import { getCompanyReputation } from '../../../lib/company-reviews';
-
-interface CompanyReview {
-  id: string;
-  rating: number;
-  review: string | null;
-  interactionType: string;
-  createdAt: string;
-}
 
 async function getCompanyReviews(companyId: string): Promise<CompanyReview[]> {
   return api<CompanyReview[]>(`/companies/${companyId}/reviews`);
@@ -22,18 +15,28 @@ async function getCompanyProfile(): Promise<{ id: string }> {
 
 export function ReputationPage() {
   const { user } = useAuth();
-  const { data: companyProfile } = useQuery({
+  const { data: companyProfile, isLoading: loadingProfile } = useQuery({
     queryKey: ['company', 'profile'],
     enabled: !!user,
     queryFn: getCompanyProfile,
   });
   const companyId = companyProfile?.id ?? '';
-  const { data: reputation, isLoading: loadingReputation } = useQuery({
+  const {
+    data: reputation,
+    isLoading: loadingReputation,
+    isError: isErrorReputation,
+    error: errorReputation,
+  } = useQuery({
     queryKey: ['company', 'reputation'],
     enabled: !!companyId,
     queryFn: () => getCompanyReputation(companyId),
   });
-  const { data: reviews = [], isLoading: loadingReviews } = useQuery({
+  const {
+    data: reviews = [],
+    isLoading: loadingReviews,
+    isError: isErrorReviews,
+    error: errorReviews,
+  } = useQuery({
     queryKey: ['company', 'reviews'],
     enabled: !!companyId,
     queryFn: () => getCompanyReviews(companyId),
@@ -44,7 +47,15 @@ export function ReputationPage() {
         <p>Please log in to view reputation.</p>
       </div>
     );
-  if (loadingReputation || loadingReviews) return <LoadingFallback text="Loading reputation" />;
+  if (loadingProfile || loadingReputation || loadingReviews) return <LoadingFallback text="Loading reputation" />;
+  if (isErrorReputation || isErrorReviews)
+    return (
+      <div className="max-w-4xl mx-auto p-4">
+        <div className="alert alert-error">
+          <span>{errorReputation?.message || errorReviews?.message}</span>
+        </div>
+      </div>
+    );
   return (
     <div className="max-w-5xl mx-auto p-4 space-y-6">
       <h1 className="text-2xl font-bold">Company Reputation</h1>
