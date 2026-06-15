@@ -38,38 +38,175 @@ Talent marketplace where jobseekers build structured career profiles, get AI-pow
 
 ## Prerequisites
 
-- [Go](https://go.dev) >= 1.26
-- [Bun](https://bun.sh) >= 1.2 (for web tooling)
-- [Docker](https://docker.com) (for PostgreSQL and full stack)
-- [jet](https://github.com/go-jet/jet) CLI (optional, for codegen)
+| Tool | Version | Install |
+|---|---|---|
+| [Go](https://go.dev) | >= 1.26 | `go version` |
+| [Bun](https://bun.sh) | >= 1.2 | `bun --version` |
+| [Docker](https://docker.com) | Any recent | `docker --version` |
+| [jet CLI](https://github.com/go-jet/jet) | Latest | `go install github.com/go-jet/jet/v2/cmd/jet@latest` (optional — for codegen) |
 
-## Quick Start
+> **Quick version check:**
+> ```bash
+> go version    # expect go1.26+
+> bun --version # expect 1.2+
+> docker --version
+> ```
+
+## Local Setup (Step by Step)
+
+Follow these steps in order for a fresh local development environment.
+
+### 1. Clone the Repository
 
 ```bash
-# 1. Start PostgreSQL
+git clone <repo-url> skillpass
+cd skillpass
+```
+
+### 2. Install Dependencies
+
+Install root-level tooling (Biome linter, concurrently, lefthook git hooks, openapi-typescript, etc.):
+
+```bash
+bun install
+```
+
+Then install frontend dependencies:
+
+```bash
+bun --cwd web install
+```
+
+### 3. Configure Environment Variables
+
+Environment files are pre-configured for local dev. If starting fresh, copy the examples:
+
+```bash
+# Server config (JWT secret, DB connection, LLM keys, SMTP, etc.)
+cp server-go/.env.example server-go/.env
+
+# Frontend config (API path, proxy target)
+cp web/.env.example web/.env
+```
+
+> **Important:** The default `.env` files already in the repo work out of the box.
+> - Server uses `server-go/.env` — contains DB creds, JWT secret, LLM config, SMTP settings
+> - Frontend uses `web/.env` — sets `VITE_API_BASE_PATH=/api/v1` and proxied API target to `localhost:1234`
+> - A root `.env` also exists for reference (duplicates key server vars)
+>
+> For AI evaluation features, set your LLM API key in `server-go/.env`:
+> ```
+> LLM_PROVIDER=openai
+> LLM_API_KEY=sk-...
+> LLM_MODEL=gpt-4o-mini
+> ```
+
+### 4. Start PostgreSQL
+
+```bash
 docker compose up db -d
+```
 
-# 2. Run migrations and seed
+This starts a PostgreSQL 16 container on port `5432` with database `skillpass` and user `postgres` / password `postgres`.
+
+Wait a few seconds for the container to become healthy:
+
+```bash
+docker compose ps  # should show "healthy" for db
+```
+
+### 5. Install Lefthook (Git Hooks)
+
+```bash
+bun run lefthook install
+```
+
+This installs:
+- **pre-commit hook** — auto-formats staged files with Biome
+- **pre-push hook** — runs Go + web tests, vulnerability checks, API drift detection
+
+> **First-time tip:** Run with `--force` if hooks were previously installed:
+> ```bash
+> bun x lefthook install --force
+> ```
+
+### 6. Run Database Migrations
+
+```bash
 bun run db:migrate
-bun run db:seed
+```
+### 7. Seed Initial Data
 
-# 3. Start development servers (both server + web)
+```bash
+bun run db:seed
+```
+### 8. Generate go-jet Types (Optional)
+
+```bash
+bun run db:generate
+```
+
+Regenerates the Go type-safe query builder types from the live database schema into `server-go/.gen/`. Run this **after** any schema change.
+
+> Requires the `jet` CLI: `go install github.com/go-jet/jet/v2/cmd/jet@latest`
+
+### 9. Generate API Types
+
+```bash
+bun run api:generate
+```
+
+Regenerates:
+- Swagger/OpenAPI spec → `server-go/docs/swagger.json`
+- TypeScript API client types → `web/src/lib/generated/api.d.ts`
+
+> Run this whenever server response structs change, and **before pushing** (the pre-push hook enforces it).
+
+### 10. Start Development Servers
+
+```bash
 bun run dev
 ```
 
-- **Web:** http://localhost:4200
-- **API:** http://localhost:1234
-- **Storybook:** http://localhost:6006
+This starts both servers concurrently:
 
-## Full Docker Setup
+| Service | URL | Command |
+|---|---|---|
+| **Web (Vite dev server)** | http://localhost:4200 | `bun --cwd web dev` |
+| **API (Go/Gin)** | http://localhost:1234 | `go -C server-go run ./cmd/server/` |
+| **Storybook** | http://localhost:6006 | `bun --cwd web storybook` |
+
+The Vite dev server proxies `/api/*` and `/uploads/*` requests to the Go backend at `http://localhost:1234`.
+
+### Complete One-Liner (Fresh Start)
+
+If you've already cloned the repo and installed dependencies:
 
 ```bash
-# Build and start all services
+docker compose up db -d && 
+bun run db:migrate && 
+bun run db:seed && 
+bun run dev
+```
+
+### Docker Full Stack (Alternative)
+
+Run everything in containers (no local tooling needed except Docker):
+
+```bash
+# Build and start all services (DB, server, web)
 bun run docker:up
 
 # Stop
 bun run docker:down
 ```
+
+This uses the `docker-compose.yml` which builds:
+- **db** — PostgreSQL 16
+- **server** — Go API (Dockerfile in `server-go/`)
+- **web** — Nginx-served React SPA (Dockerfile in `web/`)
+
+> For local development, the non-Docker approach is recommended (hot reload, faster iteration). Use `docker:up` for integration testing or demo deployments.
 
 ## Available Commands
 
