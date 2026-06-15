@@ -69,6 +69,8 @@ func (h *Handler) PostReview(c *gin.Context) {
 			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		case errors.Is(err, ErrInvalidInteraction):
 			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		case errors.Is(err, ErrCompanyNotFound):
+			c.JSON(http.StatusNotFound, gin.H{"error": "Company not found"})
 		default:
 			slog.Error("failed to create review", "error", err)
 			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create review"})
@@ -134,12 +136,5 @@ func (h *Handler) GetReputation(c *gin.Context) {
 }
 
 func (h *Handler) lookupCandidateProfile(c *gin.Context, userID string) (string, error) {
-	var profileID uuid.UUID
-	err := h.service.db.QueryRowContext(c.Request.Context(),
-		`SELECT id FROM jobseeker_profiles WHERE user_id = $1`, userID,
-	).Scan(&profileID)
-	if err != nil {
-		return "", err
-	}
-	return profileID.String(), nil
+	return h.service.LookupCandidateProfile(c.Request.Context(), userID)
 }

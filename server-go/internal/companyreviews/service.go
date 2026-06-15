@@ -6,6 +6,8 @@ import (
 	"errors"
 	"fmt"
 	"time"
+
+	"github.com/google/uuid"
 )
 
 var (
@@ -41,7 +43,7 @@ type Reputation struct {
 
 type CreateReviewRequest struct {
 	Rating          int    `json:"rating" binding:"required,min=1,max=5"`
-	Review          string `json:"review"`
+	Review          string `json:"review" binding:"max=5000"`
 	InteractionType string `json:"interactionType" binding:"required"`
 }
 
@@ -53,9 +55,19 @@ func (s *Service) Create(ctx context.Context, companyID, candidateID string, req
 		return nil, ErrInvalidInteraction
 	}
 
+	// Check company exists
+	var companyExists bool
+	err := s.db.QueryRowContext(ctx, `SELECT EXISTS(SELECT 1 FROM companies WHERE id = $1)`, companyID).Scan(&companyExists)
+	if err != nil {
+		return nil, fmt.Errorf("check company existence: %w", err)
+	}
+	if !companyExists {
+		return nil, ErrCompanyNotFound
+	}
+
 	var id string
 	var createdAt time.Time
-	err := s.db.QueryRowContext(ctx,
+	err = s.db.QueryRowContext(ctx,
 		`INSERT INTO company_reviews (company_id, candidate_id, rating, review, interaction_type)
 		 VALUES ($1, $2, $3, $4, $5)
 		 ON CONFLICT (company_id, candidate_id)
@@ -148,4 +160,15 @@ func (s *Service) ListByCompanyID(ctx context.Context, companyID string) ([]Comp
 	}
 
 	return reviews, nil
+}
+
+func (s *Service) LookupCandidateProfile(ctx context.Context, userID string) (string, error) {
+	var profileID uuid.UUID
+	err := s.db.QueryRowContext(ctx,
+		`SELECT id FROM jobseeker_profiles WHERE user_id = $1`, userID,
+	).Scan(&profileID)
+	if err != nil {
+		return "", err
+	}
+	return profileID.String(), nil
 }
