@@ -296,8 +296,12 @@ func main() {
 	profileViewsGroup.Use(middleware.AuthRequired(cfg.JWTSecret), middleware.RequireRole("jobseeker"))
 	profileViewsGroup.GET("/me/views", profileViewsHandler.GetMyProfileViews)
 
-	// Record profile views (company views profile)
-	api.POST("/profiles/:profile_id/view", middleware.AuthRequired(cfg.JWTSecret), middleware.RequireRole("company"), profileViewsHandler.RecordView)
+	// Record profile views (verified company)
+	recordViewGroup := api.Group("/profiles")
+	for _, m := range verifiedCompany {
+		recordViewGroup.Use(m)
+	}
+	recordViewGroup.POST("/:profile_id/view", profileViewsHandler.RecordView)
 
 	// ── HRIS routes ──
 	rbacService := rbac.NewService(database)
