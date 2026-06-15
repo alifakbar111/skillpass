@@ -1,7 +1,9 @@
 import {
   AlertTriangle,
+  Banknote,
   Briefcase,
   Building2,
+  Calculator,
   Calendar,
   CalendarCheck,
   CalendarDays,
@@ -12,6 +14,7 @@ import {
   MapPin,
   Network,
   PalmtreeIcon,
+  Receipt,
   Shield,
   Users,
 } from 'lucide-react';
@@ -34,6 +37,9 @@ const links = [
   { to: '/hris/leave-approval', label: 'Leave Approval', icon: CalendarCheck },
   { to: '/hris/leave-balance', label: 'Leave Balance', icon: CalendarDays },
   { to: '/hris/holidays', label: 'Holidays', icon: PalmtreeIcon },
+  { to: '/hris/salary-components', label: 'Salary Config', icon: Banknote },
+  { to: '/hris/payroll-runs', label: 'Payroll Runs', icon: Calculator },
+  { to: '/hris/my-payslips', label: 'My Payslips', icon: Receipt },
 ];
 
 export default function HRISSidebar() {

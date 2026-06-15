@@ -62,6 +62,11 @@ const LeaveRequest = lazy(() => import('./pages/hris/LeaveRequest'));
 const LeaveApproval = lazy(() => import('./pages/hris/LeaveApproval'));
 const LeaveBalance = lazy(() => import('./pages/hris/LeaveBalance'));
 const Holidays = lazy(() => import('./pages/hris/Holidays'));
+const SalaryComponents = lazy(() => import('./pages/hris/SalaryComponents'));
+const EmployeeSalary = lazy(() => import('./pages/hris/EmployeeSalary'));
+const PayrollRuns = lazy(() => import('./pages/hris/PayrollRuns'));
+const PayslipView = lazy(() => import('./pages/hris/PayslipView'));
+const MyPayslips = lazy(() => import('./pages/hris/MyPayslips'));
 
 const router = createBrowserRouter([
   {
@@ -208,6 +213,11 @@ const router = createBrowserRouter([
           { path: 'leave-approval', element: <LeaveApproval /> },
           { path: 'leave-balance', element: <LeaveBalance /> },
           { path: 'holidays', element: <Holidays /> },
+          { path: 'salary-components', element: <SalaryComponents /> },
+          { path: 'employees/:id/salary', element: <EmployeeSalary /> },
+          { path: 'payroll-runs', element: <PayrollRuns /> },
+          { path: 'payroll-runs/:runId/payslips', element: <PayslipView /> },
+          { path: 'my-payslips', element: <MyPayslips /> },
         ],
       },
     ],

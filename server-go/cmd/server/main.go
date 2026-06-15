@@ -38,6 +38,7 @@ import (
 	"skillpass-server-go/internal/hris/holiday"
 	"skillpass-server-go/internal/hris/leave"
 	"skillpass-server-go/internal/hris/org"
+	"skillpass-server-go/internal/hris/payroll"
 	"skillpass-server-go/internal/hris/shift"
 	"skillpass-server-go/internal/spdid"
 	"skillpass-server-go/internal/lib"
@@ -345,6 +346,29 @@ func main() {
 	hrisHolidays.POST("", rbac.RequirePermission(rbacService, "org.manage"), holidayHandler.Create)
 	hrisHolidays.PUT("/:id", rbac.RequirePermission(rbacService, "org.manage"), holidayHandler.Update)
 	hrisHolidays.DELETE("/:id", rbac.RequirePermission(rbacService, "org.manage"), holidayHandler.Delete)
+
+	// Payroll
+	payrollHandler := payroll.NewHandler(database)
+	hrisComponents := hris.Group("/salary-components")
+	hrisComponents.GET("", rbac.RequirePermission(rbacService, "payroll.view", "payroll.manage"), payrollHandler.ListComponents)
+	hrisComponents.POST("", rbac.RequirePermission(rbacService, "payroll.manage"), payrollHandler.CreateComponent)
+	hrisComponents.PUT("/:id", rbac.RequirePermission(rbacService, "payroll.manage"), payrollHandler.UpdateComponent)
+	hrisComponents.DELETE("/:id", rbac.RequirePermission(rbacService, "payroll.manage"), payrollHandler.DeleteComponent)
+
+	hrisEmployees.GET("/:id/salary", rbac.RequirePermission(rbacService, "payroll.view", "payroll.manage"), payrollHandler.GetEmployeeSalary)
+	hrisEmployees.PUT("/:id/salary", rbac.RequirePermission(rbacService, "payroll.manage"), payrollHandler.SetEmployeeSalary)
+
+	hrisPayroll := hris.Group("/payroll-runs")
+	hrisPayroll.GET("", rbac.RequirePermission(rbacService, "payroll.view", "payroll.run"), payrollHandler.ListRuns)
+	hrisPayroll.POST("", rbac.RequirePermission(rbacService, "payroll.run"), payrollHandler.CreateRun)
+	hrisPayroll.POST("/:id/calculate", rbac.RequirePermission(rbacService, "payroll.run"), payrollHandler.CalculateRun)
+	hrisPayroll.POST("/:id/approve", rbac.RequirePermission(rbacService, "payroll.approve"), payrollHandler.ApproveRun)
+	hrisPayroll.POST("/:id/mark-paid", rbac.RequirePermission(rbacService, "payroll.approve"), payrollHandler.MarkPaid)
+	hrisPayroll.GET("/:id/payslips", rbac.RequirePermission(rbacService, "payroll.view"), payrollHandler.ListPayslips)
+
+	hrisPayslips := hris.Group("/payslips")
+	hrisPayslips.GET("/my", rbac.RequirePermission(rbacService, "payroll.view_self"), payrollHandler.MyPayslips)
+	hrisPayslips.GET("/:payslipId", rbac.RequirePermission(rbacService, "payroll.view", "payroll.view_self"), payrollHandler.GetPayslip)
 
 	hrisRoles := hris.Group("/roles")
 	hrisRoles.GET("", rbac.RequirePermission(rbacService, "org.view"), func(c *gin.Context) {
