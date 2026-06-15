@@ -2,6 +2,7 @@ package profileviews
 
 import (
 	"database/sql"
+	"errors"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
@@ -83,5 +84,9 @@ func getUserID(c *gin.Context) (uuid.UUID, error) {
 	if !exists {
 		return uuid.Nil, sql.ErrNoRows
 	}
-	return uuid.Parse(val.(string))
+	s, ok := val.(string)
+	if !ok {
+		return uuid.Nil, errors.New("invalid userId type")
+	}
+	return uuid.Parse(s)
 }

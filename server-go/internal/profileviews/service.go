@@ -62,7 +62,7 @@ func (s *Service) GetViewsByProfile(ctx context.Context, profileID uuid.UUID) ([
 	}
 	defer rows.Close()
 
-	var views []ProfileView
+	views := make([]ProfileView, 0)
 	for rows.Next() {
 		var v ProfileView
 		if err := rows.Scan(&v.ID, &v.ProfileID, &v.ViewerID, &v.CompanyID, &v.ViewedAt, &v.ViewerFirstName, &v.ViewerLastName); err != nil {
