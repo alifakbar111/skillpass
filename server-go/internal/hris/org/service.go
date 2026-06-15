@@ -139,10 +139,20 @@ func (s *Service) UpdateBranch(ctx context.Context, companyID, branchID uuid.UUI
 }
 
 func (s *Service) DeleteBranch(ctx context.Context, companyID, branchID uuid.UUID) error {
-	_, err := s.db.ExecContext(ctx,
+	result, err := s.db.ExecContext(ctx,
 		`UPDATE branches SET is_active = FALSE WHERE id = $1 AND company_id = $2`,
 		branchID, companyID)
-	return err
+	if err != nil {
+		return err
+	}
+	rowsAffected, err := result.RowsAffected()
+	if err != nil {
+		return err
+	}
+	if rowsAffected == 0 {
+		return sql.ErrNoRows
+	}
+	return nil
 }
 
 // ============================================================
@@ -227,9 +237,19 @@ func (s *Service) UpdateDepartment(ctx context.Context, companyID, deptID uuid.U
 }
 
 func (s *Service) DeleteDepartment(ctx context.Context, companyID, deptID uuid.UUID) error {
-	_, err := s.db.ExecContext(ctx,
+	result, err := s.db.ExecContext(ctx,
 		`DELETE FROM departments WHERE id = $1 AND company_id = $2`, deptID, companyID)
-	return err
+	if err != nil {
+		return err
+	}
+	rowsAffected, err := result.RowsAffected()
+	if err != nil {
+		return err
+	}
+	if rowsAffected == 0 {
+		return sql.ErrNoRows
+	}
+	return nil
 }
 
 // ============================================================
@@ -318,9 +338,19 @@ func (s *Service) UpdatePosition(ctx context.Context, companyID, posID uuid.UUID
 }
 
 func (s *Service) DeletePosition(ctx context.Context, companyID, posID uuid.UUID) error {
-	_, err := s.db.ExecContext(ctx,
+	result, err := s.db.ExecContext(ctx,
 		`DELETE FROM positions WHERE id = $1 AND company_id = $2`, posID, companyID)
-	return err
+	if err != nil {
+		return err
+	}
+	rowsAffected, err := result.RowsAffected()
+	if err != nil {
+		return err
+	}
+	if rowsAffected == 0 {
+		return sql.ErrNoRows
+	}
+	return nil
 }
 
 // ============================================================
@@ -456,10 +486,20 @@ func (s *Service) UpdateCalendar(ctx context.Context, companyID, calendarID uuid
 }
 
 func (s *Service) DeleteCalendar(ctx context.Context, companyID, calendarID uuid.UUID) error {
-	_, err := s.db.ExecContext(ctx,
+	result, err := s.db.ExecContext(ctx,
 		`DELETE FROM working_calendars WHERE id = $1 AND company_id = $2`,
 		calendarID, companyID)
-	return err
+	if err != nil {
+		return err
+	}
+	rowsAffected, err := result.RowsAffected()
+	if err != nil {
+		return err
+	}
+	if rowsAffected == 0 {
+		return sql.ErrNoRows
+	}
+	return nil
 }
 
 // ============================================================
