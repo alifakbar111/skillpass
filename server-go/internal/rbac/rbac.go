@@ -129,12 +129,12 @@ func (s *Service) GetEmployeePermissions(ctx context.Context, employeeID uuid.UU
 func (s *Service) AssignRole(ctx context.Context, companyID, employeeID, roleID uuid.UUID) error {
 	_, err := s.db.ExecContext(ctx,
 		`INSERT INTO employee_roles (employee_id, role_id)
-		 SELECT $3, $4
+		 SELECT $2, $3
 		 FROM employees e, hris_roles r
-		 WHERE e.id = $3 AND e.company_id = $1
-		   AND r.id = $4 AND r.company_id = $1
+		 WHERE e.id = $2 AND e.company_id = $1
+		   AND r.id = $3 AND r.company_id = $1
 		 ON CONFLICT DO NOTHING`,
-		companyID, employeeID, employeeID, roleID,
+		companyID, employeeID, roleID,
 	)
 	return err
 }
@@ -144,9 +144,9 @@ func (s *Service) RemoveRole(ctx context.Context, companyID, employeeID, roleID 
 		`DELETE FROM employee_roles er
 		 USING employees e, hris_roles r
 		 WHERE er.employee_id = e.id AND er.role_id = r.id
-		   AND e.id = $3 AND e.company_id = $1
-		   AND r.id = $4 AND r.company_id = $1`,
-		companyID, employeeID, employeeID, roleID,
+		   AND e.id = $2 AND e.company_id = $1
+		   AND r.id = $3 AND r.company_id = $1`,
+		companyID, employeeID, roleID,
 	)
 	return err
 }

@@ -58,6 +58,33 @@ func (h *Handler) Get(c *gin.Context) {
 		return
 	}
 
+	requesterEmployeeID := c.GetString("employeeId")
+	if requesterEmployeeID == "" {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "Employee ID not found in context"})
+		return
+	}
+	requesterUUID, err := uuid.Parse(requesterEmployeeID)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Invalid employee ID in context"})
+		return
+	}
+
+	if employeeID != requesterUUID {
+		emp, err := h.svc.Get(c.Request.Context(), companyID, requesterUUID)
+		if err != nil {
+			if err == sql.ErrNoRows {
+				c.JSON(http.StatusUnauthorized, gin.H{"error": "Employee not found"})
+				return
+			}
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to verify permissions"})
+			return
+		}
+		if emp == nil {
+			c.JSON(http.StatusUnauthorized, gin.H{"error": "Unauthorized"})
+			return
+		}
+	}
+
 	emp, err := h.svc.Get(c.Request.Context(), companyID, employeeID)
 	if err != nil {
 		if err == sql.ErrNoRows {
@@ -80,9 +107,23 @@ func (h *Handler) List(c *gin.Context) {
 	page, _ := strconv.Atoi(c.DefaultQuery("page", "1"))
 	pageSize, _ := strconv.Atoi(c.DefaultQuery("pageSize", "20"))
 
+	status := c.Query("status")
+	if status != "" {
+		validStatuses := map[string]bool{
+			"active":    true,
+			"resigned":  true,
+			"terminated": true,
+			"on_leave":  true,
+		}
+		if !validStatuses[status] {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid status value"})
+			return
+		}
+	}
+
 	params := ListParams{
 		CompanyID: companyID,
-		Status:    c.Query("status"),
+		Status:    status,
 		Search:    c.Query("search"),
 		Page:      page,
 		PageSize:  pageSize,
