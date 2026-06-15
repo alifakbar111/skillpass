@@ -261,6 +261,12 @@ func main() {
 
 	// ── Phase 3: Feedback & Career Growth ──
 
+	// Feedback routes (jobseeker views feedback)
+	feedbackJobseekerGroup := api.Group("/feedback")
+	feedbackJobseekerGroup.Use(middleware.AuthRequired(cfg.JWTSecret), middleware.RequireRole("jobseeker"))
+	feedbackJobseekerGroup.GET("/me", feedbackHandler.GetMyFeedback)
+	feedbackJobseekerGroup.GET("/suggestions/me", feedbackHandler.GetMySuggestions)
+
 	// Feedback routes (company gives feedback)
 	feedbackCompanyGroup := api.Group("/feedback")
 	for _, m := range verifiedCompany {
@@ -268,12 +274,6 @@ func main() {
 	}
 	feedbackCompanyGroup.GET("", feedbackHandler.GetCompanyFeedback)
 	feedbackCompanyGroup.POST("/:profile_id", feedbackHandler.PostFeedback)
-
-	// Feedback routes (jobseeker views feedback)
-	feedbackJobseekerGroup := api.Group("/feedback")
-	feedbackJobseekerGroup.Use(middleware.AuthRequired(cfg.JWTSecret), middleware.RequireRole("jobseeker"))
-	feedbackJobseekerGroup.GET("/me", feedbackHandler.GetMyFeedback)
-	feedbackJobseekerGroup.GET("/suggestions/me", feedbackHandler.GetMySuggestions)
 
 	// Company reviews (candidate rates company)
 	reviewsGroup := api.Group("/companies")

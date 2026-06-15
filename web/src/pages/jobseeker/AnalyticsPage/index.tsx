@@ -80,7 +80,7 @@ export function AnalyticsPage() {
                 <tbody>
                   {views.map((view: ProfileView) => (
                     <tr key={view.id}>
-                      <td>{view.companyId}</td>
+                      <td>{view.companyId ? 'Company' : 'Anonymous'}</td>
                       <td>{new Date(view.viewedAt).toLocaleString()}</td>
                     </tr>
                   ))}
