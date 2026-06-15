@@ -1,7 +1,7 @@
 # SkillPass Design System
 
-**Version:** 1.0.0  
-**Last updated:** 2026-05-23  
+**Version:** 1.1.0  
+**Last updated:** 2026-06-15  
 **Stack:** Tailwind CSS v4 + DaisyUI 5  
 **Storybook:** Run `bun --cwd web storybook` to open the component library at http://localhost:6006
 
@@ -100,11 +100,16 @@ SkillPass uses **Tailwind's default spacing scale** (4px base = 0.25rem).
 
 | Container | Used For |
 |---|---|
-| `max-w-sm` | Login, Register (narrow forms) |
+| `max-w-sm` | Login, Register, ForgotPassword, ResetPassword (narrow forms) |
 | `max-w-lg` | CompanyProfile, CompanyVerification (medium forms) |
-| `max-w-2xl` | JobseekerProfile, JobDetail, Passport (detail views) |
-| `max-w-3xl` | CompanyJobs, AdminVerifications, PublicJobs (list views) |
+| `max-w-2xl` | JobseekerProfile, JobDetail, Passport, EmployeeDetail (detail views) |
+| `max-w-3xl` | CompanyJobs, AdminVerifications, PublicJobs, EmployeeList (list views) |
 | `max-w-4xl` | CompanySearch (wide search results) |
+
+**Page folder structure:** Each page is a folder under `web/src/pages/` with `index.tsx` (component) + optional `type.tsx` (interfaces). Sub-pages are grouped:
+- `pages/jobseeker/` — EvaluationPage, ApplicationsPage, MatchesPage, FeedbackPage, CareerPage, AnalyticsPage
+- `pages/company/` — FeedbackHistoryPage, ReputationPage
+- `pages/hris/` — EmployeeList, EmployeeCreate, EmployeeDetail, BranchManagement, DepartmentManagement, PositionManagement, OrgChart, RoleManagement
 
 ---
 
@@ -149,26 +154,54 @@ SkillPass uses **Tailwind's default spacing scale** (4px base = 0.25rem).
 
 **Mechanism:** `data-theme` attribute on `<html>` toggles between `"winter"` (light) and `"dark"` (dark). Preference is persisted in `localStorage`.
 
-**Implementation:** `web/src/components/ThemeToggle.tsx`
+**Implementation:** `web/src/components/ui/ThemeToggle.tsx`
 
 All DaisyUI semantic tokens adapt automatically — no `dark:` Tailwind prefixes, no custom CSS, no media queries.
+
+### CSS Entry Point
+`web/src/styles/index.css` — imports Google Fonts, Tailwind, and DaisyUI plugin. Also defines the skip-link base styles. No `tailwind.config.*` file exists.
 
 ---
 
 ## Accessibility
 
-### Current State
+### Current State (WCAG 2.1 AA)
 - All form inputs use `<label className="form-control">` with `<span className="label-text">` — properly associated ✅
 - Focus states provided by DaisyUI default styles ✅
 - Contrast meets WCAG AA via DaisyUI theme defaults ✅
 - Touch targets are 44px+ via `btn` class ✅
+- Skip-to-content link in `RootLayout` — visible on focus ✅
+- `aria-label` on icon-only buttons (ThemeToggle, avatar menu) ✅
+- `role="alert"` on dynamic error messages ✅
+- `aria-label="Main navigation"` on `<nav>` wrapper ✅
+- Navbar dropdown uses `aria-haspopup`, `aria-controls`, Escape key dismiss ✅
+- Focus managed on route change via `mainRef.current?.focus()` ✅
+- Menu items use `role="menuitem"` / `role="presentation"` semantics ✅
 
-### Gaps & Fixes
+### Skip-Link Pattern
+```css
+/* web/src/styles/index.css */
+.skip-link {
+  position: absolute;
+  top: -100px;
+  left: 0;
+  z-index: 100;
+  padding: 0.5rem 1rem;
+  background: var(--color-base-100, #fff);
+  color: var(--color-base-content, #000);
+  border: 2px solid currentColor;
+  text-decoration: none;
+  font-weight: 600;
+}
+.skip-link:focus {
+  top: 0;
+}
+```
+
+### Remaining Gaps
 | Issue | Fix | Priority |
 |---|---|---|
-| No `role="alert"` on dynamic errors | Add `role="alert"` to error `<p>` elements | Low |
-| No `aria-label` on icon-only buttons | Add `aria-label="Toggle theme"` to ThemeToggle | Low |
-| No skip-to-content link | Add hidden skip link in `RootLayout` | Low |
+| `aria-expanded` on dropdown toggle is commented out | Uncomment `aria-expanded={dropdownOpen}` on Navbar avatar button | Low |
 
 ---
 
@@ -243,4 +276,22 @@ The app uses almost no animation — only `hover:bg-base-300 transition-colors` 
   <legend class="fieldset-legend">Title</legend>
   <!-- form elements -->
 </fieldset>
+```
+
+### Form Components (shared)
+SkillPass provides reusable form components in `web/src/components/ui/`:
+- `FormInput` — text input with label + error
+- `FormNumberInput` — numeric input with min/max
+- `FormSelect` — dropdown with label + error
+- `FormTextarea` — multiline text with label + error
+- `FormField` — generic wrapper with `useFieldBinding` hook
+- `ToggleButtonGroup` — multi-select toggle buttons
+
+All form components use `react-hook-form` + `zod` validation via `@hookform/resolvers`.
+
+### ErrorBoundary
+```tsx
+// web/src/components/ui/ErrorBoundary.tsx
+// Catches render errors globally — displays fallback UI
+// Used in App.tsx wrapping the entire router
 ```
