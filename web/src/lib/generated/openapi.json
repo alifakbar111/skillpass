@@ -899,6 +899,362 @@
                 ]
             }
         },
+        "/career/path/me": {
+            "get": {
+                "description": "Generate AI-powered career path prediction for the authenticated jobseeker",
+                "tags": [
+                    "career"
+                ],
+                "summary": "Get AI career path prediction",
+                "parameters": [
+                    {
+                        "description": "Industry context for prediction",
+                        "name": "industry",
+                        "in": "query",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/internal_career.CareerPrediction"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "additionalProperties": {
+                                        "type": "string"
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "additionalProperties": {
+                                        "type": "string"
+                                    }
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/career/paths": {
+            "get": {
+                "description": "Get all career paths, optionally filtered by industry",
+                "tags": [
+                    "career"
+                ],
+                "summary": "List career paths",
+                "parameters": [
+                    {
+                        "description": "Filter by industry",
+                        "name": "industry",
+                        "in": "query",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "array",
+                                    "items": {
+                                        "$ref": "#/components/schemas/internal_career.CareerPath"
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/career/skill-gap/me": {
+            "get": {
+                "description": "Compare authenticated jobseeker's skills against career path requirements",
+                "tags": [
+                    "career"
+                ],
+                "summary": "Get skill gap analysis",
+                "parameters": [
+                    {
+                        "description": "Industry to compare against",
+                        "name": "industry",
+                        "in": "query",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/internal_career.SkillGapResult"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "additionalProperties": {
+                                        "type": "string"
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "additionalProperties": {
+                                        "type": "string"
+                                    }
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/companies/{id}/reputation": {
+            "get": {
+                "description": "Get aggregated review score for a company",
+                "tags": [
+                    "company-reviews"
+                ],
+                "summary": "Get company reputation",
+                "parameters": [
+                    {
+                        "description": "Company UUID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/internal_companyreviews.Reputation"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "additionalProperties": {
+                                        "type": "string"
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/companies/{id}/reviews": {
+            "get": {
+                "description": "Get all reviews for a company",
+                "tags": [
+                    "company-reviews"
+                ],
+                "summary": "List reviews for a company",
+                "parameters": [
+                    {
+                        "description": "Company UUID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "array",
+                                    "items": {
+                                        "$ref": "#/components/schemas/internal_companyreviews.CompanyReview"
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "additionalProperties": {
+                                        "type": "string"
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "additionalProperties": {
+                                        "type": "string"
+                                    }
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ]
+            },
+            "post": {
+                "description": "Candidate rates and reviews a company after applying or interviewing",
+                "tags": [
+                    "company-reviews"
+                ],
+                "summary": "Review a company",
+                "parameters": [
+                    {
+                        "description": "Company UUID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/internal_companyreviews.CreateReviewRequest"
+                            }
+                        }
+                    },
+                    "description": "Review payload",
+                    "required": true
+                },
+                "responses": {
+                    "201": {
+                        "description": "Created",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/internal_companyreviews.CompanyReview"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "additionalProperties": {
+                                        "type": "string"
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "additionalProperties": {
+                                        "type": "string"
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "additionalProperties": {
+                                        "type": "string"
+                                    }
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ]
+            }
+        },
         "/company/analytics": {
             "get": {
                 "description": "Aggregate hiring metrics for the authenticated verified company: jobs, applications by status, time-to-decision, per-job funnels",
@@ -1541,6 +1897,245 @@
                             "application/json": {
                                 "schema": {
                                     "$ref": "#/components/schemas/EvaluationResponse"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "additionalProperties": {
+                                        "type": "string"
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "additionalProperties": {
+                                        "type": "string"
+                                    }
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/feedback/company": {
+            "get": {
+                "description": "Company retrieves all feedback they have submitted",
+                "tags": [
+                    "feedback"
+                ],
+                "summary": "Get feedback for current company",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "array",
+                                    "items": {
+                                        "$ref": "#/components/schemas/Feedback"
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "additionalProperties": {
+                                        "type": "string"
+                                    }
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/feedback/me": {
+            "get": {
+                "description": "Jobseeker retrieves all feedback submitted for their profile",
+                "tags": [
+                    "feedback"
+                ],
+                "summary": "Get feedback for current user's profile",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "array",
+                                    "items": {
+                                        "$ref": "#/components/schemas/Feedback"
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "additionalProperties": {
+                                        "type": "string"
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "additionalProperties": {
+                                        "type": "string"
+                                    }
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/feedback/suggestions/me": {
+            "get": {
+                "description": "Jobseeker retrieves aggregated AI suggestions from all feedback",
+                "tags": [
+                    "feedback"
+                ],
+                "summary": "Get AI suggestions for current user",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "array",
+                                    "items": {
+                                        "$ref": "#/components/schemas/AISuggestion"
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "additionalProperties": {
+                                        "type": "string"
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "additionalProperties": {
+                                        "type": "string"
+                                    }
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/feedback/{profile_id}": {
+            "post": {
+                "description": "Company submits feedback for a jobseeker profile",
+                "tags": [
+                    "feedback"
+                ],
+                "summary": "Submit feedback for a candidate",
+                "parameters": [
+                    {
+                        "description": "Jobseeker profile ID",
+                        "name": "profile_id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/CreateFeedbackRequest"
+                            }
+                        }
+                    },
+                    "description": "Feedback payload",
+                    "required": true
+                },
+                "responses": {
+                    "201": {
+                        "description": "Created",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Feedback"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "additionalProperties": {
+                                        "type": "string"
+                                    }
                                 }
                             }
                         }
@@ -3147,6 +3742,17 @@
             }
         },
         "schemas": {
+            "AISuggestion": {
+                "type": "object",
+                "properties": {
+                    "area": {
+                        "type": "string"
+                    },
+                    "tip": {
+                        "type": "string"
+                    }
+                }
+            },
             "ApplicationMessage": {
                 "type": "object",
                 "properties": {
@@ -3371,6 +3977,20 @@
                     }
                 }
             },
+            "CreateFeedbackRequest": {
+                "type": "object",
+                "properties": {
+                    "content": {
+                        "type": "string"
+                    },
+                    "ratingAreas": {
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/RatingArea"
+                        }
+                    }
+                }
+            },
             "CreateJobRequest": {
                 "type": "object",
                 "required": [
@@ -3507,6 +4127,38 @@
                     },
                     "url": {
                         "type": "string"
+                    }
+                }
+            },
+            "Feedback": {
+                "type": "object",
+                "properties": {
+                    "aiSuggestions": {
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/AISuggestion"
+                        }
+                    },
+                    "companyId": {
+                        "type": "string"
+                    },
+                    "content": {
+                        "type": "string"
+                    },
+                    "createdAt": {
+                        "type": "string"
+                    },
+                    "id": {
+                        "type": "string"
+                    },
+                    "profileId": {
+                        "type": "string"
+                    },
+                    "ratingAreas": {
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/RatingArea"
+                        }
                     }
                 }
             },
@@ -3740,6 +4392,20 @@
                         "type": "integer"
                     },
                     "yearsOfExperience": {
+                        "type": "integer"
+                    }
+                }
+            },
+            "RatingArea": {
+                "type": "object",
+                "properties": {
+                    "area": {
+                        "type": "string"
+                    },
+                    "notes": {
+                        "type": "string"
+                    },
+                    "score": {
                         "type": "integer"
                     }
                 }
@@ -4193,6 +4859,227 @@
                     },
                     "status": {
                         "type": "string"
+                    }
+                }
+            },
+            "internal_career.CareerPath": {
+                "type": "object",
+                "properties": {
+                    "createdAt": {
+                        "type": "string"
+                    },
+                    "description": {
+                        "type": "string"
+                    },
+                    "id": {
+                        "type": "string"
+                    },
+                    "industry": {
+                        "type": "string"
+                    },
+                    "skillRequirements": {
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/internal_career.SkillRequirement"
+                        }
+                    },
+                    "title": {
+                        "type": "string"
+                    },
+                    "typicalProgression": {
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/internal_career.ProgressionStep"
+                        }
+                    }
+                }
+            },
+            "internal_career.CareerPrediction": {
+                "type": "object",
+                "properties": {
+                    "currentPosition": {
+                        "type": "string"
+                    },
+                    "estimatedTimeline": {
+                        "type": "string"
+                    },
+                    "predictedPaths": {
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/internal_career.PredictedPath"
+                        }
+                    },
+                    "skillDevelopment": {
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/internal_career.SkillDevelopment"
+                        }
+                    }
+                }
+            },
+            "internal_career.PredictedPath": {
+                "type": "object",
+                "properties": {
+                    "confidence": {
+                        "type": "number"
+                    },
+                    "reasoning": {
+                        "type": "string"
+                    },
+                    "title": {
+                        "type": "string"
+                    }
+                }
+            },
+            "internal_career.ProgressionStep": {
+                "type": "object",
+                "properties": {
+                    "description": {
+                        "type": "string"
+                    },
+                    "duration": {
+                        "type": "string"
+                    },
+                    "title": {
+                        "type": "string"
+                    }
+                }
+            },
+            "internal_career.SkillDevelopment": {
+                "type": "object",
+                "properties": {
+                    "actions": {
+                        "type": "array",
+                        "items": {
+                            "type": "string"
+                        }
+                    },
+                    "current": {
+                        "type": "integer"
+                    },
+                    "skill": {
+                        "type": "string"
+                    },
+                    "target": {
+                        "type": "integer"
+                    }
+                }
+            },
+            "internal_career.SkillGapItem": {
+                "type": "object",
+                "properties": {
+                    "gap": {
+                        "type": "integer"
+                    },
+                    "required": {
+                        "type": "boolean"
+                    },
+                    "requiredLevel": {
+                        "type": "string"
+                    },
+                    "skill": {
+                        "type": "string"
+                    },
+                    "userLevel": {
+                        "type": "integer"
+                    }
+                }
+            },
+            "internal_career.SkillGapResult": {
+                "type": "object",
+                "properties": {
+                    "matchingSkills": {
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/internal_career.SkillGapItem"
+                        }
+                    },
+                    "missingSkills": {
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/internal_career.SkillGapItem"
+                        }
+                    },
+                    "overallMatch": {
+                        "type": "number"
+                    },
+                    "profileId": {
+                        "type": "string"
+                    }
+                }
+            },
+            "internal_career.SkillRequirement": {
+                "type": "object",
+                "properties": {
+                    "level": {
+                        "type": "string"
+                    },
+                    "name": {
+                        "type": "string"
+                    },
+                    "required": {
+                        "type": "boolean"
+                    }
+                }
+            },
+            "internal_companyreviews.CompanyReview": {
+                "type": "object",
+                "properties": {
+                    "candidateId": {
+                        "type": "string"
+                    },
+                    "companyId": {
+                        "type": "string"
+                    },
+                    "createdAt": {
+                        "type": "string"
+                    },
+                    "id": {
+                        "type": "string"
+                    },
+                    "interactionType": {
+                        "type": "string"
+                    },
+                    "rating": {
+                        "type": "integer"
+                    },
+                    "review": {
+                        "type": "string"
+                    }
+                }
+            },
+            "internal_companyreviews.CreateReviewRequest": {
+                "type": "object",
+                "required": [
+                    "interactionType",
+                    "rating"
+                ],
+                "properties": {
+                    "interactionType": {
+                        "type": "string"
+                    },
+                    "rating": {
+                        "type": "integer",
+                        "maximum": 5,
+                        "minimum": 1
+                    },
+                    "review": {
+                        "type": "string",
+                        "maxLength": 5000
+                    }
+                }
+            },
+            "internal_companyreviews.Reputation": {
+                "type": "object",
+                "properties": {
+                    "averageRate": {
+                        "type": "number"
+                    },
+                    "companyId": {
+                        "type": "string"
+                    },
+                    "reviewCount": {
+                        "type": "integer"
                     }
                 }
             },
