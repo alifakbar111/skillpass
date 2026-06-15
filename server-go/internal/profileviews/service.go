@@ -27,6 +27,18 @@ func NewService(db *sql.DB) *Service {
 }
 
 func (s *Service) RecordView(ctx context.Context, profileID, viewerID uuid.UUID, companyID *uuid.UUID) error {
+	// Prevent duplicate views per day per company
+	if companyID != nil {
+		var todayExists bool
+		_ = s.db.QueryRowContext(ctx,
+			`SELECT EXISTS(SELECT 1 FROM profile_views WHERE profile_id = $1 AND company_id = $2 AND viewed_at::date = CURRENT_DATE)`,
+			profileID, *companyID,
+		).Scan(&todayExists)
+		if todayExists {
+			return nil // already recorded today
+		}
+	}
+
 	_, err := s.db.ExecContext(ctx,
 		`INSERT INTO profile_views (id, profile_id, viewer_id, company_id, viewed_at)
 		 VALUES ($1, $2, $3, $4, NOW())`,

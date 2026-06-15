@@ -57,9 +57,11 @@ func (h *Handler) RecordView(c *gin.Context) {
 	var companyID *uuid.UUID
 	if companyIDStr != "" {
 		cid, err := uuid.Parse(companyIDStr)
-		if err == nil {
-			companyID = &cid
+		if err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "invalid company ID"})
+			return
 		}
+		companyID = &cid
 	}
 
 	if err := h.service.RecordView(c.Request.Context(), profileID, viewerID, companyID); err != nil {
