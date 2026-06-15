@@ -51,6 +51,11 @@ import (
 	"skillpass-server-go/internal/resume"
 	"skillpass-server-go/internal/storage"
 	"skillpass-server-go/internal/webhook"
+
+	"skillpass-server-go/internal/career"
+	"skillpass-server-go/internal/companyreviews"
+	"skillpass-server-go/internal/feedback"
+	"skillpass-server-go/internal/profileviews"
 )
 
 func main() {
@@ -125,6 +130,19 @@ func main() {
 
 	matchService := matching.NewService(database)
 	matchHandler := matching.NewHandler(matchService)
+
+	// Phase 3: Feedback & Career Growth
+	feedbackService := feedback.NewService(database, llmClient)
+	feedbackHandler := feedback.NewHandler(database, feedbackService)
+
+	companyReviewsService := companyreviews.NewService(database)
+	companyReviewsHandler := companyreviews.NewHandler(companyReviewsService)
+
+	careerService := career.NewService(database, llmClient)
+	careerHandler := career.NewHandler(database, careerService)
+
+	profileViewsService := profileviews.NewService(database)
+	profileViewsHandler := profileviews.NewHandler(database, profileViewsService)
 
 	api.GET("/health", handlers.GetHealth)
 
@@ -247,6 +265,50 @@ func main() {
 		matchesCompanyGroup.Use(m)
 	}
 	matchesCompanyGroup.GET("/matches", matchHandler.MatchCandidates)
+
+	// ── Phase 3: Feedback & Career Growth ──
+
+	// Feedback routes (jobseeker views feedback)
+	feedbackJobseekerGroup := api.Group("/feedback")
+	feedbackJobseekerGroup.Use(middleware.AuthRequired(cfg.JWTSecret), middleware.RequireRole("jobseeker"))
+	feedbackJobseekerGroup.GET("/me", feedbackHandler.GetMyFeedback)
+	feedbackJobseekerGroup.GET("/suggestions/me", feedbackHandler.GetMySuggestions)
+
+	// Feedback routes (company gives feedback)
+	feedbackCompanyGroup := api.Group("/feedback")
+	for _, m := range verifiedCompany {
+		feedbackCompanyGroup.Use(m)
+	}
+	feedbackCompanyGroup.GET("", feedbackHandler.GetCompanyFeedback)
+	feedbackCompanyGroup.POST("/:profile_id", feedbackHandler.PostFeedback)
+
+	// Company reviews (candidate rates company)
+	reviewsGroup := api.Group("/companies")
+	reviewsGroup.Use(middleware.AuthRequired(cfg.JWTSecret), middleware.RequireRole("jobseeker"))
+	reviewsGroup.POST("/:id/reviews", companyReviewsHandler.PostReview)
+	reviewsGroup.GET("/:id/reviews", companyReviewsHandler.ListReviews)
+
+	// Company reputation (public)
+	api.GET("/companies/:id/reputation", companyReviewsHandler.GetReputation)
+
+	// Career paths (authenticated)
+	careerGroup := api.Group("/career")
+	careerGroup.Use(middleware.AuthRequired(cfg.JWTSecret), middleware.RequireRole("jobseeker"))
+	careerGroup.GET("/paths", careerHandler.ListCareerPaths)
+	careerGroup.GET("/skill-gap/me", careerHandler.GetSkillGap)
+	careerGroup.GET("/path/me", careerHandler.GetCareerPath)
+
+	// Profile views (jobseeker)
+	profileViewsGroup := api.Group("/profiles")
+	profileViewsGroup.Use(middleware.AuthRequired(cfg.JWTSecret), middleware.RequireRole("jobseeker"))
+	profileViewsGroup.GET("/me/views", profileViewsHandler.GetMyProfileViews)
+
+	// Record profile views (verified company)
+	recordViewGroup := api.Group("/profiles")
+	for _, m := range verifiedCompany {
+		recordViewGroup.Use(m)
+	}
+	recordViewGroup.POST("/:profile_id/view", profileViewsHandler.RecordView)
 
 	// ── HRIS routes ──
 	rbacService := rbac.NewService(database)

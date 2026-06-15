@@ -5,11 +5,13 @@ import (
 	"crypto/sha256"
 	"database/sql"
 	"encoding/hex"
-	"fmt"
+	"errors"
 	"time"
 
 	"github.com/google/uuid"
 )
+
+var ErrEmployeeNotFound = errors.New("employee not found in this company")
 
 type Service struct {
 	db *sql.DB
@@ -43,7 +45,7 @@ func (s *Service) CreateDID(ctx context.Context, companyID, employeeID uuid.UUID
 		return nil, err
 	}
 	if !exists {
-		return nil, fmt.Errorf("employee not found in this company")
+		return nil, ErrEmployeeNotFound
 	}
 
 	didStr := GenerateDID(companyID, employeeID)

@@ -2,6 +2,7 @@ package spdid
 
 import (
 	"database/sql"
+	"errors"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
@@ -30,6 +31,10 @@ func (h *Handler) CreateDID(c *gin.Context) {
 
 	r, err := h.svc.CreateDID(c.Request.Context(), companyID, employeeID)
 	if err != nil {
+		if errors.Is(err, ErrEmployeeNotFound) {
+			c.JSON(http.StatusNotFound, gin.H{"error": "Employee not found in this company"})
+			return
+		}
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create DID"})
 		return
 	}
