@@ -37,8 +37,10 @@ import (
 	"skillpass-server-go/internal/hris/employee"
 	"skillpass-server-go/internal/hris/holiday"
 	"skillpass-server-go/internal/hris/leave"
+	"skillpass-server-go/internal/hris/onboarding"
 	"skillpass-server-go/internal/hris/org"
 	"skillpass-server-go/internal/hris/payroll"
+	"skillpass-server-go/internal/hris/report"
 	"skillpass-server-go/internal/hris/shift"
 	"skillpass-server-go/internal/spdid"
 	"skillpass-server-go/internal/lib"
@@ -369,6 +371,29 @@ func main() {
 	hrisPayslips := hris.Group("/payslips")
 	hrisPayslips.GET("/my", rbac.RequirePermission(rbacService, "payroll.view_self"), payrollHandler.MyPayslips)
 	hrisPayslips.GET("/:payslipId", rbac.RequirePermission(rbacService, "payroll.view", "payroll.view_self"), payrollHandler.GetPayslip)
+
+	// Reports & Analytics (Sprint 6)
+	reportHandler := report.NewHandler(database)
+	hrisReports := hris.Group("/reports")
+	hrisReports.GET("/attendance-export", rbac.RequirePermission(rbacService, "analytics.export"), reportHandler.ExportAttendance)
+	hrisReports.GET("/headcount", rbac.RequirePermission(rbacService, "analytics.view", "analytics.view_team"), reportHandler.GetHeadcountStats)
+	hrisReports.POST("/snapshots", rbac.RequirePermission(rbacService, "analytics.view"), reportHandler.GenerateSnapshot)
+	hrisReports.GET("/snapshots", rbac.RequirePermission(rbacService, "analytics.view", "analytics.view_team"), reportHandler.ListSnapshots)
+
+	// Onboarding (Sprint 7)
+	onboardHandler := onboarding.NewHandler(database)
+	hrisOnboarding := hris.Group("/onboarding")
+	hrisOnboarding.GET("/templates", rbac.RequirePermission(rbacService, "org.view"), onboardHandler.ListTemplates)
+	hrisOnboarding.GET("/templates/:id", rbac.RequirePermission(rbacService, "org.view"), onboardHandler.GetTemplate)
+	hrisOnboarding.POST("/templates", rbac.RequirePermission(rbacService, "org.manage"), onboardHandler.CreateTemplate)
+	hrisOnboarding.PUT("/templates/:id", rbac.RequirePermission(rbacService, "org.manage"), onboardHandler.UpdateTemplate)
+	hrisOnboarding.DELETE("/templates/:id", rbac.RequirePermission(rbacService, "org.manage"), onboardHandler.DeleteTemplate)
+	hrisOnboarding.GET("/checklists", rbac.RequirePermission(rbacService, "employee.view"), onboardHandler.ListChecklists)
+	hrisOnboarding.GET("/checklists/:checklistId", rbac.RequirePermission(rbacService, "employee.view"), onboardHandler.GetChecklist)
+	hrisOnboarding.GET("/my", rbac.RequirePermission(rbacService, "employee.view_self"), onboardHandler.MyChecklist)
+	hrisOnboarding.POST("/items/:itemId/complete", onboardHandler.CompleteItem)
+	hrisOnboarding.POST("/items/:itemId/uncomplete", onboardHandler.UncompleteItem)
+	hrisEmployees.POST("/:id/onboarding", rbac.RequirePermission(rbacService, "employee.update"), onboardHandler.AssignChecklist)
 
 	hrisRoles := hris.Group("/roles")
 	hrisRoles.GET("", rbac.RequirePermission(rbacService, "org.view"), func(c *gin.Context) {
