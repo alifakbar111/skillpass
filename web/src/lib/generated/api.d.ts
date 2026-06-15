@@ -942,6 +942,357 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/career/path/me": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get AI career path prediction
+         * @description Generate AI-powered career path prediction for the authenticated jobseeker
+         */
+        get: {
+            parameters: {
+                query: {
+                    /** @description Industry context for prediction */
+                    industry: string;
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["internal_career.CareerPrediction"];
+                    };
+                };
+                /** @description Unauthorized */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            [key: string]: string;
+                        };
+                    };
+                };
+                /** @description Not Found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            [key: string]: string;
+                        };
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/career/paths": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List career paths
+         * @description Get all career paths, optionally filtered by industry
+         */
+        get: {
+            parameters: {
+                query?: {
+                    /** @description Filter by industry */
+                    industry?: string;
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["internal_career.CareerPath"][];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/career/skill-gap/me": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get skill gap analysis
+         * @description Compare authenticated jobseeker's skills against career path requirements
+         */
+        get: {
+            parameters: {
+                query: {
+                    /** @description Industry to compare against */
+                    industry: string;
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["internal_career.SkillGapResult"];
+                    };
+                };
+                /** @description Unauthorized */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            [key: string]: string;
+                        };
+                    };
+                };
+                /** @description Not Found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            [key: string]: string;
+                        };
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/companies/{id}/reputation": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get company reputation
+         * @description Get aggregated review score for a company
+         */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description Company UUID */
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["internal_companyreviews.Reputation"];
+                    };
+                };
+                /** @description Bad Request */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            [key: string]: string;
+                        };
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/companies/{id}/reviews": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List reviews for a company
+         * @description Get all reviews for a company
+         */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description Company UUID */
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["internal_companyreviews.CompanyReview"][];
+                    };
+                };
+                /** @description Bad Request */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            [key: string]: string;
+                        };
+                    };
+                };
+                /** @description Unauthorized */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            [key: string]: string;
+                        };
+                    };
+                };
+            };
+        };
+        put?: never;
+        /**
+         * Review a company
+         * @description Candidate rates and reviews a company after applying or interviewing
+         */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description Company UUID */
+                    id: string;
+                };
+                cookie?: never;
+            };
+            /** @description Review payload */
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["internal_companyreviews.CreateReviewRequest"];
+                };
+            };
+            responses: {
+                /** @description Created */
+                201: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["internal_companyreviews.CompanyReview"];
+                    };
+                };
+                /** @description Bad Request */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            [key: string]: string;
+                        };
+                    };
+                };
+                /** @description Unauthorized */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            [key: string]: string;
+                        };
+                    };
+                };
+                /** @description Not Found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            [key: string]: string;
+                        };
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/company/analytics": {
         parameters: {
             query?: never;
@@ -1662,6 +2013,258 @@ export interface paths {
         };
         put?: never;
         post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/feedback/company": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get feedback for current company
+         * @description Company retrieves all feedback they have submitted
+         */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Feedback"][];
+                    };
+                };
+                /** @description Unauthorized */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            [key: string]: string;
+                        };
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/feedback/me": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get feedback for current user's profile
+         * @description Jobseeker retrieves all feedback submitted for their profile
+         */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Feedback"][];
+                    };
+                };
+                /** @description Unauthorized */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            [key: string]: string;
+                        };
+                    };
+                };
+                /** @description Not Found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            [key: string]: string;
+                        };
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/feedback/suggestions/me": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get AI suggestions for current user
+         * @description Jobseeker retrieves aggregated AI suggestions from all feedback
+         */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["AISuggestion"][];
+                    };
+                };
+                /** @description Unauthorized */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            [key: string]: string;
+                        };
+                    };
+                };
+                /** @description Not Found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            [key: string]: string;
+                        };
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/feedback/{profile_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Submit feedback for a candidate
+         * @description Company submits feedback for a jobseeker profile
+         */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description Jobseeker profile ID */
+                    profile_id: string;
+                };
+                cookie?: never;
+            };
+            /** @description Feedback payload */
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["CreateFeedbackRequest"];
+                };
+            };
+            responses: {
+                /** @description Created */
+                201: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Feedback"];
+                    };
+                };
+                /** @description Bad Request */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            [key: string]: string;
+                        };
+                    };
+                };
+                /** @description Unauthorized */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            [key: string]: string;
+                        };
+                    };
+                };
+                /** @description Not Found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            [key: string]: string;
+                        };
+                    };
+                };
+            };
+        };
         delete?: never;
         options?: never;
         head?: never;
@@ -3231,6 +3834,10 @@ export interface paths {
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
+        AISuggestion: {
+            area?: string;
+            tip?: string;
+        };
         ApplicationMessage: {
             body?: string;
             createdAt?: string;
@@ -3300,6 +3907,10 @@ export interface components {
             type: "employment" | "gig" | "education" | "certification" | "project" | "volunteering";
             url?: string;
         };
+        CreateFeedbackRequest: {
+            content?: string;
+            ratingAreas?: components["schemas"]["RatingArea"][];
+        };
         CreateJobRequest: {
             description: string;
             /** @enum {string} */
@@ -3337,6 +3948,15 @@ export interface components {
             title?: string;
             type?: string;
             url?: string;
+        };
+        Feedback: {
+            aiSuggestions?: components["schemas"]["AISuggestion"][];
+            companyId?: string;
+            content?: string;
+            createdAt?: string;
+            id?: string;
+            profileId?: string;
+            ratingAreas?: components["schemas"]["RatingArea"][];
         };
         IndustryResponse: {
             description?: string;
@@ -3413,6 +4033,11 @@ export interface components {
             name?: string;
             viewCount?: number;
             yearsOfExperience?: number;
+        };
+        RatingArea: {
+            area?: string;
+            notes?: string;
+            score?: number;
         };
         RefreshResponse: {
             accessToken?: string;
@@ -3552,6 +4177,74 @@ export interface components {
         "internal_analytics.StatusCount": {
             count?: number;
             status?: string;
+        };
+        "internal_career.CareerPath": {
+            createdAt?: string;
+            description?: string;
+            id?: string;
+            industry?: string;
+            skillRequirements?: components["schemas"]["internal_career.SkillRequirement"][];
+            title?: string;
+            typicalProgression?: components["schemas"]["internal_career.ProgressionStep"][];
+        };
+        "internal_career.CareerPrediction": {
+            currentPosition?: string;
+            estimatedTimeline?: string;
+            predictedPaths?: components["schemas"]["internal_career.PredictedPath"][];
+            skillDevelopment?: components["schemas"]["internal_career.SkillDevelopment"][];
+        };
+        "internal_career.PredictedPath": {
+            confidence?: number;
+            reasoning?: string;
+            title?: string;
+        };
+        "internal_career.ProgressionStep": {
+            description?: string;
+            duration?: string;
+            title?: string;
+        };
+        "internal_career.SkillDevelopment": {
+            actions?: string[];
+            current?: number;
+            skill?: string;
+            target?: number;
+        };
+        "internal_career.SkillGapItem": {
+            gap?: number;
+            required?: boolean;
+            requiredLevel?: string;
+            skill?: string;
+            userLevel?: number;
+        };
+        "internal_career.SkillGapResult": {
+            matchingSkills?: components["schemas"]["internal_career.SkillGapItem"][];
+            missingSkills?: components["schemas"]["internal_career.SkillGapItem"][];
+            overallMatch?: number;
+            profileId?: string;
+        };
+        "internal_career.SkillRequirement": {
+            level?: string;
+            name?: string;
+            required?: boolean;
+        };
+        "internal_companyreviews.CompanyReview": {
+            candidateId?: string;
+            companyId?: string;
+            createdAt?: string;
+            id?: string;
+            interactionType?: string;
+            rating?: number;
+            review?: string;
+        };
+        "internal_companyreviews.CreateReviewRequest": {
+            interactionType: string;
+            rating: number;
+            review?: string;
+        };
+        "internal_companyreviews.Reputation": {
+            averageRate?: number;
+            companyId?: string;
+            reviewCount?: number;
         };
         "internal_matching.SkillsGap": {
             hasEvaluation?: boolean;

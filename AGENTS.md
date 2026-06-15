@@ -39,12 +39,26 @@ skillpass/          — root: orchestration (concurrently runs both)
 │   │   ├── server/ — main.go
 │   │   ├── migrate/ — SQL migration runner
 │   │   └── seed/   — DB seeder
-│   └── internal/   — handlers/, middleware/, db/, config/, gen/, lib/,
-│                     evaluation/, application/, matching/, resume/,
-│                     email/, notification/, analytics/, authtoken/,
-│                     storage/, webhook/, testutil/, static/
+│   ├── internal/   — handlers/, middleware/, db/, config/, gen/, lib/,
+│   │                 evaluation/, application/, matching/, resume/,
+│   │                 email/, notification/, analytics/, authtoken/,
+│   │                 storage/, webhook/, testutil/, static/,
+│   │                 career/, companyreviews/, feedback/, hris/,
+│   │                 rbac/, spdid/, profileviews/
+│   ├── migrations/ — 17 SQL DDL files (000001-000017)
+│   ├── .gen/       — go-jet generated types
+│   └── docs/       — Swagger spec
 ├── web/            — React SPA — entrypoint: src/main.tsx
-│   └── src/        — pages/, components/, hooks/useAuth.tsx, lib/api.ts
+│   └── src/
+│       ├── pages/          — page folders (index.tsx per page)
+│       │   ├── jobseeker/  — EvaluationPage, ApplicationsPage, MatchesPage, etc.
+│       │   ├── company/    — FeedbackHistoryPage, ReputationPage
+│       │   └── hris/       — EmployeeList, EmployeeCreate, OrgChart, etc.
+│       ├── components/     — layout/, ui/, jobseeker/, company/, hris/, onboarding/, passport/
+│       ├── hooks/          — useAuth.tsx, useIndustries.ts, usePermissions.ts
+│       ├── lib/            — api.ts, api-types.ts, domain modules, generated types, schemas/
+│       └── stories/        — Storybook stories
+├── .agents/        — Agent definitions, rules, skills
 └── docs/           — specs, plans, migration docs
 ```
 
@@ -114,10 +128,14 @@ When changing an API request/response shape:
 ## Frontend conventions
 - API calls go through `src/lib/api.ts` — auto-attaches Bearer token, auto-refreshes on 401
 - Always use the `api()` wrapper from `lib/api.ts` for authenticated requests (never raw `fetch` to `/api/v1/...`)
+- TanStack Query v5 for server state — `useQuery`, `useMutation`, `queryClient` in `lib/queryClient.ts`
+- react-hook-form + Zod for form validation — schemas in `lib/schemas/`
 - Path alias `@/*` → `src/*` (tsconfig paths)
 - Auth state via `AuthProvider` in `hooks/useAuth.tsx` — reads tokens from localStorage
 - Token storage: `accessToken` + `refreshToken` in localStorage
-- Route definitions in `src/App.tsx`, inside `<AuthProvider>` + `<RootLayout>`
+- Route definitions in `src/App.tsx`, inside `<QueryClientProvider>` + `<AuthProvider>` + `<ErrorBoundary>` + `<Suspense>`
+- Lazy-loaded routes via `React.lazy` + `Suspense`
+- **Accessibility:** WCAG 2.1 AA — skip links, ARIA labels, focus management, menu semantics
 
 ## Styling
 - Tailwind v4: no `tailwind.config.*`. Config is in `web/src/styles/index.css` via `@import "tailwindcss"; @plugin "daisyui";`
@@ -127,12 +145,12 @@ When changing an API request/response shape:
 
 ## DB / go-jet
 - go-jet code generator (database-first): `bun run db:generate` runs `jet` CLI against live DB
-- Raw SQL migrations in `server-go/migrations/` (numbered `000001_init.sql` through `000011_*.sql`)
+- Raw SQL migrations in `server-go/migrations/` (numbered `000001_init.sql` through `000017_phase3_profile_views.sql`)
 - Generated types in `server-go/.gen/`, re-exported through `server-go/internal/gen/`
-- Migration naming: `000006_<kebab-name>.sql`
+- Migration naming: `000018_<kebab-name>.sql`
 
 ## Testing
-- **No tests written yet** (Go has some in `testutil/` but no handler tests)
+- Go has handler tests for most domains (auth, jobs, profiles, companies, search, admin, etc.)
 - Web: `vitest` (happy-dom, @testing-library/react) — tests in `src/**/*.test.{ts,tsx}`
 - Go server: use Go's `testing` package with `httptest`
 - Go tests require a live DB (`SKILLPASS_TEST_DATABASE_URL`) — they truncate tables for isolation
