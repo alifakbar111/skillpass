@@ -24,7 +24,7 @@ export interface CreateReviewRequest {
 export async function createCompanyReview(companyId: string, data: CreateReviewRequest): Promise<CompanyReview> {
   return api<CompanyReview>(`/companies/${companyId}/reviews`, {
     method: 'POST',
-    body: JSON.stringify(data),
+    body: data,
   });
 }
 

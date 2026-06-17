@@ -25,6 +25,6 @@ export async function getApplicationMessages(applicationId: string): Promise<App
 export async function addApplicationMessage(applicationId: string, body: string): Promise<ApplicationMessage> {
   return api<ApplicationMessage>(`/applications/${applicationId}/messages`, {
     method: 'POST',
-    body: JSON.stringify({ body }),
+    body: { body },
   });
 }

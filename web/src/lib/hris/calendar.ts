@@ -21,14 +21,14 @@ export function createCalendar(data: {
 }): Promise<WorkingCalendar> {
   return api<WorkingCalendar>('/hris/working-calendars', {
     method: 'POST',
-    body: JSON.stringify(data),
+    body: data,
   });
 }
 
 export function updateCalendar(id: string, data: { defaultWorkDays: number[] }): Promise<WorkingCalendar> {
   return api<WorkingCalendar>(`/hris/working-calendars/${id}`, {
     method: 'PUT',
-    body: JSON.stringify(data),
+    body: data,
   });
 }
 
