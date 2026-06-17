@@ -3,7 +3,7 @@
   "private": true,
   "scripts": {
     "dev": "concurrently -n server,web -c cyan,green \"bun run dev:server\" \"bun --cwd web dev\"",
-    "dev:server": "go -C server-go run -tags dev ./cmd/server/",
+    "dev:server": "cd server-go && air",
     "dev:web": "bun --cwd web dev",
     "build": "bun --cwd web build",
     "build:server": "bun run build && rm -rf server-go/internal/static/dist && cp -r web/dist server-go/internal/static/dist && cd server-go && go build -o ../skillpass ./cmd/server",

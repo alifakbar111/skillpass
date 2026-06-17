@@ -1,7 +1,7 @@
 import { Target } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { getSkillsGap, type SkillsGap } from '../../lib/matching';
+import { getSkillsGap, type SkillsGap } from '@/lib/matching';
 
 export function SkillsGapPanel({ jobId }: { jobId: string }) {
   const [gap, setGap] = useState<SkillsGap | null>(null);

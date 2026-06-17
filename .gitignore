@@ -10,6 +10,7 @@ drizzle/
 server-go/migrate
 server-go/seed
 server-go/server
+server-go/tmp/
 .qwen/
 docs/
 !server-go/docs/

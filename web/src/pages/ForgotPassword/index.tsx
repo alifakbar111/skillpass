@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { LoadingSpinner } from '../../components/ui/LoadingFallback';
-import { ApiError, api } from '../../lib/api';
+import { LoadingSpinner } from '@/components/ui/LoadingFallback';
+import { ApiError, api } from '@/lib/api';
 
 export function ForgotPassword() {
   const [email, setEmail] = useState('');
@@ -17,7 +17,7 @@ export function ForgotPassword() {
     try {
       await api('/auth/forgot-password', {
         method: 'POST',
-        body: JSON.stringify({ email: email.trim() }),
+        body: { email: email.trim() },
       });
       setSent(true);
     } catch (err) {

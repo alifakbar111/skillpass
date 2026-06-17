@@ -48,11 +48,11 @@ export function listBranches(): Promise<Branch[]> {
 }
 
 export function createBranch(data: Partial<Branch>): Promise<Branch> {
-  return api<Branch>('/hris/branches', { method: 'POST', body: JSON.stringify(data) });
+  return api<Branch>('/hris/branches', { method: 'POST', body: data });
 }
 
 export function updateBranch(id: string, data: Partial<Branch>): Promise<Branch> {
-  return api<Branch>(`/hris/branches/${id}`, { method: 'PUT', body: JSON.stringify(data) });
+  return api<Branch>(`/hris/branches/${id}`, { method: 'PUT', body: data });
 }
 
 export function deleteBranch(id: string): Promise<void> {
@@ -64,11 +64,11 @@ export function listDepartments(): Promise<Department[]> {
 }
 
 export function createDepartment(data: { name: string; parentDepartmentId?: string }): Promise<Department> {
-  return api<Department>('/hris/departments', { method: 'POST', body: JSON.stringify(data) });
+  return api<Department>('/hris/departments', { method: 'POST', body: data });
 }
 
 export function updateDepartment(id: string, data: Partial<Department>): Promise<Department> {
-  return api<Department>(`/hris/departments/${id}`, { method: 'PUT', body: JSON.stringify(data) });
+  return api<Department>(`/hris/departments/${id}`, { method: 'PUT', body: data });
 }
 
 export function deleteDepartment(id: string): Promise<void> {
@@ -80,11 +80,11 @@ export function listPositions(): Promise<Position[]> {
 }
 
 export function createPosition(data: { name: string; departmentId?: string; level: string }): Promise<Position> {
-  return api<Position>('/hris/positions', { method: 'POST', body: JSON.stringify(data) });
+  return api<Position>('/hris/positions', { method: 'POST', body: data });
 }
 
 export function updatePosition(id: string, data: Partial<Position>): Promise<Position> {
-  return api<Position>(`/hris/positions/${id}`, { method: 'PUT', body: JSON.stringify(data) });
+  return api<Position>(`/hris/positions/${id}`, { method: 'PUT', body: data });
 }
 
 export function deletePosition(id: string): Promise<void> {

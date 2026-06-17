@@ -3,15 +3,15 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { X } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { useForm } from 'react-hook-form';
-import { Form } from '../../components/ui/Form';
-import { FormInput } from '../../components/ui/FormInput';
-import { FormSelect } from '../../components/ui/FormSelect';
-import { FormTextarea } from '../../components/ui/FormTextarea';
-import { LoadingFallback, LoadingSpinner } from '../../components/ui/LoadingFallback';
-import { useIndustries } from '../../hooks/useIndustries';
-import { ApiError, api } from '../../lib/api';
-import { type CompanyProfileForm, companyProfileSchema } from '../../lib/schemas';
-import { WebhooksSection } from './WebhooksSection';
+import { Form } from '@/components/ui/Form';
+import { FormInput } from '@/components/ui/FormInput';
+import { FormSelect } from '@/components/ui/FormSelect';
+import { FormTextarea } from '@/components/ui/FormTextarea';
+import { LoadingFallback, LoadingSpinner } from '@/components/ui/LoadingFallback';
+import { useIndustries } from '@/hooks/useIndustries';
+import { ApiError, api } from '@/lib/api';
+import { type CompanyProfileForm, companyProfileSchema } from '@/lib/schemas';
+import { WebhooksSection } from '@/pages/CompanyProfile/WebhooksSection';
 
 type CompanyProfileData = { companyName: string; website?: string; industry: string; description?: string };
 
@@ -46,7 +46,7 @@ export function CompanyProfile() {
   }, [companyProfile, methods]);
 
   const saveMutation = useMutation({
-    mutationFn: (data: CompanyProfileForm) => api('/company/profile', { method: 'PUT', body: JSON.stringify(data) }),
+    mutationFn: (data: CompanyProfileForm) => api('/company/profile', { method: 'PUT', body: data }),
     onMutate: () => {
       setError(null);
       setSuccess(false);
@@ -68,7 +68,7 @@ export function CompanyProfile() {
     const prev = blindMode;
     setBlindMode(next);
     try {
-      await api('/company/profile', { method: 'PUT', body: JSON.stringify({ blindMode: next }) });
+      await api('/company/profile', { method: 'PUT', body: { blindMode: next } });
     } catch (err) {
       setBlindMode(prev);
       setError(err instanceof ApiError ? (err.serverMessage ?? err.message) : 'Failed to update blind mode');

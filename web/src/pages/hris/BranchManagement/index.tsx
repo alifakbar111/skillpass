@@ -102,10 +102,16 @@ export default function BranchManagement() {
                   </div>
                   {canManage && (
                     <div className="flex gap-1">
-                      <button type="button" className="btn btn-ghost btn-xs" onClick={() => openEdit(b)}>
+                      <button
+                        aria-label="edit"
+                        type="button"
+                        className="btn btn-ghost btn-xs"
+                        onClick={() => openEdit(b)}
+                      >
                         <Pencil className="h-3 w-3" />
                       </button>
                       <button
+                        aria-label="delete"
                         type="button"
                         className="btn btn-ghost btn-xs text-error"
                         onClick={() => deleteMut.mutate(b.id)}

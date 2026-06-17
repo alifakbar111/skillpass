@@ -1,4 +1,4 @@
-import { ApiError, api } from './api';
+import { ApiError, api } from '@/lib/api';
 import type {
   CareerPathResult,
   DevelopmentStep,

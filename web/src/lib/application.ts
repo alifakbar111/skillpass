@@ -1,4 +1,4 @@
-import { api } from './api';
+import { api } from '@/lib/api';
 import type { ApplicationMessage, ApplicationResult } from './api-types';
 
 // ApplicationStatus is a client-side narrowing of the server's free-form
@@ -25,6 +25,6 @@ export async function getApplicationMessages(applicationId: string): Promise<App
 export async function addApplicationMessage(applicationId: string, body: string): Promise<ApplicationMessage> {
   return api<ApplicationMessage>(`/applications/${applicationId}/messages`, {
     method: 'POST',
-    body: JSON.stringify({ body }),
+    body: { body },
   });
 }

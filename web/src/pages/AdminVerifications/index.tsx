@@ -1,8 +1,8 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Check, X } from 'lucide-react';
 import { useState } from 'react';
+import { ApiError, api } from '@/lib/api';
 import type { PendingCompany as Company } from '@/lib/api-types';
-import { ApiError, api } from '../../lib/api';
 
 export function AdminVerifications() {
   const queryClient = useQueryClient();
@@ -24,7 +24,7 @@ export function AdminVerifications() {
     mutationFn: ({ id, action }: { id: string; action: 'approve' | 'reject' }) =>
       api(`/admin/verifications/${encodeURIComponent(id)}`, {
         method: 'POST',
-        body: JSON.stringify({ action }),
+        body: { action },
       }),
     onMutate: ({ id }) => {
       setError(null);

@@ -183,17 +183,23 @@ func (h *ProfileHandler) GetMyProfile(c *gin.Context) {
 		return
 	}
 
+	userUUID, err := uuid.Parse(userIDStr)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid user ID"})
+		return
+	}
+
 	profileStmt := SELECT(
 		gen.JobseekerProfiles.ID, gen.JobseekerProfiles.UserID, gen.JobseekerProfiles.Headline,
 		gen.JobseekerProfiles.About, gen.JobseekerProfiles.YearsOfExperience, gen.JobseekerProfiles.Slug,
 	).FROM(
 		gen.JobseekerProfiles,
 	).WHERE(
-		gen.JobseekerProfiles.UserID.EQ(UUID(uuid.MustParse(userIDStr))),
+		gen.JobseekerProfiles.UserID.EQ(UUID(userUUID)),
 	)
 
 	var profiles []model.JobseekerProfiles
-	err := profileStmt.QueryContext(c.Request.Context(), h.db, &profiles)
+	err = profileStmt.QueryContext(c.Request.Context(), h.db, &profiles)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to load profile"})
 		return
@@ -209,7 +215,7 @@ func (h *ProfileHandler) GetMyProfile(c *gin.Context) {
 	).FROM(
 		gen.Users,
 	).WHERE(
-		gen.Users.ID.EQ(UUID(uuid.MustParse(userIDStr))),
+		gen.Users.ID.EQ(UUID(userUUID)),
 	)
 
 	var users []model.Users
@@ -291,6 +297,12 @@ func (h *ProfileHandler) UpdateMyProfile(c *gin.Context) {
 		return
 	}
 
+	userUUID, err := uuid.Parse(userIDStr)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid user ID"})
+		return
+	}
+
 	var req UpdateProfileRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request body"})
@@ -321,14 +333,14 @@ func (h *ProfileHandler) UpdateMyProfile(c *gin.Context) {
 	}
 
 	stmt := gen.JobseekerProfiles.UPDATE().SET(setVals[0], setVals[1:]...).WHERE(
-		gen.JobseekerProfiles.UserID.EQ(UUID(uuid.MustParse(userIDStr))),
+		gen.JobseekerProfiles.UserID.EQ(UUID(userUUID)),
 	).RETURNING(
 		gen.JobseekerProfiles.ID, gen.JobseekerProfiles.UserID, gen.JobseekerProfiles.Headline,
 		gen.JobseekerProfiles.About, gen.JobseekerProfiles.YearsOfExperience, gen.JobseekerProfiles.Slug,
 	)
 
 	var profiles []model.JobseekerProfiles
-	err := stmt.QueryContext(c.Request.Context(), h.db, &profiles)
+	err = stmt.QueryContext(c.Request.Context(), h.db, &profiles)
 	if err != nil {
 		if errors.Is(err, qrm.ErrNoRows) {
 			c.JSON(http.StatusNotFound, gin.H{"error": "Profile not found"})
@@ -395,6 +407,12 @@ func (h *ProfileHandler) CreateExperience(c *gin.Context) {
 		return
 	}
 
+	userUUID, err := uuid.Parse(userIDStr)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid user ID"})
+		return
+	}
+
 	var req CreateExperienceRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request body"})
@@ -420,11 +438,11 @@ func (h *ProfileHandler) CreateExperience(c *gin.Context) {
 	).FROM(
 		gen.JobseekerProfiles,
 	).WHERE(
-		gen.JobseekerProfiles.UserID.EQ(UUID(uuid.MustParse(userIDStr))),
+		gen.JobseekerProfiles.UserID.EQ(UUID(userUUID)),
 	)
 
 	var profiles []model.JobseekerProfiles
-	err := profileStmt.QueryContext(c.Request.Context(), h.db, &profiles)
+	err = profileStmt.QueryContext(c.Request.Context(), h.db, &profiles)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to load profile"})
 		return
@@ -490,8 +508,16 @@ func (h *ProfileHandler) UpdateExperience(c *gin.Context) {
 		c.JSON(http.StatusUnauthorized, gin.H{"error": "Unauthorized"})
 		return
 	}
+
+	userUUID, err := uuid.Parse(userIDStr)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid user ID"})
+		return
+	}
+
 	expID := c.Param("id")
-	if _, err := uuid.Parse(expID); err != nil {
+	expUUID, err := uuid.Parse(expID)
+	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid experience id"})
 		return
 	}
@@ -501,11 +527,11 @@ func (h *ProfileHandler) UpdateExperience(c *gin.Context) {
 	).FROM(
 		gen.JobseekerProfiles,
 	).WHERE(
-		gen.JobseekerProfiles.UserID.EQ(UUID(uuid.MustParse(userIDStr))),
+		gen.JobseekerProfiles.UserID.EQ(UUID(userUUID)),
 	)
 
 	var profiles []model.JobseekerProfiles
-	err := profileStmt.QueryContext(c.Request.Context(), h.db, &profiles)
+	err = profileStmt.QueryContext(c.Request.Context(), h.db, &profiles)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to load profile"})
 		return
@@ -579,7 +605,7 @@ func (h *ProfileHandler) UpdateExperience(c *gin.Context) {
 	}
 
 	stmt := gen.JobExperiences.UPDATE().SET(setVals[0], setVals[1:]...).WHERE(
-		gen.JobExperiences.ID.EQ(UUID(uuid.MustParse(expID))).AND(
+		gen.JobExperiences.ID.EQ(UUID(expUUID)).AND(
 			gen.JobExperiences.ProfileID.EQ(UUID(profile.ID)),
 		),
 	).RETURNING(
@@ -626,8 +652,16 @@ func (h *ProfileHandler) DeleteExperience(c *gin.Context) {
 		c.JSON(http.StatusUnauthorized, gin.H{"error": "Unauthorized"})
 		return
 	}
+
+	userUUID, err := uuid.Parse(userIDStr)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid user ID"})
+		return
+	}
+
 	expID := c.Param("id")
-	if _, err := uuid.Parse(expID); err != nil {
+	expUUID, err := uuid.Parse(expID)
+	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid experience id"})
 		return
 	}
@@ -637,11 +671,11 @@ func (h *ProfileHandler) DeleteExperience(c *gin.Context) {
 	).FROM(
 		gen.JobseekerProfiles,
 	).WHERE(
-		gen.JobseekerProfiles.UserID.EQ(UUID(uuid.MustParse(userIDStr))),
+		gen.JobseekerProfiles.UserID.EQ(UUID(userUUID)),
 	)
 
 	var profiles []model.JobseekerProfiles
-	err := profileStmt.QueryContext(c.Request.Context(), h.db, &profiles)
+	err = profileStmt.QueryContext(c.Request.Context(), h.db, &profiles)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to load profile"})
 		return
@@ -653,7 +687,7 @@ func (h *ProfileHandler) DeleteExperience(c *gin.Context) {
 	profile := profiles[0]
 
 	deleteStmt := gen.JobExperiences.DELETE().WHERE(
-		gen.JobExperiences.ID.EQ(UUID(uuid.MustParse(expID))).AND(
+		gen.JobExperiences.ID.EQ(UUID(expUUID)).AND(
 			gen.JobExperiences.ProfileID.EQ(UUID(profile.ID)),
 		),
 	)

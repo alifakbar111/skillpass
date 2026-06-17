@@ -7,8 +7,8 @@ import {
   register as apiRegister,
   clearTokens,
   isAuthError,
-} from '../lib/api';
-import { queryClient } from '../lib/queryClient';
+} from '@/lib/api';
+import { queryClient } from '@/lib/queryClient';
 
 type User = AuthUser;
 

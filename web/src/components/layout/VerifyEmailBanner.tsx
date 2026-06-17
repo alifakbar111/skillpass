@@ -1,7 +1,7 @@
 import { MailWarning, X } from 'lucide-react';
 import { useState } from 'react';
-import { useAuth } from '../../hooks/useAuth';
-import { api } from '../../lib/api';
+import { useAuth } from '@/hooks/useAuth';
+import { api } from '@/lib/api';
 
 // Soft prompt for unverified accounts. Verification is not enforced (yet) —
 // this only nudges; nothing is gated on it.

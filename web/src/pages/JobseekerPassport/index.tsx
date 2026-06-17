@@ -2,13 +2,13 @@ import { useQuery } from '@tanstack/react-query';
 import { ExternalLink, Eye, Sparkles, X } from 'lucide-react';
 import { useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
+import { EvaluationScoreBadge } from '@/components/jobseeker/EvaluationScoreBadge';
+import { SharePassport } from '@/components/passport/SharePassport';
+import { LoadingFallback } from '@/components/ui/LoadingFallback';
+import { useAuth } from '@/hooks/useAuth';
+import { ApiError, api } from '@/lib/api';
 import type { PublicProfile } from '@/lib/api-types';
-import { EvaluationScoreBadge } from '../../components/jobseeker/EvaluationScoreBadge';
-import { SharePassport } from '../../components/passport/SharePassport';
-import { LoadingFallback } from '../../components/ui/LoadingFallback';
-import { useAuth } from '../../hooks/useAuth';
-import { ApiError, api } from '../../lib/api';
-import { getLatestEvaluation } from '../../lib/evaluation';
+import { getLatestEvaluation } from '@/lib/evaluation';
 
 export function JobseekerPassport() {
   const { user } = useAuth();

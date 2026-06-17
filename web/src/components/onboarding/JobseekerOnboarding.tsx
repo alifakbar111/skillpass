@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
-import { getLatestEvaluation } from '../../lib/evaluation';
-import { ChecklistCard, type ChecklistStep } from './ChecklistCard';
+import { ChecklistCard, type ChecklistStep } from '@/components/onboarding/ChecklistCard';
+import { getLatestEvaluation } from '@/lib/evaluation';
 
 interface Props {
   hasHeadline: boolean;

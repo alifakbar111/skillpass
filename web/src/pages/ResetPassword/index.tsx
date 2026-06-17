@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
-import { LoadingSpinner } from '../../components/ui/LoadingFallback';
-import { ApiError, api } from '../../lib/api';
+import { LoadingSpinner } from '@/components/ui/LoadingFallback';
+import { ApiError, api } from '@/lib/api';
 
 export function ResetPassword() {
   const [params] = useSearchParams();
@@ -29,7 +29,7 @@ export function ResetPassword() {
     try {
       await api('/auth/reset-password', {
         method: 'POST',
-        body: JSON.stringify({ token, newPassword: password }),
+        body: { token, newPassword: password },
       });
       navigate('/auth/login', { replace: true });
     } catch (err) {
