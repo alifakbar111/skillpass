@@ -21,7 +21,7 @@ export interface ParsedResume {
 export async function parseResume(text: string): Promise<ParsedResume> {
   return api<ParsedResume>('/profiles/me/resume-parse', {
     method: 'POST',
-    body: JSON.stringify({ text }),
+    body: { text },
   });
 }
 

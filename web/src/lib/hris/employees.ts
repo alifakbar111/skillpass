@@ -123,13 +123,13 @@ export function getEmployee(id: string): Promise<Employee> {
 export function createEmployee(data: CreateEmployeeRequest): Promise<Employee> {
   return api<Employee>('/hris/employees', {
     method: 'POST',
-    body: JSON.stringify(data),
+    body: data,
   });
 }
 
 export function updateEmployee(id: string, data: UpdateEmployeeRequest): Promise<Employee> {
   return api<Employee>(`/hris/employees/${id}`, {
     method: 'PUT',
-    body: JSON.stringify(data),
+    body: data,
   });
 }
