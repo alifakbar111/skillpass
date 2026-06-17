@@ -13,6 +13,7 @@ import (
 
 	"skillpass-server-go/.gen/skillpass/public/model"
 	"skillpass-server-go/internal/gen"
+	"skillpass-server-go/internal/lib"
 )
 
 // Sentinel errors for error type discrimination.
@@ -74,11 +75,11 @@ func contains(list []string, item string) bool {
 }
 
 func (s *Service) Apply(ctx context.Context, jobseekerID, jobPostingID string) (*ApplicationResult, error) {
-	jobseekerUUID, err := uuid.Parse(jobseekerID)
+	jobseekerUUID, err := lib.ParseUUID(jobseekerID)
 	if err != nil {
 		return nil, fmt.Errorf("invalid jobseeker ID: %w", err)
 	}
-	jobPostingUUID, err := uuid.Parse(jobPostingID)
+	jobPostingUUID, err := lib.ParseUUID(jobPostingID)
 	if err != nil {
 		return nil, fmt.Errorf("invalid job posting ID: %w", err)
 	}
@@ -158,7 +159,7 @@ func (s *Service) Apply(ctx context.Context, jobseekerID, jobPostingID string) (
 } 
 
 func (s *Service) ListForJobseeker(ctx context.Context, jobseekerID string) ([]ApplicationResult, error) {
-	jobseekerUUID, err := uuid.Parse(jobseekerID)
+	jobseekerUUID, err := lib.ParseUUID(jobseekerID)
 	if err != nil {
 		return nil, fmt.Errorf("invalid jobseeker ID: %w", err)
 	}
@@ -224,7 +225,7 @@ func (s *Service) UpdateStatus(ctx context.Context, applicationID, companyID, st
 		return nil, ErrInvalidStatus
 	}
 
-	applicationUUID, err := uuid.Parse(applicationID)
+	applicationUUID, err := lib.ParseUUID(applicationID)
 	if err != nil {
 		return nil, fmt.Errorf("invalid application ID: %w", err)
 	}
@@ -327,7 +328,7 @@ type CompanyApplicationResult struct {
 } //@name CompanyApplicationResult
 
 func (s *Service) ListForCompany(ctx context.Context, companyID string) ([]CompanyApplicationResult, error) {
-	companyUUID, err := uuid.Parse(companyID)
+	companyUUID, err := lib.ParseUUID(companyID)
 	if err != nil {
 		return nil, fmt.Errorf("invalid company ID: %w", err)
 	}

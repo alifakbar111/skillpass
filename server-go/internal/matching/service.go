@@ -16,6 +16,7 @@ import (
 
 	"skillpass-server-go/.gen/skillpass/public/model"
 	"skillpass-server-go/internal/gen"
+	"skillpass-server-go/internal/lib"
 )
 
 type Service struct {
@@ -355,7 +356,7 @@ func (s *Service) IsBlindMode(ctx context.Context, companyID string) bool {
 }
 
 func (s *Service) getLatestEvaluation(ctx context.Context, profileID string) (*model.AiEvaluations, error) {
-	profileUUID, err := uuid.Parse(profileID)
+	profileUUID, err := lib.ParseUUID(profileID)
 	if err != nil {
 		return nil, fmt.Errorf("invalid profile ID: %w", err)
 	}

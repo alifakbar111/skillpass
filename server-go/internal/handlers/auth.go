@@ -469,7 +469,7 @@ func parseRefreshToken(tokenStr, secret string) (*tokenClaims, error) {
 var errInvalidToken = errors.New("invalid refresh token")
 
 func revokeAllForUserString(ctx context.Context, db *sql.DB, userID string) error {
-	uid, err := uuid.Parse(userID)
+	uid, err := lib.ParseUUID(userID)
 	if err != nil {
 		return nil
 	}

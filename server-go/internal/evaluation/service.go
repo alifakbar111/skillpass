@@ -56,7 +56,7 @@ type SkillScoreItem struct {
 } //@name SkillScoreItem
 
 func (s *Service) Evaluate(ctx context.Context, profileID string) (*EvaluationResult, error) {
-	profileUUID, err := uuid.Parse(profileID)
+	profileUUID, err := lib.ParseUUID(profileID)
 	if err != nil {
 		return nil, fmt.Errorf("invalid profile ID: %w", err)
 	}
@@ -189,7 +189,7 @@ type fullProfile struct {
 }
 
 func (s *Service) loadFullProfile(ctx context.Context, profileID string) (*fullProfile, error) {
-	profileUUID, err := uuid.Parse(profileID)
+	profileUUID, err := lib.ParseUUID(profileID)
 	if err != nil {
 		return nil, fmt.Errorf("invalid profile ID: %w", err)
 	}
@@ -296,7 +296,7 @@ func formatExperiences(exps []model.JobExperiences) string {
 
 // GetLatest returns the most recent evaluation for a profile.
 func (s *Service) GetLatest(ctx context.Context, profileID string) (*EvaluationResult, error) {
-	profileUUID, err := uuid.Parse(profileID)
+	profileUUID, err := lib.ParseUUID(profileID)
 	if err != nil {
 		return nil, fmt.Errorf("invalid profile ID: %w", err)
 	}
