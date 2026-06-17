@@ -1,6 +1,6 @@
 import { Camera } from 'lucide-react';
 import { useRef, useState } from 'react';
-import { ApiError, apiUpload } from '@/lib/api';
+import { ApiError, api } from '@/lib/api';
 
 interface Props {
   name: string;
@@ -22,7 +22,7 @@ export function AvatarUploader({ name, avatarUrl, onUploaded }: Props) {
     try {
       const form = new FormData();
       form.append('file', file);
-      const res = await apiUpload<{ avatarUrl: string }>('/profiles/me/avatar', form);
+      const res = await api<{ avatarUrl: string }>('/profiles/me/avatar', { method: 'POST', body: form });
       onUploaded(res.avatarUrl);
     } catch (err) {
       setError(err instanceof ApiError ? (err.serverMessage ?? err.message) : 'Upload failed');

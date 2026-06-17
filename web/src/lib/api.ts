@@ -1,10 +1,15 @@
+import type { FetchOptions } from 'ofetch';
+import { FetchError, ofetch } from 'ofetch';
+import { z } from 'zod';
 import type { LoginResponse, User } from './api-types';
 
 export type { LoginResponse, User };
+export type AuthUser = User;
 
 const BASE_URL = import.meta.env.VITE_API_BASE_PATH ?? '/api/v1';
-
 const ACCESS_TOKEN_KEY = 'accessToken';
+
+// ── Token helpers ───────────────────────────────────────────────
 
 export function getAccessToken(): string | null {
   return localStorage.getItem(ACCESS_TOKEN_KEY);
@@ -13,6 +18,12 @@ export function getAccessToken(): string | null {
 export function clearTokens() {
   localStorage.removeItem(ACCESS_TOKEN_KEY);
 }
+
+function setAccessToken(token: string) {
+  localStorage.setItem(ACCESS_TOKEN_KEY, token);
+}
+
+// ── Error classes (backwards-compatible) ────────────────────────
 
 export class ApiError extends Error {
   constructor(
@@ -36,52 +47,26 @@ export function isAuthError(err: unknown): err is AuthError {
   return err instanceof AuthError;
 }
 
-interface ErrorBody {
-  error?: string;
-}
+// ── Refresh dedup ───────────────────────────────────────────────
 
-function parseServerMessage(body: string): string | null {
-  if (!body) return null;
-  try {
-    const obj = JSON.parse(body) as ErrorBody;
-    return typeof obj.error === 'string' ? obj.error : null;
-  } catch {
-    return null;
-  }
-}
+let refreshPromise: Promise<string | null> | null = null;
 
-async function fetchJson(url: string, options?: RequestInit): Promise<{ ok: boolean; status: number; body: string }> {
-  const res = await fetch(url, options);
-  const body = await res.text().catch(() => '');
-  return { ok: res.ok, status: res.status, body };
-}
-
-function throwApiError(status: number, body: string): never {
-  const serverMessage = parseServerMessage(body);
-  if (status === 401) {
-    throw new AuthError(status, body, serverMessage);
-  }
-  throw new ApiError(status, body, serverMessage);
-}
-
-let refreshInFlight: Promise<string | null> | null = null;
-
-async function refreshAccessToken(): Promise<string | null> {
-  if (refreshInFlight) {
-    return refreshInFlight;
-  }
-  const promise = (async (): Promise<string | null> => {
+async function doRefresh(): Promise<string | null> {
+  if (refreshPromise) return refreshPromise;
+  refreshPromise = (async () => {
     try {
-      const res = await fetchJson(`${BASE_URL}/auth/refresh`, {
+      const res = await fetch(`${BASE_URL}/auth/refresh`, {
         method: 'POST',
         credentials: 'include',
         headers: { 'Content-Type': 'application/json' },
       });
       if (!res.ok) {
+        clearTokens();
         return null;
       }
-      const data = JSON.parse(res.body) as { accessToken?: string; refreshToken?: string };
+      const data = (await res.json()) as { accessToken?: string };
       if (!data.accessToken || typeof data.accessToken !== 'string') {
+        clearTokens();
         return null;
       }
       setAccessToken(data.accessToken);
@@ -89,103 +74,80 @@ async function refreshAccessToken(): Promise<string | null> {
     } catch {
       return null;
     } finally {
-      refreshInFlight = null;
+      refreshPromise = null;
     }
   })();
-  refreshInFlight = promise;
-  return promise;
+  return refreshPromise;
 }
 
-function setAccessToken(token: string) {
-  localStorage.setItem(ACCESS_TOKEN_KEY, token);
-}
+// ── Tuned ofetch instance ───────────────────────────────────────
 
-export async function api<T = unknown>(path: string, options: RequestInit = {}): Promise<T> {
-  const headers = new Headers(options.headers);
-  headers.set('Content-Type', 'application/json');
-
-  const accessToken = getAccessToken();
-  if (accessToken) headers.set('Authorization', `Bearer ${accessToken}`);
-
-  let res = await fetchJson(`${BASE_URL}${path}`, {
-    ...options,
-    headers,
-    credentials: 'include',
-  });
-
-  if (res.status === 401) {
-    const newToken = await refreshAccessToken();
-    if (newToken) {
-      headers.set('Authorization', `Bearer ${newToken}`);
-      res = await fetchJson(`${BASE_URL}${path}`, {
-        ...options,
-        headers,
-        credentials: 'include',
-      });
+const _ofetch = ofetch.create({
+  baseURL: BASE_URL,
+  credentials: 'include',
+  onRequest({ options }) {
+    const token = getAccessToken();
+    if (token) {
+      options.headers = new Headers(options.headers);
+      options.headers.set('Authorization', `Bearer ${token}`);
     }
-  }
+  },
+});
 
-  if (!res.ok) {
-    if (res.status === 401) {
-      clearTokens();
-    }
-    throwApiError(res.status, res.body);
-  }
+// ── Exported api() — wraps ofetch with 401 auto-refresh ────────
 
-  if (res.status === 204 || res.body === '') {
-    return undefined as T;
-  }
-
+export async function api<T = unknown>(path: string, options: FetchOptions<'json'> = {}): Promise<T> {
   try {
-    return JSON.parse(res.body) as T;
-  } catch {
-    throwApiError(res.status, res.body);
+    return await _ofetch<T>(path, options);
+  } catch (err) {
+    // On 401, try refreshing the token and retry once
+    if (err instanceof FetchError && err.status === 401) {
+      const newToken = await doRefresh();
+      if (newToken) {
+        const headers = new Headers(options.headers as HeadersInit | undefined);
+        headers.set('Authorization', `Bearer ${newToken}`);
+        return _ofetch<T>(path, { ...options, headers });
+      }
+      // Refresh failed — throw AuthError
+      const body = typeof err.data === 'string' ? err.data : JSON.stringify(err.data ?? '');
+      throw new AuthError(401, body, 'Session expired. Please log in again.');
+    }
+
+    // All other FetchErrors → ApiError (backwards compat)
+    if (err instanceof FetchError) {
+      const body = typeof err.data === 'string' ? err.data : JSON.stringify(err.data ?? '');
+      const message = (err.data as { error?: string } | null)?.error ?? err.message;
+      throw new ApiError(err.status ?? 500, body, message);
+    }
+
+    // Network errors, etc. — rethrow as-is
+    throw err;
   }
 }
 
-// apiUpload sends multipart form data (file uploads). The browser sets the
-// Content-Type boundary itself — do not set it manually.
+// ── Zod-validated fetch ────────────────────────────────────────
+
+export async function apiWithSchema<T extends z.ZodTypeAny>(
+  schema: T,
+  path: string,
+  options?: FetchOptions<'json'>,
+): Promise<z.infer<T>> {
+  return api(path, options).then((data) => schema.parse(data));
+}
+
+// ── File uploads (backwards-compatible thin wrapper) ────────────
+// ofetch handles FormData natively — no special Content-Type needed.
+
 export async function apiUpload<T = unknown>(path: string, form: FormData): Promise<T> {
-  const headers = new Headers();
-  const accessToken = getAccessToken();
-  if (accessToken) headers.set('Authorization', `Bearer ${accessToken}`);
-
-  let res = await fetchJson(`${BASE_URL}${path}`, {
-    method: 'POST',
-    body: form,
-    headers,
-    credentials: 'include',
-  });
-
-  if (res.status === 401) {
-    const newToken = await refreshAccessToken();
-    if (newToken) {
-      headers.set('Authorization', `Bearer ${newToken}`);
-      res = await fetchJson(`${BASE_URL}${path}`, {
-        method: 'POST',
-        body: form,
-        headers,
-        credentials: 'include',
-      });
-    }
-  }
-
-  if (!res.ok) {
-    if (res.status === 401) {
-      clearTokens();
-    }
-    throwApiError(res.status, res.body);
-  }
-
-  return JSON.parse(res.body) as T;
+  return api<T>(path, { method: 'POST', body: form });
 }
 
-export type AuthUser = User;
+// ── Convenience wrappers ───────────────────────────────────────
 
 export async function login(email: string, password: string): Promise<LoginResponse> {
   const data = await api<LoginResponse>('/auth/login', {
     method: 'POST',
-    body: JSON.stringify({ email, password }),
+    body: { email, password },
   });
   if (data.accessToken) setAccessToken(data.accessToken);
   return data;
@@ -205,7 +167,7 @@ export async function register(body: {
 }): Promise<LoginResponse> {
   const data = await api<LoginResponse>('/auth/register', {
     method: 'POST',
-    body: JSON.stringify(body),
+    body,
   });
   if (data.accessToken) setAccessToken(data.accessToken);
   return data;
@@ -214,6 +176,8 @@ export async function register(body: {
 export async function logout(): Promise<void> {
   try {
     await api('/auth/logout', { method: 'POST' });
-  } catch {}
+  } catch {
+    // Swallow — we clear tokens either way
+  }
   clearTokens();
 }
