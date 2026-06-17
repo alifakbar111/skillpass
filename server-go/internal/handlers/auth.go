@@ -11,8 +11,8 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
-	"github.com/golang-jwt/jwt/v5"
 	. "github.com/go-jet/jet/v2/postgres"
+	"github.com/golang-jwt/jwt/v5"
 	"github.com/google/uuid"
 
 	"skillpass-server-go/.gen/skillpass/public/model"
@@ -105,7 +105,7 @@ func (h *AuthHandler) signTokens(c *gin.Context, userID, role string) (accessTok
 	refreshID = uuid.New()
 	refreshExpires := now.Add(refreshTokenTTL)
 	refreshToken, err = jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
-		"jti":   refreshID.String(),
+		"jti":    refreshID.String(),
 		"userId": userID,
 		"role":   role,
 		"type":   "refresh",
@@ -217,7 +217,7 @@ func (h *AuthHandler) Register(c *gin.Context) {
 	)
 
 	if err = insertStmt.QueryContext(c.Request.Context(), tx, &user); err != nil {
-		c.JSON(http.StatusConflict, gin.H{"error": "Could not create account"})
+		c.JSON(http.StatusConflict, gin.H{"error": "Could not create account. The email already registered"})
 		return
 	}
 

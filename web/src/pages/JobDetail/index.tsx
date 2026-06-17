@@ -4,8 +4,8 @@ import { Link, useParams } from 'react-router-dom';
 import { LoadingFallback } from '@/components/ui/LoadingFallback';
 import { useAuth } from '@/hooks/useAuth';
 import { ApiError, apiWithSchema } from '@/lib/api';
-import { JobSchema } from '@/lib/schemas/job';
 import { applyToJob } from '@/lib/application';
+import { JobSchema } from '@/lib/schemas/job';
 import { SkillsGapPanel } from '@/pages/JobDetail/SkillsGapPanel';
 
 export function JobDetail() {

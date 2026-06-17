@@ -116,12 +116,13 @@ func TestEmailVerificationFlow(t *testing.T) {
 			t.Fatalf("verify: expected 200, got %d: %s", w.Code, w.Body.String())
 		}
 
-		// Token is single-use.
+		// Token is idempotent — reusing the same token returns success
+		// to handle React Strict Mode double-invocation and concurrent retries.
 		w2 := httptest.NewRecorder()
 		req2 := httptest.NewRequest("GET", "/api/v1/auth/verify-email?token="+token, nil)
 		router.ServeHTTP(w2, req2)
-		if w2.Code != http.StatusBadRequest {
-			t.Fatalf("reuse: expected 400, got %d", w2.Code)
+		if w2.Code != http.StatusOK {
+			t.Fatalf("reuse: expected 200, got %d: %s", w2.Code, w2.Body.String())
 		}
 	})
 

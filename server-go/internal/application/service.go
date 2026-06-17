@@ -74,19 +74,28 @@ func contains(list []string, item string) bool {
 }
 
 func (s *Service) Apply(ctx context.Context, jobseekerID, jobPostingID string) (*ApplicationResult, error) {
+	jobseekerUUID, err := uuid.Parse(jobseekerID)
+	if err != nil {
+		return nil, fmt.Errorf("invalid jobseeker ID: %w", err)
+	}
+	jobPostingUUID, err := uuid.Parse(jobPostingID)
+	if err != nil {
+		return nil, fmt.Errorf("invalid job posting ID: %w", err)
+	}
+
 	// Verify job posting exists and is open
 	jobStmt := SELECT(
 		gen.JobPostings.ID, gen.JobPostings.Status,
 	).FROM(
 		gen.JobPostings,
 	).WHERE(
-		gen.JobPostings.ID.EQ(UUID(uuid.MustParse(jobPostingID))),
+		gen.JobPostings.ID.EQ(UUID(jobPostingUUID)),
 	)
 
 	var jobs []struct {
 		model.JobPostings
 	}
-	err := jobStmt.QueryContext(ctx, s.db, &jobs)
+	err = jobStmt.QueryContext(ctx, s.db, &jobs)
 	if err != nil {
 		return nil, fmt.Errorf("query job posting: %w", err)
 	}
@@ -104,8 +113,8 @@ func (s *Service) Apply(ctx context.Context, jobseekerID, jobPostingID string) (
 	).FROM(
 		gen.Applications,
 	).WHERE(
-		gen.Applications.JobseekerID.EQ(UUID(uuid.MustParse(jobseekerID))).
-			AND(gen.Applications.JobPostingID.EQ(UUID(uuid.MustParse(jobPostingID)))),
+		gen.Applications.JobseekerID.EQ(UUID(jobseekerUUID)).
+			AND(gen.Applications.JobPostingID.EQ(UUID(jobPostingUUID))),
 	).LIMIT(1)
 
 	var dups []model.Applications
@@ -126,8 +135,8 @@ func (s *Service) Apply(ctx context.Context, jobseekerID, jobPostingID string) (
 		gen.Applications.Status,
 	).VALUES(
 		newID,
-		uuid.MustParse(jobseekerID),
-		uuid.MustParse(jobPostingID),
+		jobseekerUUID,
+		jobPostingUUID,
 		"applied",
 	).RETURNING(
 		gen.Applications.AllColumns,
@@ -149,6 +158,11 @@ func (s *Service) Apply(ctx context.Context, jobseekerID, jobPostingID string) (
 } 
 
 func (s *Service) ListForJobseeker(ctx context.Context, jobseekerID string) ([]ApplicationResult, error) {
+	jobseekerUUID, err := uuid.Parse(jobseekerID)
+	if err != nil {
+		return nil, fmt.Errorf("invalid jobseeker ID: %w", err)
+	}
+
 	stmt := SELECT(
 		gen.Applications.AllColumns,
 		gen.JobPostings.Title,
@@ -158,7 +172,7 @@ func (s *Service) ListForJobseeker(ctx context.Context, jobseekerID string) ([]A
 			INNER_JOIN(gen.JobPostings, gen.JobPostings.ID.EQ(gen.Applications.JobPostingID)).
 			INNER_JOIN(gen.Companies, gen.Companies.ID.EQ(gen.JobPostings.CompanyID)),
 	).WHERE(
-		gen.Applications.JobseekerID.EQ(UUID(uuid.MustParse(jobseekerID))),
+		gen.Applications.JobseekerID.EQ(UUID(jobseekerUUID)),
 	).ORDER_BY(
 		gen.Applications.CreatedAt.DESC(),
 	)
@@ -210,6 +224,11 @@ func (s *Service) UpdateStatus(ctx context.Context, applicationID, companyID, st
 		return nil, ErrInvalidStatus
 	}
 
+	applicationUUID, err := uuid.Parse(applicationID)
+	if err != nil {
+		return nil, fmt.Errorf("invalid application ID: %w", err)
+	}
+
 	// First get the current application with its job posting's company
 	selectStmt := SELECT(
 		gen.Applications.AllColumns,
@@ -218,14 +237,14 @@ func (s *Service) UpdateStatus(ctx context.Context, applicationID, companyID, st
 		gen.Applications.
 			INNER_JOIN(gen.JobPostings, gen.JobPostings.ID.EQ(gen.Applications.JobPostingID)),
 	).WHERE(
-		gen.Applications.ID.EQ(UUID(uuid.MustParse(applicationID))),
+		gen.Applications.ID.EQ(UUID(applicationUUID)),
 	).LIMIT(1)
 
 	var currentRows []struct {
 		model.Applications
 		CompanyID uuid.UUID `alias:"job_postings.company_id"`
 	}
-	err := selectStmt.QueryContext(ctx, s.db, &currentRows)
+	err = selectStmt.QueryContext(ctx, s.db, &currentRows)
 	if err != nil {
 		return nil, fmt.Errorf("query application: %w", err)
 	}
@@ -266,7 +285,7 @@ func (s *Service) UpdateStatus(ctx context.Context, applicationID, companyID, st
 	).SET(
 		gen.Applications.Status.SET(statusExpr),
 	).WHERE(
-		gen.Applications.ID.EQ(UUID(uuid.MustParse(applicationID))),
+		gen.Applications.ID.EQ(UUID(applicationUUID)),
 	).RETURNING(
 		gen.Applications.AllColumns,
 	)
@@ -308,6 +327,11 @@ type CompanyApplicationResult struct {
 } //@name CompanyApplicationResult
 
 func (s *Service) ListForCompany(ctx context.Context, companyID string) ([]CompanyApplicationResult, error) {
+	companyUUID, err := uuid.Parse(companyID)
+	if err != nil {
+		return nil, fmt.Errorf("invalid company ID: %w", err)
+	}
+
 	stmt := SELECT(
 		gen.Applications.AllColumns,
 		gen.JobPostings.Title,
@@ -321,7 +345,7 @@ func (s *Service) ListForCompany(ctx context.Context, companyID string) ([]Compa
 			INNER_JOIN(gen.JobseekerProfiles, gen.JobseekerProfiles.ID.EQ(gen.Applications.JobseekerID)).
 			INNER_JOIN(gen.Users, gen.Users.ID.EQ(gen.JobseekerProfiles.UserID)),
 	).WHERE(
-		gen.JobPostings.CompanyID.EQ(UUID(uuid.MustParse(companyID))),
+		gen.JobPostings.CompanyID.EQ(UUID(companyUUID)),
 	).ORDER_BY(
 		gen.Applications.CreatedAt.DESC(),
 	)

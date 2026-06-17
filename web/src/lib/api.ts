@@ -1,6 +1,6 @@
 import type { FetchOptions } from 'ofetch';
 import { FetchError, ofetch } from 'ofetch';
-import { z } from 'zod';
+import type { z } from 'zod';
 import type { LoginResponse, User } from './api-types';
 
 export type { LoginResponse, User };

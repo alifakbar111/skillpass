@@ -127,18 +127,12 @@ func TestGetCompanyProfile(t *testing.T) {
 
 	t.Run("malformed userId", func(t *testing.T) {
 		mtok := testutil.GenerateToken("not-a-valid-uuid", "company", 15*time.Minute)
-		recoveryRouter := gin.New()
-		recoveryRouter.Use(gin.Recovery())
-		rh := NewCompanyHandler(db)
-		rg := recoveryRouter.Group("/api/v1/company")
-		rg.Use(middleware.AuthRequired(testutil.TestJWTSecret), middleware.RequireRole("company"))
-		rg.GET("/profile", rh.GetProfile)
 		w := httptest.NewRecorder()
 		req := httptest.NewRequest("GET", "/api/v1/company/profile", nil)
 		req.Header.Set("Authorization", "Bearer "+mtok)
-		recoveryRouter.ServeHTTP(w, req)
-		if w.Code != http.StatusInternalServerError {
-			t.Fatalf("expected 500, got %d: %s", w.Code, w.Body.String())
+		router.ServeHTTP(w, req)
+		if w.Code != http.StatusBadRequest {
+			t.Fatalf("expected 400, got %d: %s", w.Code, w.Body.String())
 		}
 	})
 }

@@ -244,12 +244,18 @@ func (h *JobHandler) ListMyJobs(c *gin.Context) {
 		return
 	}
 
+	companyUUID, err := uuid.Parse(companyIDStr)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid company ID"})
+		return
+	}
+
 	stmt := SELECT(
 		gen.JobPostings.AllColumns,
 	).FROM(
 		gen.JobPostings,
 	).WHERE(
-		gen.JobPostings.CompanyID.EQ(UUID(uuid.MustParse(companyIDStr))),
+		gen.JobPostings.CompanyID.EQ(UUID(companyUUID)),
 	).ORDER_BY(
 		gen.JobPostings.CreatedAt.DESC(),
 	)
@@ -349,6 +355,12 @@ func (h *JobHandler) UpdateJob(c *gin.Context) {
 		return
 	}
 
+	companyUUID, err := uuid.Parse(companyIDStr)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid company ID"})
+		return
+	}
+
 	var req UpdateJobRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request body"})
@@ -401,7 +413,7 @@ func (h *JobHandler) UpdateJob(c *gin.Context) {
 
 	stmt := gen.JobPostings.UPDATE().SET(setVals[0], setVals[1:]...	).WHERE(
 		gen.JobPostings.ID.EQ(UUID(jobUUID)).AND(
-			gen.JobPostings.CompanyID.EQ(UUID(uuid.MustParse(companyIDStr))),
+			gen.JobPostings.CompanyID.EQ(UUID(companyUUID)),
 		),
 	).RETURNING(
 		gen.JobPostings.AllColumns,
@@ -448,9 +460,15 @@ func (h *JobHandler) DeleteJob(c *gin.Context) {
 		return
 	}
 
+	companyUUID, err := uuid.Parse(companyIDStr)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid company ID"})
+		return
+	}
+
 	stmt := gen.JobPostings.DELETE().WHERE(
 		gen.JobPostings.ID.EQ(UUID(jobUUID)).AND(
-			gen.JobPostings.CompanyID.EQ(UUID(uuid.MustParse(companyIDStr))),
+			gen.JobPostings.CompanyID.EQ(UUID(companyUUID)),
 		),
 	)
 
