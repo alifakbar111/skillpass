@@ -33,8 +33,15 @@ import (
 	"skillpass-server-go/internal/email"
 	"skillpass-server-go/internal/evaluation"
 	"skillpass-server-go/internal/handlers"
+	"skillpass-server-go/internal/hris/attendance"
 	"skillpass-server-go/internal/hris/employee"
+	"skillpass-server-go/internal/hris/holiday"
+	"skillpass-server-go/internal/hris/leave"
+	"skillpass-server-go/internal/hris/onboarding"
 	"skillpass-server-go/internal/hris/org"
+	"skillpass-server-go/internal/hris/payroll"
+	"skillpass-server-go/internal/hris/report"
+	"skillpass-server-go/internal/hris/shift"
 	"skillpass-server-go/internal/spdid"
 	"skillpass-server-go/internal/lib"
 	"skillpass-server-go/internal/matching"
@@ -350,6 +357,105 @@ func main() {
 	hrisCalendars.GET("", rbac.RequirePermission(rbacService, "org.view"), orgHandler.ListCalendars)
 	hrisCalendars.PUT("/:id", rbac.RequirePermission(rbacService, "org.manage"), orgHandler.UpdateCalendar)
 	hrisCalendars.DELETE("/:id", rbac.RequirePermission(rbacService, "org.manage"), orgHandler.DeleteCalendar)
+
+	// Shift Templates
+	shiftHandler := shift.NewHandler(database)
+	hrisShifts := hris.Group("/shifts")
+	hrisShifts.GET("", rbac.RequirePermission(rbacService, "org.view"), shiftHandler.ListTemplates)
+	hrisShifts.POST("", rbac.RequirePermission(rbacService, "org.manage"), shiftHandler.CreateTemplate)
+	hrisShifts.PUT("/:id", rbac.RequirePermission(rbacService, "org.manage"), shiftHandler.UpdateTemplate)
+	hrisShifts.DELETE("/:id", rbac.RequirePermission(rbacService, "org.manage"), shiftHandler.DeleteTemplate)
+	hrisEmployees.POST("/:id/shifts", rbac.RequirePermission(rbacService, "employee.update"), shiftHandler.AssignShift)
+	hrisEmployees.GET("/:id/shifts", rbac.RequirePermission(rbacService, "employee.view"), shiftHandler.ListEmployeeShifts)
+
+	// Attendance
+	attHandler := attendance.NewHandler(database)
+	hrisAttendance := hris.Group("/attendance")
+	hrisAttendance.POST("/clock-in", rbac.RequirePermission(rbacService, "attendance.clock"), attHandler.ClockIn)
+	hrisAttendance.POST("/clock-out", rbac.RequirePermission(rbacService, "attendance.clock"), attHandler.ClockOut)
+	hrisAttendance.GET("/dashboard", rbac.RequirePermission(rbacService, "attendance.view"), attHandler.Dashboard)
+	hrisAttendance.GET("/my", rbac.RequirePermission(rbacService, "attendance.view_self"), attHandler.MyAttendance)
+	hrisAttendance.GET("/ws", rbac.RequirePermission(rbacService, "attendance.view"), attHandler.Hub().HandleWS)
+
+	// Attendance Exceptions
+	hrisExceptions := hris.Group("/attendance-exceptions")
+	hrisExceptions.POST("", rbac.RequirePermission(rbacService, "attendance.clock"), attHandler.CreateException)
+	hrisExceptions.GET("", rbac.RequirePermission(rbacService, "attendance.view"), attHandler.ListExceptions)
+	hrisExceptions.PUT("/:id/review", rbac.RequirePermission(rbacService, "attendance.manage"), attHandler.ReviewException)
+
+	// Leave Types
+	leaveHandler := leave.NewHandler(database)
+	hrisLeaveTypes := hris.Group("/leave-types")
+	hrisLeaveTypes.GET("", rbac.RequirePermission(rbacService, "org.view"), leaveHandler.ListTypes)
+	hrisLeaveTypes.POST("", rbac.RequirePermission(rbacService, "org.manage"), leaveHandler.CreateType)
+	hrisLeaveTypes.PUT("/:id", rbac.RequirePermission(rbacService, "org.manage"), leaveHandler.UpdateType)
+	hrisLeaveTypes.DELETE("/:id", rbac.RequirePermission(rbacService, "org.manage"), leaveHandler.DeleteType)
+
+	// Leave Balances
+	hrisEmployees.GET("/:id/leave-balances", rbac.RequirePermission(rbacService, "employee.view", "employee.view_self"), leaveHandler.GetBalances)
+	hrisEmployees.POST("/:id/leave-balances/init", rbac.RequirePermission(rbacService, "employee.update"), leaveHandler.InitBalances)
+
+	// Leave Requests
+	hrisLeave := hris.Group("/leave-requests")
+	hrisLeave.POST("", rbac.RequirePermission(rbacService, "leave.request"), leaveHandler.CreateRequest)
+	hrisLeave.GET("", rbac.RequirePermission(rbacService, "leave.view"), leaveHandler.ListRequests)
+	hrisLeave.GET("/my", rbac.RequirePermission(rbacService, "leave.request"), leaveHandler.MyRequests)
+	hrisLeave.PUT("/:id/review", rbac.RequirePermission(rbacService, "leave.manage"), leaveHandler.ReviewRequest)
+	hrisLeave.PUT("/:id/cancel", rbac.RequirePermission(rbacService, "leave.request"), leaveHandler.CancelRequest)
+
+	// Holidays
+	holidayHandler := holiday.NewHandler(database)
+	hrisHolidays := hris.Group("/holidays")
+	hrisHolidays.GET("", rbac.RequirePermission(rbacService, "org.view"), holidayHandler.List)
+	hrisHolidays.POST("", rbac.RequirePermission(rbacService, "org.manage"), holidayHandler.Create)
+	hrisHolidays.PUT("/:id", rbac.RequirePermission(rbacService, "org.manage"), holidayHandler.Update)
+	hrisHolidays.DELETE("/:id", rbac.RequirePermission(rbacService, "org.manage"), holidayHandler.Delete)
+
+	// Payroll
+	payrollHandler := payroll.NewHandler(database)
+	hrisComponents := hris.Group("/salary-components")
+	hrisComponents.GET("", rbac.RequirePermission(rbacService, "payroll.view", "payroll.manage"), payrollHandler.ListComponents)
+	hrisComponents.POST("", rbac.RequirePermission(rbacService, "payroll.manage"), payrollHandler.CreateComponent)
+	hrisComponents.PUT("/:id", rbac.RequirePermission(rbacService, "payroll.manage"), payrollHandler.UpdateComponent)
+	hrisComponents.DELETE("/:id", rbac.RequirePermission(rbacService, "payroll.manage"), payrollHandler.DeleteComponent)
+
+	hrisEmployees.GET("/:id/salary", rbac.RequirePermission(rbacService, "payroll.view", "payroll.manage"), payrollHandler.GetEmployeeSalary)
+	hrisEmployees.PUT("/:id/salary", rbac.RequirePermission(rbacService, "payroll.manage"), payrollHandler.SetEmployeeSalary)
+
+	hrisPayroll := hris.Group("/payroll-runs")
+	hrisPayroll.GET("", rbac.RequirePermission(rbacService, "payroll.view", "payroll.run"), payrollHandler.ListRuns)
+	hrisPayroll.POST("", rbac.RequirePermission(rbacService, "payroll.run"), payrollHandler.CreateRun)
+	hrisPayroll.POST("/:id/calculate", rbac.RequirePermission(rbacService, "payroll.run"), payrollHandler.CalculateRun)
+	hrisPayroll.POST("/:id/approve", rbac.RequirePermission(rbacService, "payroll.approve"), payrollHandler.ApproveRun)
+	hrisPayroll.POST("/:id/mark-paid", rbac.RequirePermission(rbacService, "payroll.approve"), payrollHandler.MarkPaid)
+	hrisPayroll.GET("/:id/payslips", rbac.RequirePermission(rbacService, "payroll.view"), payrollHandler.ListPayslips)
+
+	hrisPayslips := hris.Group("/payslips")
+	hrisPayslips.GET("/my", rbac.RequirePermission(rbacService, "payroll.view_self"), payrollHandler.MyPayslips)
+	hrisPayslips.GET("/:payslipId", rbac.RequirePermission(rbacService, "payroll.view", "payroll.view_self"), payrollHandler.GetPayslip)
+
+	// Reports & Analytics (Sprint 6)
+	reportHandler := report.NewHandler(database)
+	hrisReports := hris.Group("/reports")
+	hrisReports.GET("/attendance-export", rbac.RequirePermission(rbacService, "analytics.export"), reportHandler.ExportAttendance)
+	hrisReports.GET("/headcount", rbac.RequirePermission(rbacService, "analytics.view", "analytics.view_team"), reportHandler.GetHeadcountStats)
+	hrisReports.POST("/snapshots", rbac.RequirePermission(rbacService, "analytics.view"), reportHandler.GenerateSnapshot)
+	hrisReports.GET("/snapshots", rbac.RequirePermission(rbacService, "analytics.view", "analytics.view_team"), reportHandler.ListSnapshots)
+
+	// Onboarding (Sprint 7)
+	onboardHandler := onboarding.NewHandler(database)
+	hrisOnboarding := hris.Group("/onboarding")
+	hrisOnboarding.GET("/templates", rbac.RequirePermission(rbacService, "org.view"), onboardHandler.ListTemplates)
+	hrisOnboarding.GET("/templates/:id", rbac.RequirePermission(rbacService, "org.view"), onboardHandler.GetTemplate)
+	hrisOnboarding.POST("/templates", rbac.RequirePermission(rbacService, "org.manage"), onboardHandler.CreateTemplate)
+	hrisOnboarding.PUT("/templates/:id", rbac.RequirePermission(rbacService, "org.manage"), onboardHandler.UpdateTemplate)
+	hrisOnboarding.DELETE("/templates/:id", rbac.RequirePermission(rbacService, "org.manage"), onboardHandler.DeleteTemplate)
+	hrisOnboarding.GET("/checklists", rbac.RequirePermission(rbacService, "employee.view"), onboardHandler.ListChecklists)
+	hrisOnboarding.GET("/checklists/:checklistId", rbac.RequirePermission(rbacService, "employee.view"), onboardHandler.GetChecklist)
+	hrisOnboarding.GET("/my", rbac.RequirePermission(rbacService, "employee.view_self"), onboardHandler.MyChecklist)
+	hrisOnboarding.POST("/items/:itemId/complete", rbac.RequirePermission(rbacService, "employee.update", "employee.view_self"), onboardHandler.CompleteItem)
+	hrisOnboarding.POST("/items/:itemId/uncomplete", rbac.RequirePermission(rbacService, "employee.update", "employee.view_self"), onboardHandler.UncompleteItem)
+	hrisEmployees.POST("/:id/onboarding", rbac.RequirePermission(rbacService, "employee.update"), onboardHandler.AssignChecklist)
 
 	hrisRoles := hris.Group("/roles")
 	hrisRoles.GET("", rbac.RequirePermission(rbacService, "org.view"), func(c *gin.Context) {
