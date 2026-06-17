@@ -3,8 +3,8 @@ import { Briefcase, Calendar, CheckCircle, DollarSign, MapPin, Send } from 'luci
 import { Link, useParams } from 'react-router-dom';
 import { LoadingFallback } from '@/components/ui/LoadingFallback';
 import { useAuth } from '@/hooks/useAuth';
-import { ApiError, api } from '@/lib/api';
-import type { Job } from '@/lib/api-types';
+import { ApiError, apiWithSchema } from '@/lib/api';
+import { JobSchema } from '@/lib/schemas/job';
 import { applyToJob } from '@/lib/application';
 import { SkillsGapPanel } from '@/pages/JobDetail/SkillsGapPanel';
 
@@ -19,7 +19,7 @@ export function JobDetail() {
   } = useQuery({
     queryKey: ['job', id],
     enabled: !!id,
-    queryFn: () => api<Job>(`/jobs/${encodeURIComponent(id as string)}`),
+    queryFn: () => apiWithSchema(JobSchema, `/jobs/${encodeURIComponent(id as string)}`),
   });
 
   const applyMutation = useMutation({
