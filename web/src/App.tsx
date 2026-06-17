@@ -62,6 +62,26 @@ const DepartmentManagement = lazy(() => import('./pages/hris/DepartmentManagemen
 const PositionManagement = lazy(() => import('./pages/hris/PositionManagement'));
 const OrgChart = lazy(() => import('./pages/hris/OrgChart'));
 const RoleManagement = lazy(() => import('./pages/hris/RoleManagement'));
+const ShiftConfig = lazy(() => import('./pages/hris/ShiftConfig'));
+const ClockInPage = lazy(() => import('./pages/hris/ClockIn'));
+const AttendanceDashboard = lazy(() => import('./pages/hris/AttendanceDashboard'));
+const MyAttendance = lazy(() => import('./pages/hris/MyAttendance'));
+const AttendanceExceptions = lazy(() => import('./pages/hris/AttendanceExceptions'));
+const LeaveTypes = lazy(() => import('./pages/hris/LeaveTypes'));
+const LeaveRequest = lazy(() => import('./pages/hris/LeaveRequest'));
+const LeaveApproval = lazy(() => import('./pages/hris/LeaveApproval'));
+const LeaveBalance = lazy(() => import('./pages/hris/LeaveBalance'));
+const Holidays = lazy(() => import('./pages/hris/Holidays'));
+const SalaryComponents = lazy(() => import('./pages/hris/SalaryComponents'));
+const EmployeeSalary = lazy(() => import('./pages/hris/EmployeeSalary'));
+const PayrollRuns = lazy(() => import('./pages/hris/PayrollRuns'));
+const PayslipView = lazy(() => import('./pages/hris/PayslipView'));
+const MyPayslips = lazy(() => import('./pages/hris/MyPayslips'));
+const AttendanceExport = lazy(() => import('./pages/hris/AttendanceExport'));
+const HRAnalytics = lazy(() => import('./pages/hris/HRAnalytics'));
+const OnboardingTemplates = lazy(() => import('./pages/hris/OnboardingTemplates'));
+const OnboardingChecklists = lazy(() => import('./pages/hris/OnboardingChecklists'));
+const MyOnboarding = lazy(() => import('./pages/hris/MyOnboarding'));
 
 const router = createBrowserRouter([
   {
@@ -238,6 +258,26 @@ const router = createBrowserRouter([
           { path: 'positions', element: <PositionManagement /> },
           { path: 'org-chart', element: <OrgChart /> },
           { path: 'roles', element: <RoleManagement /> },
+          { path: 'shifts', element: <ShiftConfig /> },
+          { path: 'clock-in', element: <ClockInPage /> },
+          { path: 'attendance', element: <AttendanceDashboard /> },
+          { path: 'my-attendance', element: <MyAttendance /> },
+          { path: 'attendance-exceptions', element: <AttendanceExceptions /> },
+          { path: 'leave-types', element: <LeaveTypes /> },
+          { path: 'leave-request', element: <LeaveRequest /> },
+          { path: 'leave-approval', element: <LeaveApproval /> },
+          { path: 'leave-balance', element: <LeaveBalance /> },
+          { path: 'holidays', element: <Holidays /> },
+          { path: 'salary-components', element: <SalaryComponents /> },
+          { path: 'employees/:id/salary', element: <EmployeeSalary /> },
+          { path: 'payroll-runs', element: <PayrollRuns /> },
+          { path: 'payroll-runs/:runId/payslips', element: <PayslipView /> },
+          { path: 'my-payslips', element: <MyPayslips /> },
+          { path: 'attendance-export', element: <AttendanceExport /> },
+          { path: 'analytics', element: <HRAnalytics /> },
+          { path: 'onboarding-templates', element: <OnboardingTemplates /> },
+          { path: 'onboarding-checklists', element: <OnboardingChecklists /> },
+          { path: 'my-onboarding', element: <MyOnboarding /> },
         ],
       },
     ],
