@@ -10,8 +10,9 @@ import { FormSelect } from '@/components/ui/FormSelect';
 import { FormTextarea } from '@/components/ui/FormTextarea';
 import { LoadingSpinner } from '@/components/ui/LoadingFallback';
 import { useIndustries } from '@/hooks/useIndustries';
-import { ApiError, api } from '@/lib/api';
-import type { Job } from '@/lib/api-types';
+import { z } from 'zod';
+import { ApiError, api, apiWithSchema } from '@/lib/api';
+import { JobSchema, type Job } from '@/lib/schemas/job';
 import { EXPERIENCE_LEVEL_OPTIONS } from '@/lib/constants';
 import { type JobForm, jobSchema } from '@/lib/schemas';
 
@@ -41,7 +42,7 @@ export function CompanyJobs() {
   const { data: industries = [] } = useIndustries();
   const { data: jobs = [] } = useQuery({
     queryKey: ['jobs', 'me'],
-    queryFn: () => api<Job[]>('/jobs/me'),
+    queryFn: () => apiWithSchema(z.array(JobSchema), '/jobs/me'),
   });
 
   const methods = useForm<JobForm>({
