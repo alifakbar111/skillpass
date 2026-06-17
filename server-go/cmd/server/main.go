@@ -375,7 +375,7 @@ func main() {
 	hrisAttendance.POST("/clock-out", rbac.RequirePermission(rbacService, "attendance.clock"), attHandler.ClockOut)
 	hrisAttendance.GET("/dashboard", rbac.RequirePermission(rbacService, "attendance.view"), attHandler.Dashboard)
 	hrisAttendance.GET("/my", rbac.RequirePermission(rbacService, "attendance.view_self"), attHandler.MyAttendance)
-	hrisAttendance.GET("/ws", attHandler.Hub().HandleWS)
+	hrisAttendance.GET("/ws", rbac.RequirePermission(rbacService, "attendance.view"), attHandler.Hub().HandleWS)
 
 	// Attendance Exceptions
 	hrisExceptions := hris.Group("/attendance-exceptions")
@@ -453,8 +453,8 @@ func main() {
 	hrisOnboarding.GET("/checklists", rbac.RequirePermission(rbacService, "employee.view"), onboardHandler.ListChecklists)
 	hrisOnboarding.GET("/checklists/:checklistId", rbac.RequirePermission(rbacService, "employee.view"), onboardHandler.GetChecklist)
 	hrisOnboarding.GET("/my", rbac.RequirePermission(rbacService, "employee.view_self"), onboardHandler.MyChecklist)
-	hrisOnboarding.POST("/items/:itemId/complete", onboardHandler.CompleteItem)
-	hrisOnboarding.POST("/items/:itemId/uncomplete", onboardHandler.UncompleteItem)
+	hrisOnboarding.POST("/items/:itemId/complete", rbac.RequirePermission(rbacService, "employee.update", "employee.view_self"), onboardHandler.CompleteItem)
+	hrisOnboarding.POST("/items/:itemId/uncomplete", rbac.RequirePermission(rbacService, "employee.update", "employee.view_self"), onboardHandler.UncompleteItem)
 	hrisEmployees.POST("/:id/onboarding", rbac.RequirePermission(rbacService, "employee.update"), onboardHandler.AssignChecklist)
 
 	hrisRoles := hris.Group("/roles")

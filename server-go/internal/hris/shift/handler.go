@@ -112,8 +112,6 @@ func (h *Handler) AssignShift(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid employee ID"})
 		return
 	}
-	_ = companyID
-
 	var body struct {
 		ShiftID       string  `json:"shiftId"`
 		EffectiveDate string  `json:"effectiveDate"`
@@ -128,9 +126,8 @@ func (h *Handler) AssignShift(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid shift ID"})
 		return
 	}
-	_ = shiftID
 
-	es, err := h.svc.AssignShift(c.Request.Context(), employeeID, shiftID, body.EffectiveDate, body.EndDate)
+	es, err := h.svc.AssignShift(c.Request.Context(), companyID, employeeID, shiftID, body.EffectiveDate, body.EndDate)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to assign shift"})
 		return

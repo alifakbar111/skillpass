@@ -3,6 +3,7 @@ package shift
 import (
 	"context"
 	"database/sql"
+	"fmt"
 	"time"
 
 	"github.com/google/uuid"
@@ -110,9 +111,32 @@ func (s *Service) DeleteTemplate(ctx context.Context, companyID, id uuid.UUID) e
 	return nil
 }
 
-func (s *Service) AssignShift(ctx context.Context, employeeID, shiftID uuid.UUID, effectiveDate string, endDate *string) (*EmployeeShift, error) {
-	var es EmployeeShift
+func (s *Service) AssignShift(ctx context.Context, companyID, employeeID, shiftID uuid.UUID, effectiveDate string, endDate *string) (*EmployeeShift, error) {
+	// Verify shift template and employee belong to the same company
+	var shiftCompanyID uuid.UUID
 	err := s.db.QueryRowContext(ctx,
+		`SELECT company_id FROM shift_templates WHERE id=$1`, shiftID,
+	).Scan(&shiftCompanyID)
+	if err != nil {
+		return nil, fmt.Errorf("shift template not found")
+	}
+	if shiftCompanyID != companyID {
+		return nil, fmt.Errorf("shift template does not belong to your company")
+	}
+
+	var empCompanyID uuid.UUID
+	err = s.db.QueryRowContext(ctx,
+		`SELECT company_id FROM employees WHERE id=$1`, employeeID,
+	).Scan(&empCompanyID)
+	if err != nil {
+		return nil, fmt.Errorf("employee not found")
+	}
+	if empCompanyID != companyID {
+		return nil, fmt.Errorf("employee does not belong to your company")
+	}
+
+	var es EmployeeShift
+	err = s.db.QueryRowContext(ctx,
 		`INSERT INTO employee_shifts (employee_id, shift_id, effective_date, end_date)
 		 VALUES ($1, $2, $3, $4)
 		 RETURNING id, employee_id, shift_id, effective_date::text, end_date::text, created_at`,

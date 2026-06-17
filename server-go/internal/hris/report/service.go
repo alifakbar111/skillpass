@@ -80,23 +80,23 @@ type GenderCount struct {
 
 func (s *Service) ExportAttendance(ctx context.Context, companyID uuid.UUID, from, to string) ([]AttendanceRow, error) {
 	rows, err := s.db.QueryContext(ctx, `
-		SELECT e.full_name, e.employee_code,
-			al.clock_in_time::date::text,
-			TO_CHAR(al.clock_in_time, 'HH24:MI'),
-			COALESCE(TO_CHAR(al.clock_out_time, 'HH24:MI'), ''),
+		SELECT COALESCE(e.first_name||' '||e.last_name, '') as employee_name,
+			e.employee_id_number,
+			al.date::text,
+			COALESCE(TO_CHAR(al.clock_in, 'HH24:MI'), ''),
+			COALESCE(TO_CHAR(al.clock_out, 'HH24:MI'), ''),
 			COALESCE(
-				ROUND(EXTRACT(EPOCH FROM (al.clock_out_time - al.clock_in_time))/3600, 2)::text,
+				ROUND(EXTRACT(EPOCH FROM (al.clock_out - al.clock_in))/3600, 2)::text,
 				''
 			),
-			al.status,
-			COALESCE(st.name, '')
+			al.attendance_code,
+			''
 		FROM attendance_logs al
-		JOIN hris_employees e ON e.id = al.employee_id AND e.company_id = $1
-		LEFT JOIN shift_templates st ON st.id = al.shift_id
+		JOIN employees e ON e.id = al.employee_id AND e.company_id = $1
 		WHERE al.company_id = $1
-			AND al.clock_in_time::date >= $2::date
-			AND al.clock_in_time::date <= $3::date
-		ORDER BY al.clock_in_time, e.full_name
+			AND al.date >= $2::date
+			AND al.date <= $3::date
+		ORDER BY al.date, e.first_name, e.last_name
 	`, companyID, from, to)
 	if err != nil {
 		return nil, err
@@ -135,7 +135,7 @@ func (s *Service) GetHeadcountStats(ctx context.Context, companyID uuid.UUID) (*
 	stats := &HeadcountStats{}
 
 	err := s.db.QueryRowContext(ctx,
-		`SELECT COUNT(*) FROM hris_employees WHERE company_id = $1 AND status = 'active'`,
+		`SELECT COUNT(*) FROM employees WHERE company_id = $1 AND employment_status = 'active'`,
 		companyID).Scan(&stats.TotalActive)
 	if err != nil {
 		return nil, err
@@ -143,9 +143,9 @@ func (s *Service) GetHeadcountStats(ctx context.Context, companyID uuid.UUID) (*
 
 	deptRows, err := s.db.QueryContext(ctx, `
 		SELECT COALESCE(d.name, 'Unassigned'), COUNT(*)
-		FROM hris_employees e
-		LEFT JOIN hris_departments d ON d.id = e.department_id
-		WHERE e.company_id = $1 AND e.status = 'active'
+		FROM employees e
+		LEFT JOIN departments d ON d.id = e.department_id
+		WHERE e.company_id = $1 AND e.employment_status = 'active'
 		GROUP BY d.name ORDER BY COUNT(*) DESC
 	`, companyID)
 	if err != nil {
@@ -165,9 +165,9 @@ func (s *Service) GetHeadcountStats(ctx context.Context, companyID uuid.UUID) (*
 
 	branchRows, err := s.db.QueryContext(ctx, `
 		SELECT COALESCE(b.name, 'Unassigned'), COUNT(*)
-		FROM hris_employees e
-		LEFT JOIN hris_branches b ON b.id = e.branch_id
-		WHERE e.company_id = $1 AND e.status = 'active'
+		FROM employees e
+		LEFT JOIN branches b ON b.id = e.branch_id
+		WHERE e.company_id = $1 AND e.employment_status = 'active'
 		GROUP BY b.name ORDER BY COUNT(*) DESC
 	`, companyID)
 	if err != nil {
@@ -186,9 +186,9 @@ func (s *Service) GetHeadcountStats(ctx context.Context, companyID uuid.UUID) (*
 	}
 
 	statusRows, err := s.db.QueryContext(ctx, `
-		SELECT status, COUNT(*)
-		FROM hris_employees WHERE company_id = $1
-		GROUP BY status ORDER BY COUNT(*) DESC
+		SELECT employment_status, COUNT(*)
+		FROM employees WHERE company_id = $1
+		GROUP BY employment_status ORDER BY COUNT(*) DESC
 	`, companyID)
 	if err != nil {
 		return nil, err
@@ -207,12 +207,12 @@ func (s *Service) GetHeadcountStats(ctx context.Context, companyID uuid.UUID) (*
 
 	s.db.QueryRowContext(ctx, `
 		SELECT COALESCE(AVG(EXTRACT(EPOCH FROM (now() - join_date))/2592000), 0)
-		FROM hris_employees WHERE company_id = $1 AND status = 'active' AND join_date IS NOT NULL
+		FROM employees WHERE company_id = $1 AND employment_status = 'active' AND join_date IS NOT NULL
 	`, companyID).Scan(&stats.AvgTenure)
 
 	genderRows, err := s.db.QueryContext(ctx, `
 		SELECT COALESCE(NULLIF(gender, ''), 'Not specified'), COUNT(*)
-		FROM hris_employees WHERE company_id = $1 AND status = 'active'
+		FROM employees WHERE company_id = $1 AND employment_status = 'active'
 		GROUP BY gender ORDER BY COUNT(*) DESC
 	`, companyID)
 	if err != nil {
@@ -232,23 +232,30 @@ func (s *Service) GetHeadcountStats(ctx context.Context, companyID uuid.UUID) (*
 
 func (s *Service) GenerateSnapshot(ctx context.Context, companyID uuid.UUID, month string) (*AnalyticsSnapshot, error) {
 	monthStart := month + "-01"
-	monthEnd := month + "-01"
+	t, _ := time.Parse("2006-01-02", monthStart)
+	monthEnd := t.AddDate(0, 1, -1).Format("2006-01-02")
 
 	var totalHeadcount, newHires, terminations int
-	s.db.QueryRowContext(ctx,
-		`SELECT COUNT(*) FROM hris_employees WHERE company_id = $1 AND status = 'active'
+	if err := s.db.QueryRowContext(ctx,
+		`SELECT COUNT(*) FROM employees WHERE company_id = $1 AND employment_status = 'active'
 		 AND (join_date IS NULL OR join_date <= ($2::date + interval '1 month' - interval '1 day'))`,
-		companyID, monthStart).Scan(&totalHeadcount)
+		companyID, monthStart).Scan(&totalHeadcount); err != nil {
+		return nil, err
+	}
 
-	s.db.QueryRowContext(ctx,
-		`SELECT COUNT(*) FROM hris_employees WHERE company_id = $1
+	if err := s.db.QueryRowContext(ctx,
+		`SELECT COUNT(*) FROM employees WHERE company_id = $1
 		 AND join_date >= $2::date AND join_date < $2::date + interval '1 month'`,
-		companyID, monthStart).Scan(&newHires)
+		companyID, monthStart).Scan(&newHires); err != nil {
+		return nil, err
+	}
 
-	s.db.QueryRowContext(ctx,
-		`SELECT COUNT(*) FROM hris_employees WHERE company_id = $1 AND status = 'terminated'
+	if err := s.db.QueryRowContext(ctx,
+		`SELECT COUNT(*) FROM employees WHERE company_id = $1 AND employment_status = 'terminated'
 		 AND updated_at >= $2::date AND updated_at < $2::date + interval '1 month'`,
-		companyID, monthStart).Scan(&terminations)
+		companyID, monthStart).Scan(&terminations); err != nil {
+		return nil, err
+	}
 
 	var turnoverRate float64
 	if totalHeadcount > 0 {
@@ -256,18 +263,20 @@ func (s *Service) GenerateSnapshot(ctx context.Context, companyID uuid.UUID, mon
 	}
 
 	var avgTenure float64
-	s.db.QueryRowContext(ctx,
+	if err := s.db.QueryRowContext(ctx,
 		`SELECT COALESCE(AVG(EXTRACT(EPOCH FROM ($2::date - join_date))/2592000), 0)
-		 FROM hris_employees WHERE company_id = $1 AND status = 'active' AND join_date IS NOT NULL`,
-		companyID, monthEnd).Scan(&avgTenure)
+		 FROM employees WHERE company_id = $1 AND employment_status = 'active' AND join_date IS NOT NULL`,
+		companyID, monthEnd).Scan(&avgTenure); err != nil {
+		return nil, err
+	}
 
 	deptRows, err := s.db.QueryContext(ctx, `
 		SELECT COALESCE(d.name, 'Unassigned'),
-			COUNT(*) FILTER (WHERE e.status = 'active'),
+			COUNT(*) FILTER (WHERE e.employment_status = 'active'),
 			COUNT(*) FILTER (WHERE e.join_date >= $2::date AND e.join_date < $2::date + interval '1 month'),
-			COUNT(*) FILTER (WHERE e.status = 'terminated' AND e.updated_at >= $2::date AND e.updated_at < $2::date + interval '1 month')
-		FROM hris_employees e
-		LEFT JOIN hris_departments d ON d.id = e.department_id
+			COUNT(*) FILTER (WHERE e.employment_status = 'terminated' AND e.updated_at >= $2::date AND e.updated_at < $2::date + interval '1 month')
+		FROM employees e
+		LEFT JOIN departments d ON d.id = e.department_id
 		WHERE e.company_id = $1
 		GROUP BY d.name
 	`, companyID, monthStart)
@@ -288,7 +297,10 @@ func (s *Service) GenerateSnapshot(ctx context.Context, companyID uuid.UUID, mon
 		return nil, err
 	}
 
-	breakdownJSON, _ := json.Marshal(breakdown)
+	breakdownJSON, err := json.Marshal(breakdown)
+	if err != nil {
+		return nil, err
+	}
 
 	snap := &AnalyticsSnapshot{}
 	err = s.db.QueryRowContext(ctx, `
@@ -336,7 +348,9 @@ func (s *Service) ListSnapshots(ctx context.Context, companyID uuid.UUID) ([]Ana
 			&s.TurnoverRate, &s.AvgTenureMonths, &breakdownRaw, &s.CreatedAt); err != nil {
 			return nil, err
 		}
-		json.Unmarshal(breakdownRaw, &s.DepartmentBreakdown)
+		if err := json.Unmarshal(breakdownRaw, &s.DepartmentBreakdown); err != nil {
+			return nil, err
+		}
 		result = append(result, s)
 	}
 	return result, rows.Err()
