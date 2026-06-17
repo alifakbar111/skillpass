@@ -67,6 +67,10 @@ func (s *Service) CreateEmailVerification(ctx context.Context, userID string) (s
 
 // ConsumeEmailVerification validates the raw token, marks it used, and flips
 // users.is_verified. Returns the user id, or ErrInvalidToken.
+//
+// Idempotent: if the token was already consumed in a previous request (e.g.
+// from a React Strict Mode double-invoke or a concurrent retry), the function
+// still returns success — the caller can safely treat a nil error as verified.
 func (s *Service) ConsumeEmailVerification(ctx context.Context, rawToken string) (string, error) {
 	tx, err := s.db.BeginTx(ctx, nil)
 	if err != nil {
@@ -83,10 +87,20 @@ func (s *Service) ConsumeEmailVerification(ctx context.Context, rawToken string)
 		hashToken(rawToken),
 	).Scan(&userID)
 	if err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
-			return "", ErrInvalidToken
+		if !errors.Is(err, sql.ErrNoRows) {
+			return "", fmt.Errorf("consume verification token: %w", err)
 		}
-		return "", fmt.Errorf("consume verification token: %w", err)
+		// No row consumed: token may be invalid, expired, or already used.
+		// Check if it was already consumed — if so, treat as success so
+		// duplicate requests (Strict Mode, retries) don't confuse the user.
+		var alreadyUsed bool
+		if err2 := tx.QueryRowContext(ctx,
+			`SELECT EXISTS(SELECT 1 FROM email_verification_tokens WHERE token_hash = $1 AND used_at IS NOT NULL)`,
+			hashToken(rawToken),
+		).Scan(&alreadyUsed); err2 == nil && alreadyUsed {
+			return "", nil // already consumed — caller treats nil as verified
+		}
+		return "", ErrInvalidToken
 	}
 
 	if _, err := tx.ExecContext(ctx,

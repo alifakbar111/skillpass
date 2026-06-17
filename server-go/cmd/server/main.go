@@ -52,7 +52,7 @@ import (
 )
 
 func main() {
-	_ = godotenv.Load(".env", "../.env")
+	_ = godotenv.Load(".env", "../.env", "server-go/.env")
 
 	cfg := config.Load()
 

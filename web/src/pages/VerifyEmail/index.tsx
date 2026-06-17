@@ -18,28 +18,26 @@ export function VerifyEmail() {
       setMessage('This verification link is missing its token.');
       return;
     }
-    let cancelled = false;
-    api(`/auth/verify-email?token=${encodeURIComponent(token)}`)
+    const controller = new AbortController();
+    api(`/auth/verify-email?token=${encodeURIComponent(token)}`, { signal: controller.signal })
       .then(() => {
-        if (cancelled) return;
         setState('done');
         // Refresh auth state so the "verify your email" banner disappears.
         refreshUser();
       })
       .catch((err) => {
-        if (cancelled) return;
+        if (controller.signal.aborted) return;
         setState('error');
         setMessage(
           err instanceof ApiError ? (err.serverMessage ?? err.message) : 'Verification failed. Please try again.',
         );
       });
     return () => {
-      cancelled = true;
+      controller.abort();
     };
   }, [token, refreshUser]);
 
   if (state === 'verifying') return <LoadingFallback text="Verifying your email" />;
-
   return (
     <div className="max-w-sm mx-auto p-8">
       <div className="card bg-base-200 p-6 text-center space-y-3">
