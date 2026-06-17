@@ -1,13 +1,13 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Sparkles, X } from 'lucide-react';
 import { useState } from 'react';
-import { EvaluationScoreBadge } from '../../../components/jobseeker/EvaluationScoreBadge';
-import { SkillScoresChart } from '../../../components/jobseeker/SkillScoresChart';
-import { LoadingFallback } from '../../../components/ui/LoadingFallback';
-import { useAuth } from '../../../hooks/useAuth';
-import { ApiError } from '../../../lib/api';
-import { getLatestEvaluation, triggerEvaluation } from '../../../lib/evaluation';
-import { CareerPathSection } from './CareerPathSection';
+import { EvaluationScoreBadge } from '@/components/jobseeker/EvaluationScoreBadge';
+import { SkillScoresChart } from '@/components/jobseeker/SkillScoresChart';
+import { LoadingFallback } from '@/components/ui/LoadingFallback';
+import { useAuth } from '@/hooks/useAuth';
+import { ApiError } from '@/lib/api';
+import { getLatestEvaluation, triggerEvaluation } from '@/lib/evaluation';
+import { CareerPathSection } from '@/pages/jobseeker/EvaluationPage/CareerPathSection';
 
 export function EvaluationPage() {
   const { user } = useAuth();

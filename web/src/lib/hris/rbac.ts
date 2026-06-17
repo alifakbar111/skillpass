@@ -23,7 +23,7 @@ export function listRoles(): Promise<HrisRole[]> {
 export function assignRole(employeeId: string, roleId: string): Promise<void> {
   return api(`/hris/employees/${employeeId}/roles`, {
     method: 'POST',
-    body: JSON.stringify({ roleId }),
+    body: { roleId },
   });
 }
 

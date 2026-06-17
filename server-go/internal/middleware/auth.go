@@ -70,22 +70,28 @@ func RequireVerifiedCompany(db *sql.DB) gin.HandlerFunc {
 			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "Unauthorized"})
 			return
 		}
-		userIDStr, ok := userIDVal.(string)
-		if !ok || userIDStr == "" {
-			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "Unauthorized"})
-			return
-		}
+	userIDStr, ok := userIDVal.(string)
+	if !ok || userIDStr == "" {
+		c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "Unauthorized"})
+		return
+	}
 
-		stmt := SELECT(
-			gen.Companies.ID, gen.Companies.VerificationStatus,
-		).FROM(
-			gen.Companies,
-		).WHERE(
-			gen.Companies.UserID.EQ(UUID(uuid.MustParse(userIDStr))),
-		)
+	userUUID, err := uuid.Parse(userIDStr)
+	if err != nil {
+		c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{"error": "Invalid user ID"})
+		return
+	}
+
+	stmt := SELECT(
+		gen.Companies.ID, gen.Companies.VerificationStatus,
+	).FROM(
+		gen.Companies,
+	).WHERE(
+		gen.Companies.UserID.EQ(UUID(userUUID)),
+	)
 
 		var companies []model.Companies
-		err := stmt.QueryContext(c.Request.Context(), db, &companies)
+		err = stmt.QueryContext(c.Request.Context(), db, &companies)
 		if err != nil {
 			c.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{"error": "Company lookup failed"})
 			return

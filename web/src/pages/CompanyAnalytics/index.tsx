@@ -1,8 +1,8 @@
 import { BarChart3, Briefcase, Clock, Users } from 'lucide-react';
 import { useEffect, useState } from 'react';
-import { LoadingFallback } from '../../components/ui/LoadingFallback';
-import { type CompanyAnalytics as Analytics, getCompanyAnalytics } from '../../lib/analytics';
-import { ApiError } from '../../lib/api';
+import { LoadingFallback } from '@/components/ui/LoadingFallback';
+import { type CompanyAnalytics as Analytics, getCompanyAnalytics } from '@/lib/analytics';
+import { ApiError } from '@/lib/api';
 
 const STATUS_ORDER = ['applied', 'reviewed', 'interviewed', 'offered', 'rejected'];
 

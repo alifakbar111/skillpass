@@ -1,7 +1,7 @@
 import { useEffect, useRef } from 'react';
 import { Outlet } from 'react-router-dom';
-import { Navbar } from './Navbar';
-import { VerifyEmailBanner } from './VerifyEmailBanner';
+import { Navbar } from '@/components/layout/Navbar';
+import { VerifyEmailBanner } from '@/components/layout/VerifyEmailBanner';
 
 export function RootLayout() {
   const mainRef = useRef<HTMLElement>(null);

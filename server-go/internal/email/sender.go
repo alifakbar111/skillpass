@@ -24,9 +24,13 @@ var _ Sender = (*SMTPSender)(nil)
 var _ Sender = (*ConsoleSender)(nil)
 
 // NewSender creates a Sender based on the environment:
-// if SMTP_HOST is set an SMTPSender is returned, otherwise a ConsoleSender
-// that logs emails to stdout (dev default — no SMTP account needed).
+//   - ResendSender when RESEND_API_KEY is set (or SMTP_PASS starts with "re_")
+//   - SMTPSender when SMTP_HOST is set
+//   - ConsoleSender otherwise (dev default — prints to stdout)
 func NewSender() Sender {
+	if key := ResendAPIKey(); key != "" {
+		return NewResendSender(key)
+	}
 	if os.Getenv("SMTP_HOST") != "" {
 		return NewSMTPSender()
 	}

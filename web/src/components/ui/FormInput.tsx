@@ -1,6 +1,6 @@
 import type { FieldError, UseFormRegisterReturn } from 'react-hook-form';
-import { FormField } from './FormField';
-import { useFieldBinding } from './useFieldBinding';
+import { FormField } from '@/components/ui/FormField';
+import { useFieldBinding } from '@/components/ui/useFieldBinding';
 
 interface FormInputProps extends Omit<React.InputHTMLAttributes<HTMLInputElement>, 'size' | 'type'> {
   label: string;

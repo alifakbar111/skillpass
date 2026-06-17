@@ -1,4 +1,4 @@
-import { api } from './api';
+import { api } from '@/lib/api';
 
 export interface RatingArea {
   skill: string;
@@ -30,7 +30,7 @@ export interface CreateFeedbackRequest {
 export async function createFeedback(profileId: string, data: CreateFeedbackRequest): Promise<Feedback> {
   return api<Feedback>(`/feedback/${profileId}`, {
     method: 'POST',
-    body: JSON.stringify(data),
+    body: data,
   });
 }
 

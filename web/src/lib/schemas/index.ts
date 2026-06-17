@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { EXPERIENCE_VALUES } from '../constants';
+import { EXPERIENCE_VALUES } from '@/lib/constants';
 
 export const loginSchema = z.object({
   email: z.string().email('Invalid email address'),

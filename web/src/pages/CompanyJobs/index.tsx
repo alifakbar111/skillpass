@@ -3,17 +3,18 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Pencil, Plus, Users, X } from 'lucide-react';
 import { useState } from 'react';
 import { useForm } from 'react-hook-form';
-import type { Job } from '@/lib/api-types';
-import { JobMatches } from '../../components/company/JobMatches';
-import { Form } from '../../components/ui/Form';
-import { FormInput } from '../../components/ui/FormInput';
-import { FormSelect } from '../../components/ui/FormSelect';
-import { FormTextarea } from '../../components/ui/FormTextarea';
-import { LoadingSpinner } from '../../components/ui/LoadingFallback';
-import { useIndustries } from '../../hooks/useIndustries';
-import { ApiError, api } from '../../lib/api';
-import { EXPERIENCE_LEVEL_OPTIONS } from '../../lib/constants';
-import { type JobForm, jobSchema } from '../../lib/schemas';
+import { z } from 'zod';
+import { JobMatches } from '@/components/company/JobMatches';
+import { Form } from '@/components/ui/Form';
+import { FormInput } from '@/components/ui/FormInput';
+import { FormSelect } from '@/components/ui/FormSelect';
+import { FormTextarea } from '@/components/ui/FormTextarea';
+import { LoadingSpinner } from '@/components/ui/LoadingFallback';
+import { useIndustries } from '@/hooks/useIndustries';
+import { ApiError, api, apiWithSchema } from '@/lib/api';
+import { EXPERIENCE_LEVEL_OPTIONS } from '@/lib/constants';
+import { type JobForm, jobSchema } from '@/lib/schemas';
+import { type Job, JobSchema } from '@/lib/schemas/job';
 
 function parseFormData(data: JobForm) {
   const tags = data.tags
@@ -41,7 +42,7 @@ export function CompanyJobs() {
   const { data: industries = [] } = useIndustries();
   const { data: jobs = [] } = useQuery({
     queryKey: ['jobs', 'me'],
-    queryFn: () => api<Job[]>('/jobs/me'),
+    queryFn: () => apiWithSchema(z.array(JobSchema), '/jobs/me'),
   });
 
   const methods = useForm<JobForm>({
@@ -62,7 +63,7 @@ export function CompanyJobs() {
     mutationFn: (data: JobForm) =>
       api('/jobs', {
         method: 'POST',
-        body: JSON.stringify(parseFormData(data)),
+        body: parseFormData(data),
       }),
     onMutate: () => setError(null),
     onSuccess: () => {
@@ -80,7 +81,7 @@ export function CompanyJobs() {
     mutationFn: (data: JobForm & { id: string }) =>
       api(`/jobs/${encodeURIComponent(data.id)}`, {
         method: 'PUT',
-        body: JSON.stringify(parseFormData(data)),
+        body: parseFormData(data),
       }),
     onMutate: () => setError(null),
     onSuccess: () => {
@@ -98,7 +99,7 @@ export function CompanyJobs() {
     mutationFn: (id: string) =>
       api(`/jobs/${encodeURIComponent(id)}`, {
         method: 'PUT',
-        body: JSON.stringify({ status: 'closed' }),
+        body: { status: 'closed' },
       }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['jobs'] });

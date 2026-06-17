@@ -1,7 +1,7 @@
 import { render, screen } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { describe, expect, it, vi } from 'vitest';
-import { ChecklistCard, type ChecklistStep } from './ChecklistCard';
+import { ChecklistCard, type ChecklistStep } from '@/components/onboarding/ChecklistCard';
 
 function renderCard(steps: ChecklistStep[]) {
   return render(

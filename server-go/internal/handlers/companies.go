@@ -95,12 +95,18 @@ func (h *CompanyHandler) GetProfile(c *gin.Context) {
 		return
 	}
 
+	userUUID, err := uuid.Parse(userIDStr)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid user ID"})
+		return
+	}
+
 	stmt := SELECT(
 		gen.Companies.AllColumns,
 	).FROM(
 		gen.Companies,
 	).WHERE(
-		gen.Companies.UserID.EQ(UUID(uuid.MustParse(userIDStr))),
+		gen.Companies.UserID.EQ(UUID(userUUID)),
 	)
 
 	var company model.Companies
@@ -144,6 +150,12 @@ func (h *CompanyHandler) UpdateProfile(c *gin.Context) {
 		return
 	}
 
+	userUUID, err := uuid.Parse(userIDStr)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid user ID"})
+		return
+	}
+
 	var req UpdateCompanyRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request body"})
@@ -184,7 +196,7 @@ func (h *CompanyHandler) UpdateProfile(c *gin.Context) {
 	var company model.Companies
 	if len(setVals) > 0 {
 		stmt := gen.Companies.UPDATE().SET(setVals[0], setVals[1:]...).WHERE(
-			gen.Companies.UserID.EQ(UUID(uuid.MustParse(userIDStr))),
+			gen.Companies.UserID.EQ(UUID(userUUID)),
 		).RETURNING(
 			gen.Companies.AllColumns,
 		)
@@ -200,7 +212,7 @@ func (h *CompanyHandler) UpdateProfile(c *gin.Context) {
 	} else {
 		// Only blind_mode changed — re-read the row for the response.
 		stmt := SELECT(gen.Companies.AllColumns).FROM(gen.Companies).WHERE(
-			gen.Companies.UserID.EQ(UUID(uuid.MustParse(userIDStr))),
+			gen.Companies.UserID.EQ(UUID(userUUID)),
 		)
 		if err := stmt.QueryContext(c.Request.Context(), h.db, &company); err != nil {
 			if errors.Is(err, sql.ErrNoRows) || errors.Is(err, qrm.ErrNoRows) {
@@ -243,6 +255,12 @@ func (h *CompanyHandler) SubmitVerification(c *gin.Context) {
 		return
 	}
 
+	userUUID, err := uuid.Parse(userIDStr)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid user ID"})
+		return
+	}
+
 	var req VerificationRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request body"})
@@ -255,7 +273,7 @@ func (h *CompanyHandler) SubmitVerification(c *gin.Context) {
 		gen.Companies.VerificationDocs.SET(StringExp(CAST(String(string(docs))).AS("jsonb"))),
 		gen.Companies.VerificationStatus.SET(gen.VerificationStatusPending),
 	).WHERE(
-		gen.Companies.UserID.EQ(UUID(uuid.MustParse(userIDStr))),
+		gen.Companies.UserID.EQ(UUID(userUUID)),
 	)
 
 	result, err := stmt.ExecContext(c.Request.Context(), h.db)
@@ -294,16 +312,22 @@ func (h *CompanyHandler) GetVerificationStatus(c *gin.Context) {
 		return
 	}
 
+	userUUID, err := uuid.Parse(userIDStr)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid user ID"})
+		return
+	}
+
 	stmt := SELECT(
 		gen.Companies.VerificationStatus,
 	).FROM(
 		gen.Companies,
 	).WHERE(
-		gen.Companies.UserID.EQ(UUID(uuid.MustParse(userIDStr))),
+		gen.Companies.UserID.EQ(UUID(userUUID)),
 	)
 
 	var company model.Companies
-	err := stmt.QueryContext(c.Request.Context(), h.db, &company)
+	err = stmt.QueryContext(c.Request.Context(), h.db, &company)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) || errors.Is(err, qrm.ErrNoRows) {
 			c.JSON(http.StatusOK, VerificationStatusResponse{VerificationStatus: "none"})

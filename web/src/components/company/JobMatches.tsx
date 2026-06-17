@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
-import { ApiError } from '../../lib/api';
-import { type CandidateMatch, getCandidateMatches } from '../../lib/matching';
-import { LoadingSpinner } from '../ui/LoadingFallback';
+import { LoadingSpinner } from '@/components/ui/LoadingFallback';
+import { ApiError } from '@/lib/api';
+import { type CandidateMatch, getCandidateMatches } from '@/lib/matching';
 
 function scoreBadgeClass(score: number): string {
   if (score >= 80) return 'badge-success';

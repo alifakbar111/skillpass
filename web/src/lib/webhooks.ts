@@ -1,4 +1,4 @@
-import { api } from './api';
+import { api } from '@/lib/api';
 
 export interface Webhook {
   id: string;
@@ -15,7 +15,7 @@ export async function getWebhooks(): Promise<Webhook[]> {
 export async function createWebhook(url: string): Promise<Webhook> {
   return api<Webhook>('/company/webhooks', {
     method: 'POST',
-    body: JSON.stringify({ url }),
+    body: { url },
   });
 }
 
