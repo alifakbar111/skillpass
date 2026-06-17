@@ -46,7 +46,7 @@ export function CompanyProfile() {
   }, [companyProfile, methods]);
 
   const saveMutation = useMutation({
-    mutationFn: (data: CompanyProfileForm) => api('/company/profile', { method: 'PUT', body: JSON.stringify(data) }),
+    mutationFn: (data: CompanyProfileForm) => api('/company/profile', { method: 'PUT', body: data }),
     onMutate: () => {
       setError(null);
       setSuccess(false);
@@ -68,7 +68,7 @@ export function CompanyProfile() {
     const prev = blindMode;
     setBlindMode(next);
     try {
-      await api('/company/profile', { method: 'PUT', body: JSON.stringify({ blindMode: next }) });
+      await api('/company/profile', { method: 'PUT', body: { blindMode: next } });
     } catch (err) {
       setBlindMode(prev);
       setError(err instanceof ApiError ? (err.serverMessage ?? err.message) : 'Failed to update blind mode');

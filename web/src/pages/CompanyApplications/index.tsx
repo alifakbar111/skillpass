@@ -37,7 +37,7 @@ export function CompanyApplications() {
     try {
       const updated = await api<CompanyApplication>(`/applications/${applicationId}/status`, {
         method: 'PUT',
-        body: JSON.stringify({ status: newStatus }),
+        body: { status: newStatus },
       });
       setApplications((prev) =>
         prev.map((a) => (a.id === applicationId ? { ...a, status: updated.status, updatedAt: updated.updatedAt } : a)),

@@ -32,8 +32,7 @@ export function CompanyVerification() {
   const status = data?.verificationStatus ?? null;
 
   const submitMutation = useMutation({
-    mutationFn: (formData: VerificationForm) =>
-      api('/company/verification', { method: 'POST', body: JSON.stringify(formData) }),
+    mutationFn: (formData: VerificationForm) => api('/company/verification', { method: 'POST', body: formData }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['company', 'verification-status'] });
     },

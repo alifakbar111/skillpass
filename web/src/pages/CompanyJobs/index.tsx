@@ -62,7 +62,7 @@ export function CompanyJobs() {
     mutationFn: (data: JobForm) =>
       api('/jobs', {
         method: 'POST',
-        body: JSON.stringify(parseFormData(data)),
+        body: parseFormData(data),
       }),
     onMutate: () => setError(null),
     onSuccess: () => {
@@ -80,7 +80,7 @@ export function CompanyJobs() {
     mutationFn: (data: JobForm & { id: string }) =>
       api(`/jobs/${encodeURIComponent(data.id)}`, {
         method: 'PUT',
-        body: JSON.stringify(parseFormData(data)),
+        body: parseFormData(data),
       }),
     onMutate: () => setError(null),
     onSuccess: () => {
@@ -98,7 +98,7 @@ export function CompanyJobs() {
     mutationFn: (id: string) =>
       api(`/jobs/${encodeURIComponent(id)}`, {
         method: 'PUT',
-        body: JSON.stringify({ status: 'closed' }),
+        body: { status: 'closed' },
       }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['jobs'] });

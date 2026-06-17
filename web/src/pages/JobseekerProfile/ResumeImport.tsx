@@ -60,7 +60,7 @@ export function ResumeImport({ onExperienceAdded, open, onToggle }: Props) {
     try {
       const added = await api<Experience>('/profiles/me/experience', {
         method: 'POST',
-        body: JSON.stringify({
+        body: {
           type: exp.type,
           title: exp.title,
           organization: exp.organization,
@@ -69,7 +69,7 @@ export function ResumeImport({ onExperienceAdded, open, onToggle }: Props) {
           isCurrent: exp.isCurrent,
           description: exp.description || undefined,
           skillsUsed: exp.skillsUsed ?? [],
-        }),
+        },
       });
       onExperienceAdded(added);
       setAddedIdx((prev) => new Set(prev).add(idx));

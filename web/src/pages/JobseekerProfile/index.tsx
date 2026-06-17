@@ -82,7 +82,7 @@ export function JobseekerProfile() {
   }, [profile, profileForm]);
 
   const saveProfileMutation = useMutation({
-    mutationFn: (data: ProfileForm) => api<Profile>('/profiles/me', { method: 'PUT', body: JSON.stringify(data) }),
+    mutationFn: (data: ProfileForm) => api<Profile>('/profiles/me', { method: 'PUT', body: data }),
     onMutate: () => setError(null),
     onSuccess: () => {
       invalidateProfileViews();
@@ -102,12 +102,12 @@ export function JobseekerProfile() {
         : [];
       return api<Experience>('/profiles/me/experience', {
         method: 'POST',
-        body: JSON.stringify({
+        body: {
           ...data,
           skillsUsed: skills,
           endDate: data.isCurrent ? undefined : data.endDate || undefined,
           url: data.url || undefined,
-        }),
+        },
       });
     },
     onMutate: () => setError(null),

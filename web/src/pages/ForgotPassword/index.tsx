@@ -17,7 +17,7 @@ export function ForgotPassword() {
     try {
       await api('/auth/forgot-password', {
         method: 'POST',
-        body: JSON.stringify({ email: email.trim() }),
+        body: { email: email.trim() },
       });
       setSent(true);
     } catch (err) {

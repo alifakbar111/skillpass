@@ -24,7 +24,7 @@ export function AdminVerifications() {
     mutationFn: ({ id, action }: { id: string; action: 'approve' | 'reject' }) =>
       api(`/admin/verifications/${encodeURIComponent(id)}`, {
         method: 'POST',
-        body: JSON.stringify({ action }),
+        body: { action },
       }),
     onMutate: ({ id }) => {
       setError(null);
