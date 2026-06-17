@@ -5,12 +5,12 @@
     "": {
       "name": "skillpass",
       "devDependencies": {
-        "@biomejs/biome": "latest",
-        "concurrently": "latest",
-        "lefthook": "latest",
-        "openapi-typescript": "latest",
-        "swagger2openapi": "latest",
-        "typescript": "latest",
+        "@biomejs/biome": "^2.5.0",
+        "concurrently": "^10.0.3",
+        "lefthook": "^2.1.9",
+        "openapi-typescript": "^7.13.0",
+        "swagger2openapi": "^7.0.8",
+        "typescript": "^6.0.3",
       },
     },
   },
