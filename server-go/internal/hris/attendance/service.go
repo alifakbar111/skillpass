@@ -90,40 +90,32 @@ func (s *Service) ClockIn(ctx context.Context, companyID, employeeID uuid.UUID, 
 
 	var inGeofence *bool
 	if req.BranchID != nil {
-		var branchLat, branchLng, radius float64
+		var branchLat, branchLng *float64
+		var radius float64
 		err := s.db.QueryRowContext(ctx,
-			`SELECT COALESCE(latitude,0), COALESCE(longitude,0), COALESCE(geofence_radius_meters,100)
+			`SELECT latitude, longitude, COALESCE(geofence_radius_meters,100)
 			 FROM branches WHERE id=$1 AND company_id=$2`, req.BranchID, companyID,
 		).Scan(&branchLat, &branchLng, &radius)
-		if err == nil && branchLat != 0 {
-			result := IsWithinGeofence(req.Lat, req.Lng, branchLat, branchLng, radius)
+		if err == nil && branchLat != nil && branchLng != nil {
+			result := IsWithinGeofence(req.Lat, req.Lng, *branchLat, *branchLng, radius)
 			inGeofence = &result
 		}
 	}
 
 	isLate := false
 	lateMinutes := 0
+	var startTime string
+	var tolerance int
 	err = s.db.QueryRowContext(ctx,
-		`SELECT st.start_time, st.late_tolerance_minutes
+		`SELECT st.start_time::text, st.late_tolerance_minutes
 		 FROM employee_shifts es
 		 JOIN shift_templates st ON st.id = es.shift_id
 		 WHERE es.employee_id = $1
 		   AND es.effective_date <= $2
 		   AND (es.end_date IS NULL OR es.end_date >= $2)
 		 ORDER BY es.effective_date DESC LIMIT 1`, employeeID, today,
-	).Scan(new(string), new(int))
+	).Scan(&startTime, &tolerance)
 	if err == nil {
-		var startTime string
-		var tolerance int
-		_ = s.db.QueryRowContext(ctx,
-			`SELECT st.start_time::text, st.late_tolerance_minutes
-			 FROM employee_shifts es
-			 JOIN shift_templates st ON st.id = es.shift_id
-			 WHERE es.employee_id = $1
-			   AND es.effective_date <= $2
-			   AND (es.end_date IS NULL OR es.end_date >= $2)
-			 ORDER BY es.effective_date DESC LIMIT 1`, employeeID, today,
-		).Scan(&startTime, &tolerance)
 		shiftStart, parseErr := time.Parse("15:04:05", startTime)
 		if parseErr == nil {
 			now := time.Now()
@@ -204,7 +196,16 @@ func (s *Service) GetDashboard(ctx context.Context, companyID uuid.UUID, date st
 		return nil, nil, err
 	}
 
-	stats.Absent = stats.TotalEmployees - stats.Present - stats.Late
+	// Query employees on approved leave for this date
+	s.db.QueryRowContext(ctx,
+		`SELECT COUNT(DISTINCT employee_id) FROM leave_requests
+		 WHERE company_id=$1 AND $2::date BETWEEN start_date AND end_date AND status='approved'`,
+		companyID, date).Scan(&stats.OnLeave)
+
+	stats.Absent = stats.TotalEmployees - stats.Present - stats.Late - stats.OnLeave
+	if stats.Absent < 0 {
+		stats.Absent = 0
+	}
 
 	rows, err := s.db.QueryContext(ctx,
 		`SELECT a.id, a.company_id, a.employee_id,

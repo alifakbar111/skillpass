@@ -218,7 +218,10 @@ func (h *Handler) CompleteItem(c *gin.Context) {
 	var req struct {
 		Notes string `json:"notes"`
 	}
-	c.ShouldBindJSON(&req)
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request body"})
+		return
+	}
 
 	if err := h.svc.CompleteItem(c.Request.Context(), companyID, itemID, employeeID, req.Notes); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to complete item"})
@@ -233,12 +236,17 @@ func (h *Handler) UncompleteItem(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid company ID"})
 		return
 	}
+	employeeID, err := uuid.Parse(c.GetString("employeeId"))
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid employee ID"})
+		return
+	}
 	itemID, err := uuid.Parse(c.Param("itemId"))
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid item ID"})
 		return
 	}
-	if err := h.svc.UncompleteItem(c.Request.Context(), companyID, itemID); err != nil {
+	if err := h.svc.UncompleteItem(c.Request.Context(), companyID, employeeID, itemID); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to uncomplete item"})
 		return
 	}

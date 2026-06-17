@@ -209,12 +209,12 @@ func (s *Service) AssignChecklist(ctx context.Context, companyID, employeeID, te
 
 func (s *Service) ListChecklists(ctx context.Context, companyID uuid.UUID) ([]Checklist, error) {
 	rows, err := s.db.QueryContext(ctx, `
-		SELECT cl.id, cl.employee_id, e.full_name, e.employee_code,
+		SELECT cl.id, cl.employee_id, COALESCE(e.first_name||' '||e.last_name, '') as employee_name, e.employee_id_number,
 			COALESCE(t.name, ''), cl.status, cl.started_at, cl.completed_at,
 			(SELECT COUNT(*) FILTER (WHERE is_completed) FROM onboarding_checklist_items WHERE checklist_id = cl.id),
 			(SELECT COUNT(*) FROM onboarding_checklist_items WHERE checklist_id = cl.id)
 		FROM onboarding_checklists cl
-		JOIN hris_employees e ON e.id = cl.employee_id
+		JOIN employees e ON e.id = cl.employee_id
 		LEFT JOIN onboarding_templates t ON t.id = cl.template_id
 		WHERE cl.company_id = $1
 		ORDER BY cl.started_at DESC
@@ -243,10 +243,10 @@ func (s *Service) ListChecklists(ctx context.Context, companyID uuid.UUID) ([]Ch
 func (s *Service) GetChecklist(ctx context.Context, companyID, checklistID uuid.UUID) (*Checklist, error) {
 	cl := &Checklist{}
 	err := s.db.QueryRowContext(ctx, `
-		SELECT cl.id, cl.employee_id, e.full_name, e.employee_code,
+		SELECT cl.id, cl.employee_id, COALESCE(e.first_name||' '||e.last_name, '') as employee_name, e.employee_id_number,
 			COALESCE(t.name, ''), cl.status, cl.started_at, cl.completed_at
 		FROM onboarding_checklists cl
-		JOIN hris_employees e ON e.id = cl.employee_id
+		JOIN employees e ON e.id = cl.employee_id
 		LEFT JOIN onboarding_templates t ON t.id = cl.template_id
 		WHERE cl.id = $1 AND cl.company_id = $2
 	`, checklistID, companyID).Scan(&cl.ID, &cl.EmployeeID, &cl.EmployeeName, &cl.EmployeeCode,
@@ -295,9 +295,15 @@ func (s *Service) GetMyChecklist(ctx context.Context, companyID, employeeID uuid
 }
 
 func (s *Service) CompleteItem(ctx context.Context, companyID, itemID, completedBy uuid.UUID, notes string) error {
+	tx, err := s.db.BeginTx(ctx, nil)
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
+
 	// Verify item belongs to company
 	var checklistID uuid.UUID
-	err := s.db.QueryRowContext(ctx, `
+	err = tx.QueryRowContext(ctx, `
 		SELECT ci.checklist_id FROM onboarding_checklist_items ci
 		JOIN onboarding_checklists cl ON cl.id = ci.checklist_id
 		WHERE ci.id = $1 AND cl.company_id = $2
@@ -306,7 +312,7 @@ func (s *Service) CompleteItem(ctx context.Context, companyID, itemID, completed
 		return err
 	}
 
-	_, err = s.db.ExecContext(ctx, `
+	_, err = tx.ExecContext(ctx, `
 		UPDATE onboarding_checklist_items
 		SET is_completed = true, completed_at = now(), completed_by = $2, notes = $3
 		WHERE id = $1
@@ -317,22 +323,34 @@ func (s *Service) CompleteItem(ctx context.Context, companyID, itemID, completed
 
 	// Auto-complete checklist if all items done
 	var remaining int
-	s.db.QueryRowContext(ctx,
+	err = tx.QueryRowContext(ctx,
 		`SELECT COUNT(*) FROM onboarding_checklist_items WHERE checklist_id = $1 AND NOT is_completed`,
 		checklistID).Scan(&remaining)
-
-	if remaining == 0 {
-		s.db.ExecContext(ctx,
-			`UPDATE onboarding_checklists SET status = 'completed', completed_at = now() WHERE id = $1`,
-			checklistID)
+	if err != nil {
+		return err
 	}
 
-	return nil
+	if remaining == 0 {
+		_, err = tx.ExecContext(ctx,
+			`UPDATE onboarding_checklists SET status = 'completed', completed_at = now() WHERE id = $1`,
+			checklistID)
+		if err != nil {
+			return err
+		}
+	}
+
+	return tx.Commit()
 }
 
-func (s *Service) UncompleteItem(ctx context.Context, companyID, itemID uuid.UUID) error {
+func (s *Service) UncompleteItem(ctx context.Context, companyID, completedBy, itemID uuid.UUID) error {
+	tx, err := s.db.BeginTx(ctx, nil)
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
+
 	var checklistID uuid.UUID
-	err := s.db.QueryRowContext(ctx, `
+	err = tx.QueryRowContext(ctx, `
 		SELECT ci.checklist_id FROM onboarding_checklist_items ci
 		JOIN onboarding_checklists cl ON cl.id = ci.checklist_id
 		WHERE ci.id = $1 AND cl.company_id = $2
@@ -341,7 +359,7 @@ func (s *Service) UncompleteItem(ctx context.Context, companyID, itemID uuid.UUI
 		return err
 	}
 
-	_, err = s.db.ExecContext(ctx, `
+	_, err = tx.ExecContext(ctx, `
 		UPDATE onboarding_checklist_items
 		SET is_completed = false, completed_at = NULL, completed_by = NULL
 		WHERE id = $1
@@ -351,9 +369,12 @@ func (s *Service) UncompleteItem(ctx context.Context, companyID, itemID uuid.UUI
 	}
 
 	// Reopen checklist if it was completed
-	s.db.ExecContext(ctx,
+	_, err = tx.ExecContext(ctx,
 		`UPDATE onboarding_checklists SET status = 'in_progress', completed_at = NULL WHERE id = $1 AND status = 'completed'`,
 		checklistID)
+	if err != nil {
+		return err
+	}
 
-	return nil
+	return tx.Commit()
 }

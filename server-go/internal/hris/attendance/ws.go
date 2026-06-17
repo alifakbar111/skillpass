@@ -10,7 +10,21 @@ import (
 )
 
 var upgrader = websocket.Upgrader{
-	CheckOrigin: func(r *http.Request) bool { return true },
+	CheckOrigin: func(r *http.Request) bool {
+		origin := r.Header.Get("Origin")
+		// Allow development and production origins
+		allowedOrigins := []string{
+			"http://localhost:4200",
+			"https://localhost:4200",
+			"http://127.0.0.1:4200",
+		}
+		for _, o := range allowedOrigins {
+			if origin == o {
+				return true
+			}
+		}
+		return false
+	},
 }
 
 type Hub struct {

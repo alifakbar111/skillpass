@@ -280,12 +280,17 @@ func (s *Service) ReviewRequest(ctx context.Context, companyID, reqID, reviewerI
 	}
 
 	if status == "approved" {
-		_, err = tx.ExecContext(ctx,
+		res, err := tx.ExecContext(ctx,
 			`UPDATE leave_balances SET used_days = used_days + $1
-			 WHERE employee_id = $2 AND leave_type_id = $3 AND year = EXTRACT(YEAR FROM $4::date)`,
+			 WHERE employee_id = $2 AND leave_type_id = $3 AND year = EXTRACT(YEAR FROM $4::date)
+			 AND (total_days + carry_over_days - used_days) >= $1`,
 			totalDays, employeeID, leaveTypeID, startDate)
 		if err != nil {
 			return err
+		}
+		n, _ := res.RowsAffected()
+		if n == 0 {
+			return fmt.Errorf("insufficient leave balance remaining")
 		}
 	}
 

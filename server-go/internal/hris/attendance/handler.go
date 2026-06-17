@@ -159,6 +159,7 @@ func (h *Handler) CreateException(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create exception"})
 		return
 	}
+	ex.EmployeeID = employeeID
 	c.JSON(http.StatusCreated, ex)
 }
 

@@ -275,7 +275,7 @@ func (s *Service) CalculateRun(ctx context.Context, companyID, runID uuid.UUID) 
 	rows, err := tx.QueryContext(ctx,
 		`SELECT e.id, e.employee_code, e.first_name, e.last_name
 		 FROM employees e
-		 WHERE e.company_id = $1 AND e.status = 'active'
+		 WHERE e.company_id = $1 AND e.employment_status = 'active'
 		 ORDER BY e.first_name, e.last_name`, companyID)
 	if err != nil {
 		return err
@@ -467,7 +467,7 @@ func (s *Service) GetMyPayslips(ctx context.Context, companyID, employeeID uuid.
 	return list, rows.Err()
 }
 
-func (s *Service) GetPayslip(ctx context.Context, companyID, payslipID uuid.UUID) (*Payslip, error) {
+func (s *Service) GetPayslip(ctx context.Context, companyID, employeeID, payslipID uuid.UUID) (*Payslip, error) {
 	var p Payslip
 	var breakdownJSON []byte
 	err := s.db.QueryRowContext(ctx,
@@ -479,8 +479,8 @@ func (s *Service) GetPayslip(ctx context.Context, companyID, payslipID uuid.UUID
 		 FROM payslips p
 		 JOIN employees e ON e.id = p.employee_id
 		 JOIN payroll_runs pr ON pr.id = p.payroll_run_id
-		 WHERE pr.company_id = $1 AND p.id = $2`,
-		companyID, payslipID).Scan(&p.ID, &p.PayrollRunID, &p.EmployeeID, &p.EmployeeName, &p.EmployeeCode,
+		 WHERE pr.company_id = $1 AND p.id = $2 AND ($3::uuid IS NULL OR p.employee_id = $3)`,
+		companyID, payslipID, employeeID).Scan(&p.ID, &p.PayrollRunID, &p.EmployeeID, &p.EmployeeName, &p.EmployeeCode,
 		&p.GrossPay, &p.TotalDeductions, &p.NetPay, &breakdownJSON, &p.CreatedAt,
 		&p.PeriodStart, &p.PeriodEnd)
 	if err != nil {

@@ -316,12 +316,17 @@ func (h *Handler) GetPayslip(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid company ID"})
 		return
 	}
+	employeeID, err := uuid.Parse(c.GetString("employeeId"))
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid employee ID"})
+		return
+	}
 	payslipID, err := uuid.Parse(c.Param("payslipId"))
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid payslip ID"})
 		return
 	}
-	slip, err := h.svc.GetPayslip(c.Request.Context(), companyID, payslipID)
+	slip, err := h.svc.GetPayslip(c.Request.Context(), companyID, employeeID, payslipID)
 	if err != nil {
 		if err == sql.ErrNoRows {
 			c.JSON(http.StatusNotFound, gin.H{"error": "Payslip not found"})

@@ -40,7 +40,7 @@ func (h *Handler) ExportAttendance(c *gin.Context) {
 
 	if format == "csv" {
 		csv := h.svc.ToCSV(rows)
-		c.Header("Content-Disposition", "attachment; filename=attendance_"+from+"_"+to+".csv")
+		c.Header("Content-Disposition", `attachment; filename="attendance_export.csv"`)
 		c.Data(http.StatusOK, "text/csv", []byte(csv))
 		return
 	}
