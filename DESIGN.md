@@ -1,9 +1,14 @@
 # SkillPass Design System
 
 **Version:** 1.1.0  
-**Last updated:** 2026-06-15  
+**Last updated:** 2026-06-18  
 **Stack:** Tailwind CSS v4 + DaisyUI 5  
 **Storybook:** Run `bun --cwd web storybook` to open the component library at http://localhost:6006
+
+**Related docs:**
+- [Feature Inventory](docs/FEATURES.md) — complete list of all features with server package and frontend page mappings
+- [Environment Variables](docs/ENV_VARIABLES.md) — env reference for all config options
+- [Project README](README.md) — setup, commands, architecture overview
 
 ## Philosophy
 
@@ -198,10 +203,12 @@ All DaisyUI semantic tokens adapt automatically — no `dark:` Tailwind prefixes
 }
 ```
 
-### Remaining Gaps
-| Issue | Fix | Priority |
+### Known Gaps
+| Issue | Status | Priority |
 |---|---|---|
-| `aria-expanded` on dropdown toggle is commented out | Uncomment `aria-expanded={dropdownOpen}` on Navbar avatar button | Low |
+| `aria-expanded` on dropdown toggle | Present — needs uncommenting | Low |
+| Color contrast audit for custom themes | Not yet performed | Low |
+| Touch target audit for small interactive elements | Not yet performed | Low |
 
 ---
 
