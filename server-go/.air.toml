@@ -1,12 +1,12 @@
 root = "."
-testdata_dir = "testdata"
-tmp_dir = "tmp"
+testdata_dir = "server-go/testdata"
+tmp_dir = "server-go/tmp"
 
 [build]
-  cmd = "go build -tags dev -o ./tmp/server ./cmd/server/"
-  bin = "tmp/server"
+  cmd = "go build -tags dev -o ./server-go/tmp/server ./server-go/cmd/server/"
+  bin = "server-go/tmp/server"
   delay = 1000
-  exclude_dir = ["assets", "tmp", "vendor", "testdata", ".gen"]
+  exclude_dir = ["server-go/assets", "server-go/tmp", "tmp", "vendor", "server-go/testdata", "server-go/.gen", "node_modules", "web"]
   exclude_file = []
   exclude_regex = ["_test.go"]
   exclude_unchanged = false
@@ -16,7 +16,7 @@ tmp_dir = "tmp"
   include_ext = ["go", "tpl", "tmpl", "html"]
   include_file = []
   kill_delay = "0s"
-  log = "build-errors.log"
+  log = "server-go/build-errors.log"
   poll = false
   poll_interval = 0
   post_cmd = []
