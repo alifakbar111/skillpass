@@ -329,6 +329,30 @@ skillpass/
 - **pre-commit:** `bun run format` (auto-fix code style, auto-stages)
 - **pre-push:** Go tests, web tests, govulncheck, bun audit, API drift check, gen-types annotation check
 
+## Documentation Index
+
+The `docs/` directory contains the project's full documentation library:
+
+| Document | Description |
+|---|---|
+| [`docs/FEATURES.md`](docs/FEATURES.md) | Complete feature inventory across all phases + HRIS module (67 features) |
+| [`docs/ENV_VARIABLES.md`](docs/ENV_VARIABLES.md) | Environment variable reference (server, web, Docker) |
+| [`docs/DESIGN.md`](DESIGN.md) | Design system: tokens, typography, colors, spacing, accessibility |
+| [`docs/MIGRATION_PLAN.md`](docs/MIGRATION_PLAN.md) | Elysia → Go migration plan and benchmark results |
+| [`docs/saas-tech-stack-reference.md`](docs/saas-tech-stack-reference.md) | Full HRIS tech stack, architecture, and conventions reference |
+| [`docs/specs/`](docs/specs/) | Design specifications (Phase 1, 2, 3, verification, agent manager) |
+| [`docs/plans/`](docs/plans/) | Implementation plans (16 documents covering all workstreams) |
+| [`server-go/docs/`](server-go/docs/) | Auto-generated Swagger/OpenAPI spec (via `bun run api:generate`) |
+
+### Quick Reference Card
+
+- **Design tokens & styling:** See [`DESIGN.md`](DESIGN.md)
+- **Environment setup:** See [`docs/ENV_VARIABLES.md`](docs/ENV_VARIABLES.md)
+- **Feature inventory:** See [`docs/FEATURES.md`](docs/FEATURES.md)
+- **Swagger API docs:** Run `bun run dev` and visit `http://localhost:1234/docs/index.html`
+- **Storybook component library:** Run `bun --cwd web storybook` (port 6006)
+- **Agent development kit:** See [`AGENTS.md`](AGENTS.md)
+
 ## License
 
 Private — All rights reserved.
