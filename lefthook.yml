@@ -26,24 +26,22 @@ pre-push:
       run: >
         cd server-go &&
         go build -o niljson ./tools/cmd/niljson/ &&
-        output=$$(go vet -vettool=./niljson ./internal/... 2>&1 |
+        output=$(go vet -vettool=./niljson ./internal/... 2>&1 |
           grep -v 'struct UpdateJobRequest' |
           grep -v 'struct UpdateProfileRequest' |
           grep -v 'struct UpdateExperienceRequest' |
-          grep -v 'struct UpdateCompanyRequest') &&
+          grep -v 'struct UpdateCompanyRequest' || true) &&
         rm -f niljson &&
-        if [ -n "$$output" ]; then
+        if [ -n "$output" ]; then
           echo "FAIL: nullable fields without omitempty in json tags — fix them:";
-          echo "$$output";
+          echo "$output";
           exit 1;
         fi
     zod-null-safety:
-      run: >
-        output=$$(! grep -rn '\.optional()' web/src/lib/schemas/*.ts |
-          grep -v '\.nullable()' |
-          grep -v '\.nullish()' 2>/dev/null) &&
-        if [ -n "$$output" ]; then
+      run: |
+        output=$(grep -rn '\.optional()' web/src/lib/schemas/*.ts 2>/dev/null | grep -v '\.nullable()' | grep -v '\.nullish()');
+        if [ -n "$output" ]; then
           echo "WARNING: Zod .optional() without .nullable() found in schemas:";
-          echo "$$output";
+          echo "$output";
           echo "If these fields can receive null from Go API, add .nullable() or ensure Go uses omitempty";
         fi
