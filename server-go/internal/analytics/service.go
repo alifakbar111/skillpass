@@ -29,7 +29,7 @@ type JobFunnel struct {
 	Title        string        `json:"title"`
 	Status       string        `json:"status"`
 	Total        int           `json:"total"`
-	ByStatus     []StatusCount `json:"byStatus"`
+	ByStatus     []StatusCount `json:"byStatus,omitempty"`
 }
 
 // CompanyAnalytics is the company dashboard payload.
@@ -37,17 +37,17 @@ type CompanyAnalytics struct {
 	TotalJobs            int           `json:"totalJobs"`
 	OpenJobs             int           `json:"openJobs"`
 	TotalApplications    int           `json:"totalApplications"`
-	ApplicationsByStatus []StatusCount `json:"applicationsByStatus"`
-	AvgDaysToDecision    *float64      `json:"avgDaysToDecision"`
-	Jobs                 []JobFunnel   `json:"jobs"`
+	ApplicationsByStatus []StatusCount `json:"applicationsByStatus,omitempty"`
+	AvgDaysToDecision    *float64      `json:"avgDaysToDecision,omitempty"`
+	Jobs                 []JobFunnel   `json:"jobs,omitempty"`
 }
 
 // JobseekerAnalytics is the jobseeker stats payload.
 type JobseekerAnalytics struct {
 	TotalApplications    int           `json:"totalApplications"`
-	ApplicationsByStatus []StatusCount `json:"applicationsByStatus"`
+	ApplicationsByStatus []StatusCount `json:"applicationsByStatus,omitempty"`
 	PassportViews        int           `json:"passportViews"`
-	ResponseRate         *float64      `json:"responseRate"`
+	ResponseRate         *float64      `json:"responseRate,omitempty"`
 }
 
 func (s *Service) ForCompany(ctx context.Context, companyID string) (*CompanyAnalytics, error) {

@@ -26,12 +26,12 @@ type Branch struct {
 	CompanyID           uuid.UUID  `json:"companyId"`
 	Name                string     `json:"name"`
 	BranchType          string     `json:"branchType"`
-	ParentBranchID      *uuid.UUID `json:"parentBranchId"`
-	Address             *string    `json:"address"`
-	City                *string    `json:"city"`
-	Province            *string    `json:"province"`
-	Latitude            *float64   `json:"latitude"`
-	Longitude           *float64   `json:"longitude"`
+	ParentBranchID      *uuid.UUID `json:"parentBranchId,omitempty"`
+	Address             *string    `json:"address,omitempty"`
+	City                *string    `json:"city,omitempty"`
+	Province            *string    `json:"province,omitempty"`
+	Latitude            *float64   `json:"latitude,omitempty"`
+	Longitude           *float64   `json:"longitude,omitempty"`
 	GeofenceRadiusMeters int       `json:"geofenceRadiusMeters"`
 	IsActive            bool       `json:"isActive"`
 	CreatedAt           time.Time  `json:"createdAt"`
@@ -40,26 +40,26 @@ type Branch struct {
 type CreateBranchRequest struct {
 	Name                string     `json:"name" binding:"required"`
 	BranchType          string     `json:"branchType" binding:"required,oneof=head_office regional branch"`
-	ParentBranchID      *uuid.UUID `json:"parentBranchId"`
-	Address             *string    `json:"address"`
-	City                *string    `json:"city"`
-	Province            *string    `json:"province"`
-	Latitude            *float64   `json:"latitude"`
-	Longitude           *float64   `json:"longitude"`
-	GeofenceRadiusMeters *int      `json:"geofenceRadiusMeters"`
+	ParentBranchID      *uuid.UUID `json:"parentBranchId,omitempty"`
+	Address             *string    `json:"address,omitempty"`
+	City                *string    `json:"city,omitempty"`
+	Province            *string    `json:"province,omitempty"`
+	Latitude            *float64   `json:"latitude,omitempty"`
+	Longitude           *float64   `json:"longitude,omitempty"`
+	GeofenceRadiusMeters *int      `json:"geofenceRadiusMeters,omitempty"`
 }
 
 type UpdateBranchRequest struct {
-	Name                *string    `json:"name"`
-	BranchType          *string    `json:"branchType" binding:"omitempty,oneof=head_office regional branch"`
-	ParentBranchID      *uuid.UUID `json:"parentBranchId"`
-	Address             *string    `json:"address"`
-	City                *string    `json:"city"`
-	Province            *string    `json:"province"`
-	Latitude            *float64   `json:"latitude"`
-	Longitude           *float64   `json:"longitude"`
-	GeofenceRadiusMeters *int      `json:"geofenceRadiusMeters"`
-	IsActive            *bool      `json:"isActive"`
+	Name                *string    `json:"name,omitempty"`
+	BranchType          *string    `json:"branchType,omitempty" binding:"omitempty,oneof=head_office regional branch"`
+	ParentBranchID      *uuid.UUID `json:"parentBranchId,omitempty"`
+	Address             *string    `json:"address,omitempty"`
+	City                *string    `json:"city,omitempty"`
+	Province            *string    `json:"province,omitempty"`
+	Latitude            *float64   `json:"latitude,omitempty"`
+	Longitude           *float64   `json:"longitude,omitempty"`
+	GeofenceRadiusMeters *int      `json:"geofenceRadiusMeters,omitempty"`
+	IsActive            *bool      `json:"isActive,omitempty"`
 }
 
 func (s *Service) CreateBranch(ctx context.Context, companyID uuid.UUID, req CreateBranchRequest) (*Branch, error) {
@@ -163,18 +163,18 @@ type Department struct {
 	ID                 uuid.UUID  `json:"id"`
 	CompanyID          uuid.UUID  `json:"companyId"`
 	Name               string     `json:"name"`
-	ParentDepartmentID *uuid.UUID `json:"parentDepartmentId"`
+	ParentDepartmentID *uuid.UUID `json:"parentDepartmentId,omitempty"`
 	CreatedAt          time.Time  `json:"createdAt"`
 }
 
 type CreateDepartmentRequest struct {
 	Name               string     `json:"name" binding:"required"`
-	ParentDepartmentID *uuid.UUID `json:"parentDepartmentId"`
+	ParentDepartmentID *uuid.UUID `json:"parentDepartmentId,omitempty"`
 }
 
 type UpdateDepartmentRequest struct {
-	Name               *string    `json:"name"`
-	ParentDepartmentID *uuid.UUID `json:"parentDepartmentId"`
+	Name               *string    `json:"name,omitempty"`
+	ParentDepartmentID *uuid.UUID `json:"parentDepartmentId,omitempty"`
 }
 
 func (s *Service) CreateDepartment(ctx context.Context, companyID uuid.UUID, req CreateDepartmentRequest) (*Department, error) {
@@ -260,21 +260,21 @@ type Position struct {
 	ID           uuid.UUID  `json:"id"`
 	CompanyID    uuid.UUID  `json:"companyId"`
 	Name         string     `json:"name"`
-	DepartmentID *uuid.UUID `json:"departmentId"`
+	DepartmentID *uuid.UUID `json:"departmentId,omitempty"`
 	Level        string     `json:"level"`
 	CreatedAt    time.Time  `json:"createdAt"`
 }
 
 type CreatePositionRequest struct {
 	Name         string     `json:"name" binding:"required"`
-	DepartmentID *uuid.UUID `json:"departmentId"`
+	DepartmentID *uuid.UUID `json:"departmentId,omitempty"`
 	Level        string     `json:"level" binding:"required,oneof=staff supervisor manager director"`
 }
 
 type UpdatePositionRequest struct {
-	Name         *string    `json:"name"`
-	DepartmentID *uuid.UUID `json:"departmentId"`
-	Level        *string    `json:"level" binding:"omitempty,oneof=staff supervisor manager director"`
+	Name         *string    `json:"name,omitempty"`
+	DepartmentID *uuid.UUID `json:"departmentId,omitempty"`
+	Level        *string    `json:"level,omitempty" binding:"omitempty,oneof=staff supervisor manager director"`
 }
 
 func (s *Service) CreatePosition(ctx context.Context, companyID uuid.UUID, req CreatePositionRequest) (*Position, error) {
@@ -361,8 +361,8 @@ type OrgNode struct {
 	ID           uuid.UUID  `json:"id"`
 	Name         string     `json:"name"`
 	Type         string     `json:"type"`
-	ParentID     *uuid.UUID `json:"parentId"`
-	Level        *string    `json:"level"`
+	ParentID     *uuid.UUID `json:"parentId,omitempty"`
+	Level        *string    `json:"level,omitempty"`
 	EmployeeCount int       `json:"employeeCount,omitempty"`
 	Children     []OrgNode  `json:"children,omitempty"`
 }
@@ -403,20 +403,20 @@ func (s *Service) GetOrgTree(ctx context.Context, companyID uuid.UUID) ([]OrgNod
 type WorkingCalendar struct {
 	ID              uuid.UUID  `json:"id"`
 	CompanyID       uuid.UUID  `json:"companyId"`
-	BranchID        *uuid.UUID `json:"branchId"`
+	BranchID        *uuid.UUID `json:"branchId,omitempty"`
 	Year            int        `json:"year"`
-	DefaultWorkDays []int      `json:"defaultWorkDays"`
+	DefaultWorkDays []int      `json:"defaultWorkDays,omitempty"`
 	CreatedAt       time.Time  `json:"createdAt"`
 }
 
 type CreateCalendarRequest struct {
-	BranchID        *uuid.UUID `json:"branchId"`
+	BranchID        *uuid.UUID `json:"branchId,omitempty"`
 	Year            int        `json:"year" binding:"required"`
-	DefaultWorkDays []int      `json:"defaultWorkDays" binding:"required"`
+	DefaultWorkDays []int      `json:"defaultWorkDays,omitempty" binding:"required"`
 }
 
 type UpdateCalendarRequest struct {
-	DefaultWorkDays []int `json:"defaultWorkDays" binding:"required"`
+	DefaultWorkDays []int `json:"defaultWorkDays,omitempty" binding:"required"`
 }
 
 func (s *Service) CreateCalendar(ctx context.Context, companyID uuid.UUID, req CreateCalendarRequest) (*WorkingCalendar, error) {
@@ -509,11 +509,11 @@ func (s *Service) DeleteCalendar(ctx context.Context, companyID, calendarID uuid
 type OrgChartNode struct {
 	ID           uuid.UUID      `json:"id"`
 	Name         string         `json:"name"`
-	PositionName *string        `json:"positionName"`
-	Level        *string        `json:"level"`
-	DepartmentID *uuid.UUID     `json:"departmentId"`
-	ManagerID    *uuid.UUID     `json:"managerId"`
-	Children     []OrgChartNode `json:"children"`
+	PositionName *string        `json:"positionName,omitempty"`
+	Level        *string        `json:"level,omitempty"`
+	DepartmentID *uuid.UUID     `json:"departmentId,omitempty"`
+	ManagerID    *uuid.UUID     `json:"managerId,omitempty"`
+	Children     []OrgChartNode `json:"children,omitempty"`
 }
 
 func (s *Service) GetOrgChart(ctx context.Context, companyID uuid.UUID) ([]OrgChartNode, error) {

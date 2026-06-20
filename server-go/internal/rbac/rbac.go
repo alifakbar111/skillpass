@@ -71,7 +71,7 @@ func (s *Service) HasAnyPermission(ctx context.Context, employeeID uuid.UUID, pe
 type Role struct {
 	ID          uuid.UUID `json:"id"`
 	Name        string    `json:"name"`
-	Description *string   `json:"description"`
+	Description *string   `json:"description,omitempty"`
 	IsSystem    bool      `json:"isSystem"`
 }
 

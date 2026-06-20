@@ -94,10 +94,9 @@ func TestGetMyProfile(t *testing.T) {
 		}
 		var resp ProfileResponse
 		json.Unmarshal(w.Body.Bytes(), &resp)
-		if resp.Experiences == nil {
-			t.Fatal("expected experiences array to be non-nil []")
-		}
-		if len(resp.Experiences) != 0 {
+		// When there are no experiences, omitempty omits the field entirely.
+		// Both nil (absent) and empty array are valid representations.
+		if resp.Experiences != nil && len(resp.Experiences) != 0 {
 			t.Fatalf("expected 0 experiences, got %d", len(resp.Experiences))
 		}
 	})

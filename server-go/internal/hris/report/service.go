@@ -45,17 +45,17 @@ type AnalyticsSnapshot struct {
 	Terminations        int             `json:"terminations"`
 	TurnoverRate        float64         `json:"turnoverRate"`
 	AvgTenureMonths     float64         `json:"avgTenureMonths"`
-	DepartmentBreakdown []DeptBreakdown `json:"departmentBreakdown"`
+	DepartmentBreakdown []DeptBreakdown `json:"departmentBreakdown,omitempty"`
 	CreatedAt           time.Time       `json:"createdAt"`
 }
 
 type HeadcountStats struct {
 	TotalActive    int             `json:"totalActive"`
-	ByDepartment   []DeptCount     `json:"byDepartment"`
-	ByBranch       []BranchCount   `json:"byBranch"`
-	ByStatus       []StatusCount   `json:"byStatus"`
+	ByDepartment   []DeptCount     `json:"byDepartment,omitempty"`
+	ByBranch       []BranchCount   `json:"byBranch,omitempty"`
+	ByStatus       []StatusCount   `json:"byStatus,omitempty"`
 	AvgTenure      float64         `json:"avgTenureMonths"`
-	GenderBreakdown []GenderCount  `json:"genderBreakdown"`
+	GenderBreakdown []GenderCount  `json:"genderBreakdown,omitempty"`
 }
 
 type DeptCount struct {

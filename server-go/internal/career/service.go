@@ -48,8 +48,8 @@ type CareerPath struct {
 	ID                  string               `json:"id"`
 	Title               string               `json:"title"`
 	Description         string               `json:"description"`
-	SkillRequirements   []SkillRequirement   `json:"skillRequirements"`
-	TypicalProgression  []ProgressionStep    `json:"typicalProgression"`
+	SkillRequirements   []SkillRequirement   `json:"skillRequirements,omitempty"`
+	TypicalProgression  []ProgressionStep    `json:"typicalProgression,omitempty"`
 	Industry            string               `json:"industry"`
 	CreatedAt           string               `json:"createdAt"`
 }
@@ -64,15 +64,15 @@ type SkillGapItem struct {
 
 type SkillGapResult struct {
 	ProfileID       string          `json:"profileId"`
-	MatchingSkills  []SkillGapItem  `json:"matchingSkills"`
-	MissingSkills   []SkillGapItem  `json:"missingSkills"`
+	MatchingSkills  []SkillGapItem  `json:"matchingSkills,omitempty"`
+	MissingSkills   []SkillGapItem  `json:"missingSkills,omitempty"`
 	OverallMatch    float64         `json:"overallMatch"`
 }
 
 type CareerPrediction struct {
 	CurrentPosition    string              `json:"currentPosition"`
-	PredictedPaths     []PredictedPath     `json:"predictedPaths"`
-	SkillDevelopment   []SkillDevelopment  `json:"skillDevelopment"`
+	PredictedPaths     []PredictedPath     `json:"predictedPaths,omitempty"`
+	SkillDevelopment   []SkillDevelopment  `json:"skillDevelopment,omitempty"`
 	EstimatedTimeline  string              `json:"estimatedTimeline"`
 }
 
@@ -86,7 +86,7 @@ type SkillDevelopment struct {
 	Skill       string `json:"skill"`
 	Current     int    `json:"current"`
 	Target      int    `json:"target"`
-	Actions     []string `json:"actions"`
+	Actions     []string `json:"actions,omitempty"`
 }
 
 func (s *Service) ListPaths(ctx context.Context, industry string) ([]CareerPath, error) {

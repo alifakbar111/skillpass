@@ -367,8 +367,8 @@ type DevelopmentStep struct {
 // CareerPathResult is the LLM-generated career guidance payload.
 type CareerPathResult struct {
 	CurrentPosition string            `json:"currentPosition"`
-	SuggestedRoles  []SuggestedRole   `json:"suggestedRoles"`
-	Steps           []DevelopmentStep `json:"steps"`
+	SuggestedRoles  []SuggestedRole   `json:"suggestedRoles,omitempty"`
+	Steps           []DevelopmentStep `json:"steps,omitempty"`
 } //@name CareerPathResult
 
 // CareerPath asks the LLM for role recommendations based on the profile and its

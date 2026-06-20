@@ -26,7 +26,7 @@ type ParsedExperience struct {
 	EndDate      string   `json:"endDate"`
 	IsCurrent    bool     `json:"isCurrent"`
 	Description  string   `json:"description"`
-	SkillsUsed   []string `json:"skillsUsed"`
+	SkillsUsed   []string `json:"skillsUsed,omitempty"`
 }
 
 // ParsedResume is the structured extraction returned to the client for review.
@@ -34,7 +34,7 @@ type ParsedResume struct {
 	Headline          string             `json:"headline"`
 	About             string             `json:"about"`
 	YearsOfExperience int                `json:"yearsOfExperience"`
-	Experiences       []ParsedExperience `json:"experiences"`
+	Experiences       []ParsedExperience `json:"experiences,omitempty"`
 }
 
 func (s *Service) Parse(ctx context.Context, resumeText string) (*ParsedResume, error) {

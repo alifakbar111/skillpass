@@ -55,12 +55,12 @@ type Notification struct {
 	Title     string  `json:"title"`
 	Body      string  `json:"body"`
 	Link      string  `json:"link"`
-	ReadAt    *string `json:"readAt"`
+	ReadAt    *string `json:"readAt,omitempty"`
 	CreatedAt string  `json:"createdAt"`
 }
 
 type ListResult struct {
-	Notifications []Notification `json:"notifications"`
+	Notifications []Notification `json:"notifications,omitempty"`
 	UnreadCount   int            `json:"unreadCount"`
 }
 

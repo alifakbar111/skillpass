@@ -71,7 +71,7 @@ func NewOpenAIClient() *OpenAIClient {
 
 type chatRequest struct {
 	Model          string          `json:"model"`
-	Messages       []chatMessage   `json:"messages"`
+	Messages       []chatMessage   `json:"messages,omitempty"`
 	Temperature    float64         `json:"temperature"`
 	MaxTokens      int             `json:"max_tokens"`
 	ResponseFormat *responseFormat `json:"response_format,omitempty"`
@@ -91,7 +91,7 @@ type chatResponse struct {
 		Message struct {
 			Content string `json:"content"`
 		} `json:"message"`
-	} `json:"choices"`
+	} `json:"choices,omitempty"`
 	Error *struct {
 		Message string `json:"message"`
 	} `json:"error,omitempty"`
@@ -198,7 +198,7 @@ type anthropicRequest struct {
 	Model     string             `json:"model"`
 	MaxTokens int                `json:"max_tokens"`
 	System    string             `json:"system,omitempty"`
-	Messages  []anthropicMessage `json:"messages"`
+	Messages  []anthropicMessage `json:"messages,omitempty"`
 }
 
 type anthropicMessage struct {
@@ -210,7 +210,7 @@ type anthropicResponse struct {
 	Content []struct {
 		Type string `json:"type"`
 		Text string `json:"text"`
-	} `json:"content"`
+	} `json:"content,omitempty"`
 	Error *struct {
 		Type    string `json:"type"`
 		Message string `json:"message"`

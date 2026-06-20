@@ -53,11 +53,11 @@ type PayrollRun struct {
 	TotalDeductions float64    `json:"totalDeductions"`
 	TotalNet        float64    `json:"totalNet"`
 	EmployeeCount   int        `json:"employeeCount"`
-	Notes           *string    `json:"notes"`
-	RunBy           *uuid.UUID `json:"runBy"`
+	Notes           *string    `json:"notes,omitempty"`
+	RunBy           *uuid.UUID `json:"runBy,omitempty"`
 	RunByName       string     `json:"runByName,omitempty"`
-	ApprovedBy      *uuid.UUID `json:"approvedBy"`
-	ApprovedAt      *time.Time `json:"approvedAt"`
+	ApprovedBy      *uuid.UUID `json:"approvedBy,omitempty"`
+	ApprovedAt      *time.Time `json:"approvedAt,omitempty"`
 	CreatedAt       time.Time  `json:"createdAt"`
 }
 
@@ -77,7 +77,7 @@ type Payslip struct {
 	GrossPay        float64       `json:"grossPay"`
 	TotalDeductions float64       `json:"totalDeductions"`
 	NetPay          float64       `json:"netPay"`
-	Breakdown       []PayslipLine `json:"breakdown"`
+	Breakdown       []PayslipLine `json:"breakdown,omitempty"`
 	CreatedAt       time.Time     `json:"createdAt"`
 	PeriodStart     string        `json:"periodStart,omitempty"`
 	PeriodEnd       string        `json:"periodEnd,omitempty"`

@@ -23,10 +23,10 @@ func NewHandler(db *sql.DB, service *Service) *Handler {
 type EvaluationResponse struct {
 	ID           string           `json:"id"`
 	OverallScore int              `json:"overallScore"`
-	Strengths    []SkillNote      `json:"strengths"`
-	Weaknesses   []SkillNote      `json:"weaknesses"`
-	Suggestions  []Suggestion     `json:"suggestions"`
-	SkillScores  []SkillScoreItem `json:"skillScores"`
+	Strengths    []SkillNote      `json:"strengths,omitempty"`
+	Weaknesses   []SkillNote      `json:"weaknesses,omitempty"`
+	Suggestions  []Suggestion     `json:"suggestions,omitempty"`
+	SkillScores  []SkillScoreItem `json:"skillScores,omitempty"`
 	CreatedAt    string           `json:"createdAt"`
 } //@name EvaluationResponse
 

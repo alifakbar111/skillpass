@@ -13,12 +13,12 @@ import (
 type CandidateResult struct {
 	ID               string   `json:"id"`
 	Name             string   `json:"name"`
-	AvatarURL        *string  `json:"avatarUrl"`
-	Headline         *string  `json:"headline"`
-	About            *string  `json:"about"`
-	YearsOfExp       *int     `json:"yearsOfExperience"`
+	AvatarURL        *string  `json:"avatarUrl,omitempty"`
+	Headline         *string  `json:"headline,omitempty"`
+	About            *string  `json:"about,omitempty"`
+	YearsOfExp       *int     `json:"yearsOfExperience,omitempty"`
 	Slug             string   `json:"slug"`
-	Skills           []string `json:"skills"`
+	Skills           []string `json:"skills,omitempty"`
 } //@name CandidateResult
 
 type SearchHandler struct {

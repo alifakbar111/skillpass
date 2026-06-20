@@ -53,11 +53,11 @@ type LeaveRequest struct {
 	EndDate         string     `json:"endDate"`
 	TotalDays       int        `json:"totalDays"`
 	Reason          string     `json:"reason"`
-	AttachmentURL   *string    `json:"attachmentUrl"`
+	AttachmentURL   *string    `json:"attachmentUrl,omitempty"`
 	Status          string     `json:"status"`
-	ReviewerID      *uuid.UUID `json:"reviewerId"`
-	ReviewerComment *string    `json:"reviewerComment"`
-	ReviewedAt      *time.Time `json:"reviewedAt"`
+	ReviewerID      *uuid.UUID `json:"reviewerId,omitempty"`
+	ReviewerComment *string    `json:"reviewerComment,omitempty"`
+	ReviewedAt      *time.Time `json:"reviewedAt,omitempty"`
 	CreatedAt       time.Time  `json:"createdAt"`
 }
 

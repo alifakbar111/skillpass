@@ -23,7 +23,7 @@ func NewReferenceHandler(db *sql.DB) *ReferenceHandler {
 type IndustryResponse struct {
 	ID          uuid.UUID `json:"id"`
 	Name        string    `json:"name"`
-	Description *string   `json:"description"`
+	Description *string   `json:"description,omitempty"`
 } //@name IndustryResponse
 
 // GetIndustries	godoc
@@ -65,7 +65,7 @@ func (h *ReferenceHandler) GetIndustries(c *gin.Context) {
 type TagResponse struct {
 	ID                 uuid.UUID  `json:"id"`
 	Name               string     `json:"name"`
-	IndustryCategoryID *uuid.UUID `json:"industryCategoryId"`
+	IndustryCategoryID *uuid.UUID `json:"industryCategoryId,omitempty"`
 } //@name TagResponse
 
 // GetTags		godoc

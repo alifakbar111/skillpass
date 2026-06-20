@@ -38,14 +38,14 @@ type Feedback struct {
 	ProfileID      string          `json:"profileId"`
 	CompanyID      string          `json:"companyId"`
 	Content        string          `json:"content"`
-	RatingAreas    []RatingArea    `json:"ratingAreas"`
-	AISuggestions  []AISuggestion  `json:"aiSuggestions"`
+	RatingAreas    []RatingArea    `json:"ratingAreas,omitempty"`
+	AISuggestions  []AISuggestion  `json:"aiSuggestions,omitempty"`
 	CreatedAt      string          `json:"createdAt"`
 } //@name Feedback
 
 type CreateFeedbackRequest struct {
 	Content     string       `json:"content"`
-	RatingAreas []RatingArea `json:"ratingAreas"`
+	RatingAreas []RatingArea `json:"ratingAreas,omitempty"`
 } //@name CreateFeedbackRequest
 
 func (s *Service) Create(ctx context.Context, profileID, companyID string, req *CreateFeedbackRequest) (*Feedback, error) {

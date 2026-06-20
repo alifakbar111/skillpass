@@ -29,12 +29,12 @@ type CreateExperienceRequest struct {
 	Title        string   `json:"title" binding:"required"`
 	Organization string   `json:"organization" binding:"required"`
 	StartDate    string   `json:"startDate" binding:"required"`
-	EndDate      *string  `json:"endDate"`
-	IsCurrent    *bool    `json:"isCurrent"`
-	Description  *string  `json:"description"`
-	Industry     *string  `json:"industry"`
-	SkillsUsed   []string `json:"skillsUsed"`
-	URL          *string  `json:"url"`
+	EndDate      *string  `json:"endDate,omitempty"`
+	IsCurrent    *bool    `json:"isCurrent,omitempty"`
+	Description  *string  `json:"description,omitempty"`
+	Industry     *string  `json:"industry,omitempty"`
+	SkillsUsed   []string `json:"skillsUsed,omitempty"`
+	URL          *string  `json:"url,omitempty"`
 } //@name CreateExperienceRequest
 
 type UpdateExperienceRequest struct {
@@ -57,27 +57,27 @@ type Experience struct {
 	Title        string   `json:"title"`
 	Organization string   `json:"organization"`
 	StartDate    string   `json:"startDate"`
-	EndDate      *string  `json:"endDate"`
-	IsCurrent    bool     `json:"isCurrent"`
-	Description  *string  `json:"description"`
-	Industry     *string  `json:"industry"`
-	SkillsUsed   []string `json:"skillsUsed"`
-	URL          *string  `json:"url"`
+	EndDate      *string  `json:"endDate,omitempty"`
+	IsCurrent    bool     `json:"isCurrent,omitempty"`
+	Description  *string  `json:"description,omitempty"`
+	Industry     *string  `json:"industry,omitempty"`
+	SkillsUsed   []string `json:"skillsUsed,omitempty"`
+	URL          *string  `json:"url,omitempty"`
 } //@name Experience
 
 type ProfileResponse struct {
 	ID          string       `json:"id"`
 	UserID      string       `json:"userId"`
-	Headline    *string      `json:"headline"`
-	About       *string      `json:"about"`
-	YearsOfExp  *int         `json:"yearsOfExperience"`
+	Headline    *string      `json:"headline,omitempty"`
+	About       *string      `json:"about,omitempty"`
+	YearsOfExp  *int         `json:"yearsOfExperience,omitempty"`
 	Slug        string       `json:"slug"`
 	Name        string       `json:"name"`
 	Email       string       `json:"email"`
 	Username    string       `json:"username"`
 	Role        string       `json:"role"`
-	AvatarURL   *string      `json:"avatarUrl"`
-	Experiences []Experience `json:"experiences"`
+	AvatarURL   *string      `json:"avatarUrl,omitempty"`
+	Experiences []Experience `json:"experiences,omitempty"`
 } //@name ProfileResponse
 
 type ProfileHandler struct {

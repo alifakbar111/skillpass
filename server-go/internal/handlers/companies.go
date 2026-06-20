@@ -21,12 +21,12 @@ type CompanyResponse struct {
 	ID                 string          `json:"id"`
 	UserID             string          `json:"userId"`
 	CompanyName        string          `json:"companyName"`
-	Website            *string         `json:"website"`
+	Website            *string         `json:"website,omitempty"`
 	Industry           string          `json:"industry"`
-	Description        *string         `json:"description"`
+	Description        *string         `json:"description,omitempty"`
 	VerificationStatus string          `json:"verificationStatus"`
-	VerificationDocs   json.RawMessage `json:"verificationDocs" swaggertype:"array,object"`
-	VerifiedAt         *time.Time      `json:"verifiedAt"`
+	VerificationDocs   json.RawMessage `json:"verificationDocs,omitempty" swaggertype:"array,object"`
+	VerifiedAt         *time.Time      `json:"verifiedAt,omitempty"`
 	BlindMode          bool            `json:"blindMode"`
 	CreatedAt          time.Time       `json:"createdAt"`
 }

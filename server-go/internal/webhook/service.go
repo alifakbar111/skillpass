@@ -160,7 +160,7 @@ func (s *Service) Delete(ctx context.Context, webhookID, companyID string) (bool
 type Event struct {
 	Type      string          `json:"type"`
 	Timestamp string          `json:"timestamp"`
-	Data      json.RawMessage `json:"data"`
+	Data      json.RawMessage `json:"data,omitempty"`
 }
 
 // DispatchApplicationReceived posts an "application.received" event to all active

@@ -23,18 +23,18 @@ type PendingCompany struct {
 	ID                 string          `json:"id"`
 	UserID             string          `json:"userId"`
 	CompanyName        string          `json:"companyName"`
-	Website            *string         `json:"website"`
+	Website            *string         `json:"website,omitempty"`
 	Industry           string          `json:"industry"`
-	Description        *string         `json:"description"`
+	Description        *string         `json:"description,omitempty"`
 	VerificationStatus string          `json:"verificationStatus"`
-	VerificationDocs   json.RawMessage `json:"verificationDocs" swaggertype:"array,object"`
-	VerifiedAt         *time.Time      `json:"verifiedAt"`
+	VerificationDocs   json.RawMessage `json:"verificationDocs,omitempty" swaggertype:"array,object"`
+	VerifiedAt         *time.Time      `json:"verifiedAt,omitempty"`
 	CreatedAt          time.Time       `json:"createdAt"`
 } //@name PendingCompany
 
 type VerificationActionRequest struct {
 	Action string  `json:"action" binding:"required,oneof=approve reject"`
-	Reason *string `json:"reason"`
+	Reason *string `json:"reason,omitempty"`
 } //@name VerificationActionRequest
 
 type AdminHandler struct {

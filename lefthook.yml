@@ -20,3 +20,30 @@ pre-push:
       run: bun run api:check
     no-gen-types-in-annotations:
       run: '! grep -rn "@Success.*_gen\." server-go/internal || (echo "go-jet gen types must not appear in @Success annotations — wrap them in a handler response struct" && exit 1)'
+    omitempty-check:
+      # PATCH request structs (UpdateXxxRequest) intentionally use null to
+      # distinguish "clear this field" from "leave unchanged" — allowlist them.
+      run: >
+        cd server-go &&
+        go build -o niljson ./tools/cmd/niljson/ &&
+        output=$$(go vet -vettool=./niljson ./internal/... 2>&1 |
+          grep -v 'struct UpdateJobRequest' |
+          grep -v 'struct UpdateProfileRequest' |
+          grep -v 'struct UpdateExperienceRequest' |
+          grep -v 'struct UpdateCompanyRequest') &&
+        rm -f niljson &&
+        if [ -n "$$output" ]; then
+          echo "FAIL: nullable fields without omitempty in json tags — fix them:";
+          echo "$$output";
+          exit 1;
+        fi
+    zod-null-safety:
+      run: >
+        output=$$(! grep -rn '\.optional()' web/src/lib/schemas/*.ts |
+          grep -v '\.nullable()' |
+          grep -v '\.nullish()' 2>/dev/null) &&
+        if [ -n "$$output" ]; then
+          echo "WARNING: Zod .optional() without .nullable() found in schemas:";
+          echo "$$output";
+          echo "If these fields can receive null from Go API, add .nullable() or ensure Go uses omitempty";
+        fi

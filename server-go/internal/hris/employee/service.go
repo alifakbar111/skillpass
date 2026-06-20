@@ -21,41 +21,41 @@ func NewService(db *sql.DB) *Service {
 type Employee struct {
 	ID                      uuid.UUID  `json:"id"`
 	CompanyID               uuid.UUID  `json:"companyId"`
-	UserID                  *uuid.UUID `json:"userId"`
+	UserID                  *uuid.UUID `json:"userId,omitempty"`
 	EmployeeIDNumber        string     `json:"employeeIdNumber"`
 	FirstName               string     `json:"firstName"`
 	LastName                string     `json:"lastName"`
 	Email                   string     `json:"email"`
-	Phone                   *string    `json:"phone"`
-	DateOfBirth             *string    `json:"dateOfBirth"`
-	Gender                  *string    `json:"gender"`
-	MaritalStatus           *string    `json:"maritalStatus"`
-	Address                 *string    `json:"address"`
-	City                    *string    `json:"city"`
-	Province                *string    `json:"province"`
-	PostalCode              *string    `json:"postalCode"`
-	NationalID              *string    `json:"nationalId"`
-	NPWP                    *string    `json:"npwp"`
-	BPJSKesehatanID         *string    `json:"bpjsKesehatanId"`
-	BPJSKetenagakerjaanID   *string    `json:"bpjsKetenagakerjaanId"`
-	BankName                *string    `json:"bankName"`
-	BankAccountNumber       *string    `json:"bankAccountNumber"`
-	BankAccountHolder       *string    `json:"bankAccountHolder"`
-	EmergencyContactName    *string    `json:"emergencyContactName"`
-	EmergencyContactPhone   *string    `json:"emergencyContactPhone"`
-	EmergencyContactRelation *string   `json:"emergencyContactRelation"`
+	Phone                   *string    `json:"phone,omitempty"`
+	DateOfBirth             *string    `json:"dateOfBirth,omitempty"`
+	Gender                  *string    `json:"gender,omitempty"`
+	MaritalStatus           *string    `json:"maritalStatus,omitempty"`
+	Address                 *string    `json:"address,omitempty"`
+	City                    *string    `json:"city,omitempty"`
+	Province                *string    `json:"province,omitempty"`
+	PostalCode              *string    `json:"postalCode,omitempty"`
+	NationalID              *string    `json:"nationalId,omitempty"`
+	NPWP                    *string    `json:"npwp,omitempty"`
+	BPJSKesehatanID         *string    `json:"bpjsKesehatanId,omitempty"`
+	BPJSKetenagakerjaanID   *string    `json:"bpjsKetenagakerjaanId,omitempty"`
+	BankName                *string    `json:"bankName,omitempty"`
+	BankAccountNumber       *string    `json:"bankAccountNumber,omitempty"`
+	BankAccountHolder       *string    `json:"bankAccountHolder,omitempty"`
+	EmergencyContactName    *string    `json:"emergencyContactName,omitempty"`
+	EmergencyContactPhone   *string    `json:"emergencyContactPhone,omitempty"`
+	EmergencyContactRelation *string   `json:"emergencyContactRelation,omitempty"`
 	EmploymentType          string     `json:"employmentType"`
 	EmploymentStatus        string     `json:"employmentStatus"`
 	JoinDate                string     `json:"joinDate"`
-	EndDate                 *string    `json:"endDate"`
-	DepartmentID            *uuid.UUID `json:"departmentId"`
-	PositionID              *uuid.UUID `json:"positionId"`
-	BranchID                *uuid.UUID `json:"branchId"`
-	ManagerID               *uuid.UUID `json:"managerId"`
-	BaseSalary              *float64   `json:"baseSalary"`
-	DepartmentName          *string    `json:"departmentName"`
-	PositionName            *string    `json:"positionName"`
-	BranchName              *string    `json:"branchName"`
+	EndDate                 *string    `json:"endDate,omitempty"`
+	DepartmentID            *uuid.UUID `json:"departmentId,omitempty"`
+	PositionID              *uuid.UUID `json:"positionId,omitempty"`
+	BranchID                *uuid.UUID `json:"branchId,omitempty"`
+	ManagerID               *uuid.UUID `json:"managerId,omitempty"`
+	BaseSalary              *float64   `json:"baseSalary,omitempty"`
+	DepartmentName          *string    `json:"departmentName,omitempty"`
+	PositionName            *string    `json:"positionName,omitempty"`
+	BranchName              *string    `json:"branchName,omitempty"`
 	CreatedAt               time.Time  `json:"createdAt"`
 	UpdatedAt               time.Time  `json:"updatedAt"`
 }
@@ -64,63 +64,63 @@ type CreateRequest struct {
 	FirstName               string     `json:"firstName" binding:"required"`
 	LastName                string     `json:"lastName"`
 	Email                   string     `json:"email" binding:"required,email"`
-	Phone                   *string    `json:"phone"`
-	DateOfBirth             *string    `json:"dateOfBirth"`
-	Gender                  *string    `json:"gender"`
-	MaritalStatus           *string    `json:"maritalStatus"`
-	Address                 *string    `json:"address"`
-	City                    *string    `json:"city"`
-	Province                *string    `json:"province"`
-	PostalCode              *string    `json:"postalCode"`
-	NationalID              *string    `json:"nationalId"`
-	NPWP                    *string    `json:"npwp"`
-	BPJSKesehatanID         *string    `json:"bpjsKesehatanId"`
-	BPJSKetenagakerjaanID   *string    `json:"bpjsKetenagakerjaanId"`
-	BankName                *string    `json:"bankName"`
-	BankAccountNumber       *string    `json:"bankAccountNumber"`
-	BankAccountHolder       *string    `json:"bankAccountHolder"`
-	EmergencyContactName    *string    `json:"emergencyContactName"`
-	EmergencyContactPhone   *string    `json:"emergencyContactPhone"`
-	EmergencyContactRelation *string   `json:"emergencyContactRelation"`
+	Phone                   *string    `json:"phone,omitempty"`
+	DateOfBirth             *string    `json:"dateOfBirth,omitempty"`
+	Gender                  *string    `json:"gender,omitempty"`
+	MaritalStatus           *string    `json:"maritalStatus,omitempty"`
+	Address                 *string    `json:"address,omitempty"`
+	City                    *string    `json:"city,omitempty"`
+	Province                *string    `json:"province,omitempty"`
+	PostalCode              *string    `json:"postalCode,omitempty"`
+	NationalID              *string    `json:"nationalId,omitempty"`
+	NPWP                    *string    `json:"npwp,omitempty"`
+	BPJSKesehatanID         *string    `json:"bpjsKesehatanId,omitempty"`
+	BPJSKetenagakerjaanID   *string    `json:"bpjsKetenagakerjaanId,omitempty"`
+	BankName                *string    `json:"bankName,omitempty"`
+	BankAccountNumber       *string    `json:"bankAccountNumber,omitempty"`
+	BankAccountHolder       *string    `json:"bankAccountHolder,omitempty"`
+	EmergencyContactName    *string    `json:"emergencyContactName,omitempty"`
+	EmergencyContactPhone   *string    `json:"emergencyContactPhone,omitempty"`
+	EmergencyContactRelation *string   `json:"emergencyContactRelation,omitempty"`
 	EmploymentType          string     `json:"employmentType" binding:"required,oneof=permanent contract probation intern"`
 	JoinDate                string     `json:"joinDate" binding:"required"`
-	DepartmentID            *uuid.UUID `json:"departmentId"`
-	PositionID              *uuid.UUID `json:"positionId"`
-	BranchID                *uuid.UUID `json:"branchId"`
-	ManagerID               *uuid.UUID `json:"managerId"`
-	BaseSalary              *float64   `json:"baseSalary"`
+	DepartmentID            *uuid.UUID `json:"departmentId,omitempty"`
+	PositionID              *uuid.UUID `json:"positionId,omitempty"`
+	BranchID                *uuid.UUID `json:"branchId,omitempty"`
+	ManagerID               *uuid.UUID `json:"managerId,omitempty"`
+	BaseSalary              *float64   `json:"baseSalary,omitempty"`
 }
 
 type UpdateRequest struct {
-	FirstName               *string    `json:"firstName"`
-	LastName                *string    `json:"lastName"`
-	Email                   *string    `json:"email" binding:"omitempty,email"`
-	Phone                   *string    `json:"phone"`
-	DateOfBirth             *string    `json:"dateOfBirth"`
-	Gender                  *string    `json:"gender"`
-	MaritalStatus           *string    `json:"maritalStatus"`
-	Address                 *string    `json:"address"`
-	City                    *string    `json:"city"`
-	Province                *string    `json:"province"`
-	PostalCode              *string    `json:"postalCode"`
-	NationalID              *string    `json:"nationalId"`
-	NPWP                    *string    `json:"npwp"`
-	BPJSKesehatanID         *string    `json:"bpjsKesehatanId"`
-	BPJSKetenagakerjaanID   *string    `json:"bpjsKetenagakerjaanId"`
-	BankName                *string    `json:"bankName"`
-	BankAccountNumber       *string    `json:"bankAccountNumber"`
-	BankAccountHolder       *string    `json:"bankAccountHolder"`
-	EmergencyContactName    *string    `json:"emergencyContactName"`
-	EmergencyContactPhone   *string    `json:"emergencyContactPhone"`
-	EmergencyContactRelation *string   `json:"emergencyContactRelation"`
-	EmploymentType          *string    `json:"employmentType" binding:"omitempty,oneof=permanent contract probation intern"`
-	EmploymentStatus        *string    `json:"employmentStatus" binding:"omitempty,oneof=active resigned terminated on_leave"`
-	EndDate                 *string    `json:"endDate"`
-	DepartmentID            *uuid.UUID `json:"departmentId"`
-	PositionID              *uuid.UUID `json:"positionId"`
-	BranchID                *uuid.UUID `json:"branchId"`
-	ManagerID               *uuid.UUID `json:"managerId"`
-	BaseSalary              *float64   `json:"baseSalary"`
+	FirstName               *string    `json:"firstName,omitempty"`
+	LastName                *string    `json:"lastName,omitempty"`
+	Email                   *string    `json:"email,omitempty" binding:"omitempty,email"`
+	Phone                   *string    `json:"phone,omitempty"`
+	DateOfBirth             *string    `json:"dateOfBirth,omitempty"`
+	Gender                  *string    `json:"gender,omitempty"`
+	MaritalStatus           *string    `json:"maritalStatus,omitempty"`
+	Address                 *string    `json:"address,omitempty"`
+	City                    *string    `json:"city,omitempty"`
+	Province                *string    `json:"province,omitempty"`
+	PostalCode              *string    `json:"postalCode,omitempty"`
+	NationalID              *string    `json:"nationalId,omitempty"`
+	NPWP                    *string    `json:"npwp,omitempty"`
+	BPJSKesehatanID         *string    `json:"bpjsKesehatanId,omitempty"`
+	BPJSKetenagakerjaanID   *string    `json:"bpjsKetenagakerjaanId,omitempty"`
+	BankName                *string    `json:"bankName,omitempty"`
+	BankAccountNumber       *string    `json:"bankAccountNumber,omitempty"`
+	BankAccountHolder       *string    `json:"bankAccountHolder,omitempty"`
+	EmergencyContactName    *string    `json:"emergencyContactName,omitempty"`
+	EmergencyContactPhone   *string    `json:"emergencyContactPhone,omitempty"`
+	EmergencyContactRelation *string   `json:"emergencyContactRelation,omitempty"`
+	EmploymentType          *string    `json:"employmentType,omitempty" binding:"omitempty,oneof=permanent contract probation intern"`
+	EmploymentStatus        *string    `json:"employmentStatus,omitempty" binding:"omitempty,oneof=active resigned terminated on_leave"`
+	EndDate                 *string    `json:"endDate,omitempty"`
+	DepartmentID            *uuid.UUID `json:"departmentId,omitempty"`
+	PositionID              *uuid.UUID `json:"positionId,omitempty"`
+	BranchID                *uuid.UUID `json:"branchId,omitempty"`
+	ManagerID               *uuid.UUID `json:"managerId,omitempty"`
+	BaseSalary              *float64   `json:"baseSalary,omitempty"`
 }
 
 type ListParams struct {
@@ -239,7 +239,7 @@ func (s *Service) Get(ctx context.Context, companyID, employeeID uuid.UUID) (*Em
 }
 
 type ListResult struct {
-	Employees []Employee `json:"employees"`
+	Employees []Employee `json:"employees,omitempty"`
 	Total     int        `json:"total"`
 	Page      int        `json:"page"`
 	PageSize  int        `json:"pageSize"`

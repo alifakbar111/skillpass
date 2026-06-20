@@ -23,14 +23,14 @@ type AttendanceLog struct {
 	EmployeeID      uuid.UUID  `json:"employeeId"`
 	EmployeeName    string     `json:"employeeName,omitempty"`
 	Date            string     `json:"date"`
-	ClockIn         *time.Time `json:"clockIn"`
-	ClockOut        *time.Time `json:"clockOut"`
-	ClockInLat      *float64   `json:"clockInLat"`
-	ClockInLng      *float64   `json:"clockInLng"`
-	ClockOutLat     *float64   `json:"clockOutLat"`
-	ClockOutLng     *float64   `json:"clockOutLng"`
-	BranchID        *uuid.UUID `json:"branchId"`
-	IsInGeofence    *bool      `json:"isInGeofence"`
+	ClockIn         *time.Time `json:"clockIn,omitempty"`
+	ClockOut        *time.Time `json:"clockOut,omitempty"`
+	ClockInLat      *float64   `json:"clockInLat,omitempty"`
+	ClockInLng      *float64   `json:"clockInLng,omitempty"`
+	ClockOutLat     *float64   `json:"clockOutLat,omitempty"`
+	ClockOutLng     *float64   `json:"clockOutLng,omitempty"`
+	BranchID        *uuid.UUID `json:"branchId,omitempty"`
+	IsInGeofence    *bool      `json:"isInGeofence,omitempty"`
 	IsLate          bool       `json:"isLate"`
 	LateMinutes     int        `json:"lateMinutes"`
 	IsEarlyOut      bool       `json:"isEarlyOut"`
@@ -42,7 +42,7 @@ type AttendanceLog struct {
 type ClockInRequest struct {
 	Lat      float64    `json:"lat"`
 	Lng      float64    `json:"lng"`
-	BranchID *uuid.UUID `json:"branchId"`
+	BranchID *uuid.UUID `json:"branchId,omitempty"`
 }
 
 type ClockOutRequest struct {
@@ -58,11 +58,11 @@ type AttendanceException struct {
 	Date            string     `json:"date"`
 	ExceptionType   string     `json:"exceptionType"`
 	Reason          string     `json:"reason"`
-	AttachmentURL   *string    `json:"attachmentUrl"`
+	AttachmentURL   *string    `json:"attachmentUrl,omitempty"`
 	Status          string     `json:"status"`
-	ReviewerID      *uuid.UUID `json:"reviewerId"`
-	ReviewerComment *string    `json:"reviewerComment"`
-	ReviewedAt      *time.Time `json:"reviewedAt"`
+	ReviewerID      *uuid.UUID `json:"reviewerId,omitempty"`
+	ReviewerComment *string    `json:"reviewerComment,omitempty"`
+	ReviewedAt      *time.Time `json:"reviewedAt,omitempty"`
 	CreatedAt       time.Time  `json:"createdAt"`
 }
 

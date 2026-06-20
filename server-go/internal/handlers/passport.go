@@ -14,12 +14,12 @@ import (
 
 type PublicProfileResponse struct {
 	Name        string       `json:"name"`
-	AvatarURL   *string      `json:"avatarUrl"`
-	Headline    *string      `json:"headline"`
-	About       *string      `json:"about"`
-	YearsOfExp  *int         `json:"yearsOfExperience"`
+	AvatarURL   *string      `json:"avatarUrl,omitempty"`
+	Headline    *string      `json:"headline,omitempty"`
+	About       *string      `json:"about,omitempty"`
+	YearsOfExp  *int         `json:"yearsOfExperience,omitempty"`
 	ViewCount   int          `json:"viewCount"`
-	Experiences []Experience `json:"experiences"`
+	Experiences []Experience `json:"experiences,omitempty"`
 } //@name PublicProfileResponse
 
 type PassportHandler struct {

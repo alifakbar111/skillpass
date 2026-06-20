@@ -45,7 +45,7 @@ func TestUpdateProfileResponseWireShape(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	want := `{"id":"id1","userId":"u1","headline":"Engineer","about":null,"yearsOfExperience":3,"slug":"slug1"}`
+	want := `{"id":"id1","userId":"u1","headline":"Engineer","yearsOfExperience":3,"slug":"slug1"}`
 	if string(got) != want {
 		t.Errorf("got %s, want %s", got, want)
 	}

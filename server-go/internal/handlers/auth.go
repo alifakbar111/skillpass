@@ -40,11 +40,11 @@ type RegisterRequest struct {
 	Password             string  `json:"password" binding:"required,min=8,max=128"`
 	Name                 string  `json:"name"`
 	Role                 string  `json:"role" binding:"required,oneof=jobseeker company"`
-	CompanyName          *string `json:"companyName"`
-	BusinessRegistration *string `json:"businessRegistration"`
-	Website              *string `json:"website"`
-	Address              *string `json:"address"`
-	Contact              *string `json:"contact"`
+	CompanyName          *string `json:"companyName,omitempty"`
+	BusinessRegistration *string `json:"businessRegistration,omitempty"`
+	Website              *string `json:"website,omitempty"`
+	Address              *string `json:"address,omitempty"`
+	Contact              *string `json:"contact,omitempty"`
 } //@name RegisterRequest
 
 type UserResponse struct {

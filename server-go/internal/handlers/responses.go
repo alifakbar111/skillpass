@@ -28,8 +28,8 @@ type VerificationStatusResponse struct {
 type UpdateProfileResponse struct {
 	ID                string  `json:"id"`
 	UserID            string  `json:"userId"`
-	Headline          *string `json:"headline"`
-	About             *string `json:"about"`
-	YearsOfExperience *int    `json:"yearsOfExperience"`
+	Headline          *string `json:"headline,omitempty"`
+	About             *string `json:"about,omitempty"`
+	YearsOfExperience *int    `json:"yearsOfExperience,omitempty"`
 	Slug              string  `json:"slug"`
 } //@name UpdateProfileResponse

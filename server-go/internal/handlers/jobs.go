@@ -46,11 +46,11 @@ type JobResponse struct {
 	Title           string    `json:"title"`
 	Description     string    `json:"description"`
 	Industry        string    `json:"industry"`
-	Tags            []string  `json:"tags"`
-	RequiredSkills  []string  `json:"requiredSkills"`
-	ExperienceLevel *string   `json:"experienceLevel"`
-	Location        *string   `json:"location"`
-	SalaryRange     *string   `json:"salaryRange"`
+	Tags            []string  `json:"tags,omitempty"`
+	RequiredSkills  []string  `json:"requiredSkills,omitempty"`
+	ExperienceLevel *string   `json:"experienceLevel,omitempty"`
+	Location        *string   `json:"location,omitempty"`
+	SalaryRange     *string   `json:"salaryRange,omitempty"`
 	Status          string    `json:"status"`
 	CreatedAt       time.Time `json:"createdAt"`
 } //@name JobResponse
@@ -59,11 +59,11 @@ type CreateJobRequest struct {
 	Title           string   `json:"title" binding:"required"`
 	Description     string   `json:"description" binding:"required"`
 	Industry        string   `json:"industry" binding:"required"`
-	Tags            []string `json:"tags"`
-	RequiredSkills  []string `json:"requiredSkills"`
-	ExperienceLevel *string  `json:"experienceLevel" binding:"omitempty,oneof=entry mid senior lead"`
-	Location        *string  `json:"location"`
-	SalaryRange     *string  `json:"salaryRange"`
+	Tags            []string `json:"tags,omitempty"`
+	RequiredSkills  []string `json:"requiredSkills,omitempty"`
+	ExperienceLevel *string  `json:"experienceLevel,omitempty" binding:"omitempty,oneof=entry mid senior lead"`
+	Location        *string  `json:"location,omitempty"`
+	SalaryRange     *string  `json:"salaryRange,omitempty"`
 } //@name CreateJobRequest
 
 type UpdateJobRequest struct {

@@ -21,7 +21,7 @@ type Template struct {
 	Name        string         `json:"name"`
 	Description string         `json:"description"`
 	IsActive    bool           `json:"isActive"`
-	Tasks       []TemplateTask `json:"tasks"`
+	Tasks       []TemplateTask `json:"tasks,omitempty"`
 	CreatedAt   time.Time      `json:"createdAt"`
 }
 
@@ -43,8 +43,8 @@ type Checklist struct {
 	TemplateName string          `json:"templateName"`
 	Status       string          `json:"status"`
 	StartedAt    time.Time       `json:"startedAt"`
-	CompletedAt  *time.Time      `json:"completedAt"`
-	Items        []ChecklistItem `json:"items"`
+	CompletedAt  *time.Time      `json:"completedAt,omitempty"`
+	Items        []ChecklistItem `json:"items,omitempty"`
 	Progress     int             `json:"progress"`
 }
 
@@ -54,10 +54,10 @@ type ChecklistItem struct {
 	Title       string     `json:"title"`
 	Description string     `json:"description"`
 	SortOrder   int        `json:"sortOrder"`
-	DueDate     *string    `json:"dueDate"`
+	DueDate     *string    `json:"dueDate,omitempty"`
 	IsCompleted bool       `json:"isCompleted"`
-	CompletedAt *time.Time `json:"completedAt"`
-	CompletedBy *uuid.UUID `json:"completedBy"`
+	CompletedAt *time.Time `json:"completedAt,omitempty"`
+	CompletedBy *uuid.UUID `json:"completedBy,omitempty"`
 	Notes       string     `json:"notes"`
 }
 

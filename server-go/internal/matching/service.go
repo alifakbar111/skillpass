@@ -32,9 +32,9 @@ type JobMatch struct {
 	Title           string  `json:"title"`
 	CompanyName     string  `json:"companyName"`
 	Industry        string  `json:"industry"`
-	Location        *string `json:"location"`
-	SalaryRange     *string `json:"salaryRange"`
-	ExperienceLevel *string `json:"experienceLevel"`
+	Location        *string `json:"location,omitempty"`
+	SalaryRange     *string `json:"salaryRange,omitempty"`
+	ExperienceLevel *string `json:"experienceLevel,omitempty"`
 	MatchScore      float64 `json:"matchScore"`
 	MatchReason     string  `json:"matchReason"`
 } //@name JobMatch
@@ -42,9 +42,9 @@ type JobMatch struct {
 type CandidateMatch struct {
 	ProfileID    string   `json:"profileId"`
 	Name         string   `json:"name"`
-	Headline     *string  `json:"headline"`
+	Headline     *string  `json:"headline,omitempty"`
 	OverallScore int32    `json:"overallScore"`
-	TopSkills    []string `json:"topSkills"`
+	TopSkills    []string `json:"topSkills,omitempty"`
 	MatchScore   float64  `json:"matchScore"`
 	MatchReason  string   `json:"matchReason"`
 } //@name CandidateMatch
@@ -281,8 +281,8 @@ func (s *Service) MatchCandidates(ctx context.Context, jobPostingID string) ([]C
 type SkillsGap struct {
 	JobPostingID  string   `json:"jobPostingId"`
 	JobTitle      string   `json:"jobTitle"`
-	MatchedSkills []string `json:"matchedSkills"`
-	MissingSkills []string `json:"missingSkills"`
+	MatchedSkills []string `json:"matchedSkills,omitempty"`
+	MissingSkills []string `json:"missingSkills,omitempty"`
 	MatchPercent  float64  `json:"matchPercent"`
 	HasEvaluation bool     `json:"hasEvaluation"`
 }

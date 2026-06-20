@@ -27,7 +27,7 @@ type ShiftTemplate struct {
 	BreakDurationMinutes  int       `json:"breakDurationMinutes"`
 	LateToleranceMinutes  int       `json:"lateToleranceMinutes"`
 	OvertimeMultiplier    float64   `json:"overtimeMultiplier"`
-	ApplicableDays        []int64   `json:"applicableDays"`
+	ApplicableDays        []int64   `json:"applicableDays,omitempty"`
 	IsDefault             bool      `json:"isDefault"`
 	CreatedAt             time.Time `json:"createdAt"`
 }
@@ -37,7 +37,7 @@ type EmployeeShift struct {
 	EmployeeID    uuid.UUID  `json:"employeeId"`
 	ShiftID       uuid.UUID  `json:"shiftId"`
 	EffectiveDate string     `json:"effectiveDate"`
-	EndDate       *string    `json:"endDate"`
+	EndDate       *string    `json:"endDate,omitempty"`
 	ShiftName     string     `json:"shiftName"`
 	CreatedAt     time.Time  `json:"createdAt"`
 }
