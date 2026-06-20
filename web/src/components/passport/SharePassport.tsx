@@ -1,4 +1,4 @@
-import { Check, Copy, Linkedin, MessageCircle, Printer, Share2, Twitter } from 'lucide-react';
+import { Check, Copy, Globe, MessageCircle, Printer, Share2, X } from 'lucide-react';
 import { QRCodeSVG } from 'qrcode.react';
 import { type RefObject, useRef, useState } from 'react';
 import { useReactToPrint } from 'react-to-print';
@@ -38,12 +38,12 @@ export function SharePassport({ slug, name, printRef }: Props) {
   const intents = [
     {
       label: 'LinkedIn',
-      icon: Linkedin,
+      icon: Globe,
       href: `https://www.linkedin.com/sharing/share-offsite/?url=${encodeURIComponent(url)}`,
     },
     {
       label: 'X',
-      icon: Twitter,
+      icon: X,
       href: `https://twitter.com/intent/tweet?url=${encodeURIComponent(url)}&text=${encodeURIComponent(shareText)}`,
     },
     {

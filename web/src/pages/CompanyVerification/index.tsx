@@ -106,7 +106,7 @@ export function CompanyVerification() {
     return (
       <div className="max-w-lg mx-auto p-4 space-y-4">
         <div className="card bg-base-200 p-6 text-center">
-          <LoadingSpinner className="mb-2" />
+          <LoadingSpinner className="mb-2 self-center" />
           <h2 className="text-xl font-bold">Verification Pending</h2>
           <p className="text-muted-strong">
             Your verification details were submitted at registration. Our team reviews submissions within 48 hours and
