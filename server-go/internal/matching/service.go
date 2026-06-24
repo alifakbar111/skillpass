@@ -235,9 +235,9 @@ func (s *Service) MatchCandidates(ctx context.Context, jobPostingID string) ([]C
 	var scoredCandidates []scoredCandidate
 
 	for _, c := range candidates {
-		candidateSkills := make([]string, len(c.SkillScores))
-		for i, ss := range c.SkillScores {
-			candidateSkills[i] = strings.ToLower(ss.Skill)
+		candidateSkills := make([]string, 0, len(c.SkillScores))
+		for _, ss := range c.SkillScores {
+			candidateSkills = append(candidateSkills, strings.ToLower(ss.Skill))
 		}
 		// Source = candidate skills (what % of job requirements do they meet)
 		score := computeMatchScore(candidateSkills, jobSkills)

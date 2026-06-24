@@ -3,6 +3,7 @@ package handlers
 import (
 	"database/sql"
 	"errors"
+	"fmt"
 	"net/http"
 	"regexp"
 	"strconv"
@@ -10,10 +11,10 @@ import (
 
 	"github.com/gin-gonic/gin"
 	. "github.com/go-jet/jet/v2/postgres"
-	"github.com/google/uuid"
 
 	"skillpass-server-go/.gen/skillpass/public/model"
 	"skillpass-server-go/internal/gen"
+	"skillpass-server-go/internal/lib"
 )
 
 const dateFormat = "2006-01"
@@ -197,9 +198,9 @@ func (h *JobHandler) ListJobs(c *gin.Context) {
 // @Router		/jobs/{id} [get]
 func (h *JobHandler) GetJob(c *gin.Context) {
 	id := c.Param("id")
-	jobUUID, err := uuid.Parse(id)
+	jobUUID, err := lib.ParseUUID(id)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid job id"})
+		c.JSON(http.StatusBadRequest, gin.H{"error": fmt.Sprintf("Invalid job ID: %v", err)})
 		return
 	}
 
@@ -244,9 +245,9 @@ func (h *JobHandler) ListMyJobs(c *gin.Context) {
 		return
 	}
 
-	companyUUID, err := uuid.Parse(companyIDStr)
+	companyUUID, err := lib.ParseUUID(companyIDStr)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid company ID"})
+		c.JSON(http.StatusBadRequest, gin.H{"error": fmt.Sprintf("Invalid company ID: %v", err)})
 		return
 	}
 
@@ -339,9 +340,9 @@ func (h *JobHandler) CreateJob(c *gin.Context) {
 // @Router		/jobs/{id} [put]
 func (h *JobHandler) UpdateJob(c *gin.Context) {
 	id := c.Param("id")
-	jobUUID, err := uuid.Parse(id)
+	jobUUID, err := lib.ParseUUID(id)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid job id"})
+		c.JSON(http.StatusBadRequest, gin.H{"error": fmt.Sprintf("Invalid job ID: %v", err)})
 		return
 	}
 	companyIDVal, ok := c.Get("companyId")
@@ -355,9 +356,9 @@ func (h *JobHandler) UpdateJob(c *gin.Context) {
 		return
 	}
 
-	companyUUID, err := uuid.Parse(companyIDStr)
+	companyUUID, err := lib.ParseUUID(companyIDStr)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid company ID"})
+		c.JSON(http.StatusBadRequest, gin.H{"error": fmt.Sprintf("Invalid company ID: %v", err)})
 		return
 	}
 
@@ -444,9 +445,9 @@ func (h *JobHandler) UpdateJob(c *gin.Context) {
 // @Router		/jobs/{id} [delete]
 func (h *JobHandler) DeleteJob(c *gin.Context) {
 	id := c.Param("id")
-	jobUUID, err := uuid.Parse(id)
+	jobUUID, err := lib.ParseUUID(id)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid job id"})
+		c.JSON(http.StatusBadRequest, gin.H{"error": fmt.Sprintf("Invalid job ID: %v", err)})
 		return
 	}
 	companyIDVal, ok := c.Get("companyId")
@@ -460,9 +461,9 @@ func (h *JobHandler) DeleteJob(c *gin.Context) {
 		return
 	}
 
-	companyUUID, err := uuid.Parse(companyIDStr)
+	companyUUID, err := lib.ParseUUID(companyIDStr)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid company ID"})
+		c.JSON(http.StatusBadRequest, gin.H{"error": fmt.Sprintf("Invalid company ID: %v", err)})
 		return
 	}
 

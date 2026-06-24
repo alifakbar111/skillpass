@@ -6,13 +6,15 @@ import (
 
 	"database/sql"
 
+	"fmt"
+
 	"github.com/gin-gonic/gin"
 	"github.com/golang-jwt/jwt/v5"
 	. "github.com/go-jet/jet/v2/postgres"
-	"github.com/google/uuid"
 
 	"skillpass-server-go/.gen/skillpass/public/model"
 	"skillpass-server-go/internal/gen"
+	"skillpass-server-go/internal/lib"
 )
 
 type Claims struct {
@@ -76,9 +78,9 @@ func RequireVerifiedCompany(db *sql.DB) gin.HandlerFunc {
 		return
 	}
 
-	userUUID, err := uuid.Parse(userIDStr)
+	userUUID, err := lib.ParseUUID(userIDStr)
 	if err != nil {
-		c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{"error": "Invalid user ID"})
+		c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{"error": fmt.Sprintf("Invalid user ID: %v", err)})
 		return
 	}
 

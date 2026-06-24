@@ -4,17 +4,18 @@ import (
 	"database/sql"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"net/http"
 	"time"
 
 	"github.com/gin-gonic/gin"
 	. "github.com/go-jet/jet/v2/postgres"
 	"github.com/go-jet/jet/v2/qrm"
-	"github.com/google/uuid"
 	"log/slog"
 
 	"skillpass-server-go/.gen/skillpass/public/model"
 	"skillpass-server-go/internal/gen"
+	"skillpass-server-go/internal/lib"
 )
 
 type CompanyResponse struct {
@@ -95,9 +96,9 @@ func (h *CompanyHandler) GetProfile(c *gin.Context) {
 		return
 	}
 
-	userUUID, err := uuid.Parse(userIDStr)
+	userUUID, err := lib.ParseUUID(userIDStr)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid user ID"})
+		c.JSON(http.StatusBadRequest, gin.H{"error": fmt.Sprintf("Invalid user ID: %v", err)})
 		return
 	}
 
@@ -150,9 +151,9 @@ func (h *CompanyHandler) UpdateProfile(c *gin.Context) {
 		return
 	}
 
-	userUUID, err := uuid.Parse(userIDStr)
+	userUUID, err := lib.ParseUUID(userIDStr)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid user ID"})
+		c.JSON(http.StatusBadRequest, gin.H{"error": fmt.Sprintf("Invalid user ID: %v", err)})
 		return
 	}
 
@@ -255,9 +256,9 @@ func (h *CompanyHandler) SubmitVerification(c *gin.Context) {
 		return
 	}
 
-	userUUID, err := uuid.Parse(userIDStr)
+	userUUID, err := lib.ParseUUID(userIDStr)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid user ID"})
+		c.JSON(http.StatusBadRequest, gin.H{"error": fmt.Sprintf("Invalid user ID: %v", err)})
 		return
 	}
 
@@ -312,9 +313,9 @@ func (h *CompanyHandler) GetVerificationStatus(c *gin.Context) {
 		return
 	}
 
-	userUUID, err := uuid.Parse(userIDStr)
+	userUUID, err := lib.ParseUUID(userIDStr)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid user ID"})
+		c.JSON(http.StatusBadRequest, gin.H{"error": fmt.Sprintf("Invalid user ID: %v", err)})
 		return
 	}
 

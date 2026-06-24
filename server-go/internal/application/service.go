@@ -9,7 +9,6 @@ import (
 
 	. "github.com/go-jet/jet/v2/postgres"
 	"github.com/google/uuid"
-	"github.com/lib/pq"
 
 	"skillpass-server-go/.gen/skillpass/public/model"
 	"skillpass-server-go/internal/gen"
@@ -164,54 +163,57 @@ func (s *Service) ListForJobseeker(ctx context.Context, jobseekerID string) ([]A
 		return nil, fmt.Errorf("invalid jobseeker ID: %w", err)
 	}
 
-	stmt := SELECT(
-		gen.Applications.AllColumns,
-		gen.JobPostings.Title,
-		gen.Companies.CompanyName,
-	).FROM(
-		gen.Applications.
-			INNER_JOIN(gen.JobPostings, gen.JobPostings.ID.EQ(gen.Applications.JobPostingID)).
-			INNER_JOIN(gen.Companies, gen.Companies.ID.EQ(gen.JobPostings.CompanyID)),
-	).WHERE(
-		gen.Applications.JobseekerID.EQ(UUID(jobseekerUUID)),
-	).ORDER_BY(
-		gen.Applications.CreatedAt.DESC(),
+	rows, err := s.db.QueryContext(ctx, `
+		WITH applications_with_company AS (
+			SELECT a.id, a.jobseeker_id, a.job_posting_id, a.status, a.created_at, a.updated_at,
+			       jp.title, c.company_name
+			FROM applications a
+			JOIN job_postings jp ON a.job_posting_id = jp.id
+			JOIN companies c ON jp.company_id = c.id
+			WHERE a.jobseeker_id = $1
+		),
+		latest_notes AS (
+			SELECT DISTINCT ON (application_id) application_id, body
+			FROM application_messages
+			WHERE application_id IN (SELECT id FROM applications_with_company)
+			ORDER BY application_id, created_at DESC
+		)
+		SELECT awc.id, awc.jobseeker_id, awc.job_posting_id, awc.status, awc.created_at, awc.updated_at,
+		       awc.title, awc.company_name, ln.body as latest_note
+		FROM applications_with_company awc
+		LEFT JOIN latest_notes ln ON awc.id = ln.application_id
+		ORDER BY awc.created_at DESC`,
+		jobseekerUUID,
 	)
-
-	var rows []struct {
-		model.Applications
-		Title       string `alias:"job_postings.title"`
-		CompanyName string `alias:"companies.company_name"`
-	}
-	if err := stmt.QueryContext(ctx, s.db, &rows); err != nil {
+	if err != nil {
 		return nil, fmt.Errorf("list applications: %w", err)
 	}
+	defer rows.Close()
 
-	results := make([]ApplicationResult, len(rows))
-	ids := make([]string, len(rows))
-	for i, r := range rows {
-		results[i] = ApplicationResult{
-			ID:           r.ID.String(),
-			JobseekerID:  r.JobseekerID.String(),
-			JobPostingID: r.JobPostingID.String(),
-			Status:       string(r.Status),
-			CreatedAt:    r.CreatedAt.Format(time.RFC3339),
-			UpdatedAt:    r.UpdatedAt.Format(time.RFC3339),
-			JobTitle:     r.Title,
-			CompanyName:  r.CompanyName,
+	var results []ApplicationResult
+	for rows.Next() {
+		var id, jobseekerIDStr, jobPostingIDStr, status string
+		var createdAt, updatedAt time.Time
+		var title, companyName string
+		var latestNote *string
+		if err := rows.Scan(&id, &jobseekerIDStr, &jobPostingIDStr, &status, &createdAt, &updatedAt,
+			&title, &companyName, &latestNote); err != nil {
+			return nil, fmt.Errorf("scan application row: %w", err)
 		}
-		ids[i] = results[i].ID
+		results = append(results, ApplicationResult{
+			ID:           id,
+			JobseekerID:  jobseekerIDStr,
+			JobPostingID: jobPostingIDStr,
+			Status:       status,
+			CreatedAt:    createdAt.Format(time.RFC3339),
+			UpdatedAt:    updatedAt.Format(time.RFC3339),
+			JobTitle:     title,
+			CompanyName:  companyName,
+			LatestNote:   latestNote,
+		})
 	}
-
-	notes, err := s.latestNotesFor(ctx, ids)
-	if err != nil {
-		return nil, err
-	}
-	for i := range results {
-		if note, ok := notes[results[i].ID]; ok {
-			n := note
-			results[i].LatestNote = &n
-		}
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("list applications rows: %w", err)
 	}
 	return results, nil
 }
@@ -333,68 +335,66 @@ func (s *Service) ListForCompany(ctx context.Context, companyID string) ([]Compa
 		return nil, fmt.Errorf("invalid company ID: %w", err)
 	}
 
-	stmt := SELECT(
-		gen.Applications.AllColumns,
-		gen.JobPostings.Title,
-		gen.Users.Name,
-		gen.Users.Email,
-		gen.JobseekerProfiles.Slug,
-		gen.JobseekerProfiles.Headline,
-	).FROM(
-		gen.Applications.
-			INNER_JOIN(gen.JobPostings, gen.JobPostings.ID.EQ(gen.Applications.JobPostingID)).
-			INNER_JOIN(gen.JobseekerProfiles, gen.JobseekerProfiles.ID.EQ(gen.Applications.JobseekerID)).
-			INNER_JOIN(gen.Users, gen.Users.ID.EQ(gen.JobseekerProfiles.UserID)),
-	).WHERE(
-		gen.JobPostings.CompanyID.EQ(UUID(companyUUID)),
-	).ORDER_BY(
-		gen.Applications.CreatedAt.DESC(),
+	rows, err := s.db.QueryContext(ctx, `
+		WITH applications_with_candidate AS (
+			SELECT a.id, a.jobseeker_id, a.job_posting_id, a.status, a.created_at, a.updated_at,
+			       jp.title, u.name, u.email, jp2.slug, jp2.headline
+			FROM applications a
+			JOIN job_postings jp ON a.job_posting_id = jp.id
+			JOIN jobseeker_profiles jp2 ON jp2.id = a.jobseeker_id
+			JOIN users u ON u.id = jp2.user_id
+			WHERE jp.company_id = $1
+		),
+		latest_notes AS (
+			SELECT DISTINCT ON (application_id) application_id, body
+			FROM application_messages
+			WHERE application_id IN (SELECT id FROM applications_with_candidate)
+			ORDER BY application_id, created_at DESC
+		)
+		SELECT awc.id, awc.jobseeker_id, awc.job_posting_id, awc.status, awc.created_at, awc.updated_at,
+		       awc.title, awc.name, awc.email, awc.slug, awc.headline, ln.body as latest_note
+		FROM applications_with_candidate awc
+		LEFT JOIN latest_notes ln ON awc.id = ln.application_id
+		ORDER BY awc.created_at DESC`,
+		companyUUID,
 	)
-
-	var rows []struct {
-		model.Applications
-		Title    string  `alias:"job_postings.title"`
-		Name     string  `alias:"users.name"`
-		Email    string  `alias:"users.email"`
-		Slug     string  `alias:"jobseeker_profiles.slug"`
-		Headline *string `alias:"jobseeker_profiles.headline"`
-	}
-	if err := stmt.QueryContext(ctx, s.db, &rows); err != nil {
+	if err != nil {
 		return nil, fmt.Errorf("list company applications: %w", err)
 	}
+	defer rows.Close()
 
-	results := make([]CompanyApplicationResult, len(rows))
-	ids := make([]string, len(rows))
-	for i, r := range rows {
-		headline := ""
-		if r.Headline != nil {
-			headline = *r.Headline
+	var results []CompanyApplicationResult
+	for rows.Next() {
+		var id, jobseekerIDStr, jobPostingIDStr, status string
+		var createdAt, updatedAt time.Time
+		var title, name, email, slug string
+		var headline *string
+		var latestNote *string
+		if err := rows.Scan(&id, &jobseekerIDStr, &jobPostingIDStr, &status, &createdAt, &updatedAt,
+			&title, &name, &email, &slug, &headline, &latestNote); err != nil {
+			return nil, fmt.Errorf("scan company application row: %w", err)
 		}
-		results[i] = CompanyApplicationResult{
-			ID:                r.ID.String(),
-			JobseekerID:       r.JobseekerID.String(),
-			JobPostingID:      r.JobPostingID.String(),
-			Status:            string(r.Status),
-			CreatedAt:         r.CreatedAt.Format(time.RFC3339),
-			UpdatedAt:         r.UpdatedAt.Format(time.RFC3339),
-			JobTitle:          r.Title,
-			CandidateName:     r.Name,
-			CandidateEmail:    r.Email,
-			CandidateSlug:     r.Slug,
-			CandidateHeadline: headline,
+		headlineStr := ""
+		if headline != nil {
+			headlineStr = *headline
 		}
-		ids[i] = results[i].ID
+		results = append(results, CompanyApplicationResult{
+			ID:                id,
+			JobseekerID:       jobseekerIDStr,
+			JobPostingID:      jobPostingIDStr,
+			Status:            status,
+			CreatedAt:         createdAt.Format(time.RFC3339),
+			UpdatedAt:         updatedAt.Format(time.RFC3339),
+			JobTitle:          title,
+			CandidateName:     name,
+			CandidateEmail:    email,
+			CandidateSlug:     slug,
+			CandidateHeadline: headlineStr,
+			LatestNote:        latestNote,
+		})
 	}
-
-	notes, err := s.latestNotesFor(ctx, ids)
-	if err != nil {
-		return nil, err
-	}
-	for i := range results {
-		if note, ok := notes[results[i].ID]; ok {
-			n := note
-			results[i].LatestNote = &n
-		}
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("list company applications rows: %w", err)
 	}
 	return results, nil
 }
@@ -483,36 +483,6 @@ func (s *Service) ListMessages(ctx context.Context, applicationID, companyID str
 		messages = append(messages, m)
 	}
 	return messages, rows.Err()
-}
-
-// latestNotesFor returns a map of applicationID → most recent note body.
-func (s *Service) latestNotesFor(ctx context.Context, applicationIDs []string) (map[string]string, error) {
-	result := map[string]string{}
-	if len(applicationIDs) == 0 {
-		return result, nil
-	}
-
-	rows, err := s.db.QueryContext(ctx,
-		`SELECT DISTINCT ON (application_id) application_id, body
-		 FROM application_messages
-		 WHERE application_id = ANY($1::uuid[])
-		 ORDER BY application_id, created_at DESC`,
-		pq.Array(applicationIDs),
-	)
-	if err != nil {
-		return nil, fmt.Errorf("query latest notes: %w", err)
-	}
-	defer rows.Close()
-
-	for rows.Next() {
-		var appID uuid.UUID
-		var body string
-		if err := rows.Scan(&appID, &body); err != nil {
-			return nil, fmt.Errorf("scan latest note: %w", err)
-		}
-		result[appID.String()] = body
-	}
-	return result, rows.Err()
 }
 
 func (s *Service) LookupJobseekerProfileID(ctx context.Context, userID string) (string, error) {

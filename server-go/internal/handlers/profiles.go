@@ -3,6 +3,7 @@ package handlers
 import (
 	"database/sql"
 	"errors"
+	"fmt"
 	"net/http"
 	"net/url"
 	"regexp"
@@ -10,11 +11,11 @@ import (
 	"github.com/gin-gonic/gin"
 	. "github.com/go-jet/jet/v2/postgres"
 	"github.com/go-jet/jet/v2/qrm"
-	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgconn"
 
 	"skillpass-server-go/.gen/skillpass/public/model"
 	"skillpass-server-go/internal/gen"
+	"skillpass-server-go/internal/lib"
 )
 
 type UpdateProfileRequest struct {
@@ -183,9 +184,9 @@ func (h *ProfileHandler) GetMyProfile(c *gin.Context) {
 		return
 	}
 
-	userUUID, err := uuid.Parse(userIDStr)
+	userUUID, err := lib.ParseUUID(userIDStr)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid user ID"})
+		c.JSON(http.StatusBadRequest, gin.H{"error": fmt.Sprintf("Invalid user ID: %v", err)})
 		return
 	}
 
@@ -297,9 +298,9 @@ func (h *ProfileHandler) UpdateMyProfile(c *gin.Context) {
 		return
 	}
 
-	userUUID, err := uuid.Parse(userIDStr)
+	userUUID, err := lib.ParseUUID(userIDStr)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid user ID"})
+		c.JSON(http.StatusBadRequest, gin.H{"error": fmt.Sprintf("Invalid user ID: %v", err)})
 		return
 	}
 
@@ -407,9 +408,9 @@ func (h *ProfileHandler) CreateExperience(c *gin.Context) {
 		return
 	}
 
-	userUUID, err := uuid.Parse(userIDStr)
+	userUUID, err := lib.ParseUUID(userIDStr)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid user ID"})
+		c.JSON(http.StatusBadRequest, gin.H{"error": fmt.Sprintf("Invalid user ID: %v", err)})
 		return
 	}
 
@@ -509,16 +510,16 @@ func (h *ProfileHandler) UpdateExperience(c *gin.Context) {
 		return
 	}
 
-	userUUID, err := uuid.Parse(userIDStr)
+	userUUID, err := lib.ParseUUID(userIDStr)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid user ID"})
+		c.JSON(http.StatusBadRequest, gin.H{"error": fmt.Sprintf("Invalid user ID: %v", err)})
 		return
 	}
 
 	expID := c.Param("id")
-	expUUID, err := uuid.Parse(expID)
+	expUUID, err := lib.ParseUUID(expID)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid experience id"})
+		c.JSON(http.StatusBadRequest, gin.H{"error": fmt.Sprintf("Invalid experience ID: %v", err)})
 		return
 	}
 
@@ -653,16 +654,16 @@ func (h *ProfileHandler) DeleteExperience(c *gin.Context) {
 		return
 	}
 
-	userUUID, err := uuid.Parse(userIDStr)
+	userUUID, err := lib.ParseUUID(userIDStr)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid user ID"})
+		c.JSON(http.StatusBadRequest, gin.H{"error": fmt.Sprintf("Invalid user ID: %v", err)})
 		return
 	}
 
 	expID := c.Param("id")
-	expUUID, err := uuid.Parse(expID)
+	expUUID, err := lib.ParseUUID(expID)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid experience id"})
+		c.JSON(http.StatusBadRequest, gin.H{"error": fmt.Sprintf("Invalid experience ID: %v", err)})
 		return
 	}
 
