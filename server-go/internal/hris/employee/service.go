@@ -356,11 +356,27 @@ func (s *Service) Update(ctx context.Context, companyID, employeeID uuid.UUID, r
 	argIdx := 3
 
 	addField := func(clause string, val any) {
-		if val != nil {
-			setClauses = append(setClauses, fmt.Sprintf("%s = $%d", clause, argIdx))
-			args = append(args, val)
-			argIdx++
+		if val == nil {
+			return
 		}
+		// typed nil pointer — interface holds type info even when pointer is nil
+		switch v := val.(type) {
+		case *string:
+			if v == nil {
+				return
+			}
+		case *uuid.UUID:
+			if v == nil {
+				return
+			}
+		case *float64:
+			if v == nil {
+				return
+			}
+		}
+		setClauses = append(setClauses, fmt.Sprintf("%s = $%d", clause, argIdx))
+		args = append(args, val)
+		argIdx++
 	}
 
 	addField("first_name", req.FirstName)

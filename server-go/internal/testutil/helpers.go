@@ -24,6 +24,7 @@ func UniqueUsername(prefix string) string {
 // Call at the start of each test function that creates persistent data.
 func CleanTestData(db *sql.DB) {
 	tables := []string{
+		// Core tables
 		"company_webhooks",
 		"notifications",
 		"application_messages",
@@ -37,6 +38,31 @@ func CleanTestData(db *sql.DB) {
 		"industry_categories",
 		"refresh_tokens",
 		"admin_audit_log",
+		// HRIS tables
+		"attendance_logs",
+		"attendance_exceptions",
+		"leave_requests",
+		"leave_balances",
+		"leave_types",
+		"holidays",
+		"payroll_runs",
+		"payslips",
+		"salary_components",
+		"employee_salaries",
+		"employee_shifts",
+		"shift_templates",
+		"departments",
+		"positions",
+		"branches",
+		"employees",
+		"employee_id_configs",
+		"onboarding_checklists",
+		"onboarding_tasks",
+		// Profile views
+		"profile_views",
+		// Auth tokens
+		"authtokens",
+		// User
 		"users",
 	}
 	for _, t := range tables {

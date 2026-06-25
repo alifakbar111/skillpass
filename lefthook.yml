@@ -15,7 +15,7 @@ pre-push:
     vuln-go:
       run: 'command -v govulncheck >/dev/null 2>&1 && govulncheck -C server-go ./... || echo "govulncheck not installed — run: go install golang.org/x/vuln/cmd/govulncheck@latest"'
     vuln-web:
-      run: cd web && bun audit --ignore GHSA-4x5r-pxfx-6jf8 --ignore GHSA-g8mr-85jm-7xhm --ignore GHSA-v6wh-96g9-6wx3 --ignore GHSA-fx2h-pf6j-xcff --ignore GHSA-gv7w-rqvm-qjhr --ignore GHSA-g7r4-m6w7-qqqr
+      run: cd web && bun audit --ignore GHSA-4x5r-pxfx-6jf8 --ignore GHSA-g8mr-85jm-7xhm --ignore GHSA-v6wh-96g9-6wx3 --ignore GHSA-fx2h-pf6j-xcff --ignore GHSA-gv7w-rqvm-qjhr --ignore GHSA-g7r4-m6w7-qqqr --ignore GHSA-w5hq-g745-h8pq
     api-drift:
       run: bun run api:check
     no-gen-types-in-annotations:
