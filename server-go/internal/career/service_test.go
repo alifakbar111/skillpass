@@ -11,7 +11,7 @@ import (
 
 func TestListPaths(t *testing.T) {
 	db := testutil.SetupTestDB()
-	svc := NewService(db)
+	svc := NewService(db, nil)
 
 	paths, err := svc.ListPaths(context.Background(), "Technology")
 	if err != nil {
@@ -29,7 +29,7 @@ func TestGetSkillGap(t *testing.T) {
 
 	_, pID, _ := testutil.CreateJobseeker(db, "careerjs@ex.com", "careerjs", "pass123", "Career JS")
 	testutil.CreateExperience(db, pID, "work", "Junior Developer", "TechCorp")
-	svc := NewService(db)
+	svc := NewService(db, nil)
 
 	t.Run("get skill gap", func(t *testing.T) {
 		gap, err := svc.GetSkillGap(context.Background(), pID.String(), "Technology")
@@ -54,7 +54,7 @@ func TestPredictPath(t *testing.T) {
 
 	_, pID, _ := testutil.CreateJobseeker(db, "predjs@ex.com", "predjs", "pass123", "Pred JS")
 	testutil.CreateExperience(db, pID, "work", "Developer", "TechCo")
-	svc := NewService(db)
+	svc := NewService(db, nil)
 
 	pred, err := svc.PredictPath(context.Background(), pID.String(), "Technology")
 	if err != nil {

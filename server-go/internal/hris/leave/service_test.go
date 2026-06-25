@@ -94,7 +94,7 @@ func TestCreateLeaveRequest(t *testing.T) {
 func TestReviewLeaveRequest(t *testing.T) {
 	db := testutil.SetupTestDB()
 
-	cu, cID, _ := testutil.CreateCompanyUser(db, "appleave@ex.com", "appleave", "pass123", "App Leave Co", true)
+	_, cID, _ := testutil.CreateCompanyUser(db, "appleave@ex.com", "appleave", "pass123", "App Leave Co", true)
 	empID, _ := testutil.CreateEmployee(db, cID, "App", "Leave", "app@leaveco.com")
 	svc := NewService(db)
 
@@ -114,15 +114,18 @@ func TestReviewLeaveRequest(t *testing.T) {
 	}
 	svc.CreateRequest(context.Background(), cID, empID, req)
 
+	// reviewer_id FK references employees(id), not users(id)
+	reviewerEmpID, _ := testutil.CreateEmployee(db, cID, "Reviewer", "Manager", "reviewer@leaveco.com")
+
 	t.Run("approve leave", func(t *testing.T) {
-		err := svc.ReviewRequest(context.Background(), cID, req.ID, cu, "approved", "OK")
+		err := svc.ReviewRequest(context.Background(), cID, req.ID, reviewerEmpID, "approved", "OK")
 		if err != nil {
 			t.Fatalf("approve: %v", err)
 		}
 	})
 
 	t.Run("cannot approve already approved", func(t *testing.T) {
-		err := svc.ReviewRequest(context.Background(), cID, req.ID, cu, "approved", "Again")
+		err := svc.ReviewRequest(context.Background(), cID, req.ID, reviewerEmpID, "approved", "Again")
 		if err == nil {
 			t.Fatal("expected error for double approve")
 		}
@@ -132,7 +135,7 @@ func TestReviewLeaveRequest(t *testing.T) {
 func TestRejectLeaveRequest(t *testing.T) {
 	db := testutil.SetupTestDB()
 
-	cu, cID, _ := testutil.CreateCompanyUser(db, "rejleave@ex.com", "rejleave", "pass123", "Rej Leave Co", true)
+	_, cID, _ := testutil.CreateCompanyUser(db, "rejleave@ex.com", "rejleave", "pass123", "Rej Leave Co", true)
 	empID, _ := testutil.CreateEmployee(db, cID, "Rej", "Leave", "rej@leaveco.com")
 	svc := NewService(db)
 
@@ -151,7 +154,10 @@ func TestRejectLeaveRequest(t *testing.T) {
 	}
 	svc.CreateRequest(context.Background(), cID, empID, req)
 
-	err := svc.ReviewRequest(context.Background(), cID, req.ID, cu, "rejected", "Not enough coverage")
+	// reviewer_id FK references employees(id), not users(id)
+	reviewerEmpID, _ := testutil.CreateEmployee(db, cID, "Reviewer2", "Manager", "rejreviewer@leaveco.com")
+
+	err := svc.ReviewRequest(context.Background(), cID, req.ID, reviewerEmpID, "rejected", "Not enough coverage")
 	if err != nil {
 		t.Fatalf("reject: %v", err)
 	}

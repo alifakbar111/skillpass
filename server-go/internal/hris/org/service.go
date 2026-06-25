@@ -84,7 +84,7 @@ func (s *Service) CreateBranch(ctx context.Context, companyID uuid.UUID, req Cre
 func (s *Service) ListBranches(ctx context.Context, companyID uuid.UUID) ([]Branch, error) {
 	rows, err := s.db.QueryContext(ctx, `
 		SELECT id, company_id, name, branch_type, parent_branch_id, address, city, province, latitude, longitude, geofence_radius_meters, is_active, created_at
-		FROM branches WHERE company_id = $1 ORDER BY name`, companyID)
+		FROM branches WHERE company_id = $1 AND is_active = TRUE ORDER BY name`, companyID)
 	if err != nil {
 		return nil, err
 	}

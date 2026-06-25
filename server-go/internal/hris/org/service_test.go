@@ -119,7 +119,8 @@ func TestCreatePosition(t *testing.T) {
 	t.Run("create position", func(t *testing.T) {
 		p, err := svc.CreatePosition(context.Background(), cID, CreatePositionRequest{
 			Name:         "Product Manager",
-			DepartmentID: dept.ID,
+			DepartmentID: &dept.ID,
+			Level:        "manager",
 		})
 		if err != nil {
 			t.Fatalf("create: %v", err)

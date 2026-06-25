@@ -273,7 +273,7 @@ func (s *Service) CalculateRun(ctx context.Context, companyID, runID uuid.UUID) 
 	}
 
 	rows, err := tx.QueryContext(ctx,
-		`SELECT e.id, e.employee_code, e.first_name, e.last_name
+		`SELECT e.id, e.employee_id_number, e.first_name, e.last_name
 		 FROM employees e
 		 WHERE e.company_id = $1 AND e.employment_status = 'active'
 		 ORDER BY e.first_name, e.last_name`, companyID)
@@ -406,7 +406,7 @@ func (s *Service) ListPayslips(ctx context.Context, companyID, runID uuid.UUID) 
 	rows, err := s.db.QueryContext(ctx,
 		`SELECT p.id, p.payroll_run_id, p.employee_id,
 		        COALESCE(e.first_name||' '||e.last_name, '') as employee_name,
-		        e.employee_code,
+		        e.employee_id_number,
 		        p.gross_pay, p.total_deductions, p.net_pay, p.breakdown, p.created_at,
 		        pr.period_start::text, pr.period_end::text
 		 FROM payslips p
@@ -438,7 +438,7 @@ func (s *Service) ListPayslips(ctx context.Context, companyID, runID uuid.UUID) 
 
 func (s *Service) GetMyPayslips(ctx context.Context, companyID, employeeID uuid.UUID) ([]Payslip, error) {
 	rows, err := s.db.QueryContext(ctx,
-		`SELECT p.id, p.payroll_run_id, p.employee_id, '' as employee_name, '' as employee_code,
+		`SELECT p.id, p.payroll_run_id, p.employee_id, '' as employee_name, '' as employee_id_number,
 		        p.gross_pay, p.total_deductions, p.net_pay, p.breakdown, p.created_at,
 		        pr.period_start::text, pr.period_end::text
 		 FROM payslips p
@@ -473,7 +473,7 @@ func (s *Service) GetPayslip(ctx context.Context, companyID, employeeID, payslip
 	err := s.db.QueryRowContext(ctx,
 		`SELECT p.id, p.payroll_run_id, p.employee_id,
 		        COALESCE(e.first_name||' '||e.last_name, '') as employee_name,
-		        e.employee_code,
+		        e.employee_id_number,
 		        p.gross_pay, p.total_deductions, p.net_pay, p.breakdown, p.created_at,
 		        pr.period_start::text, pr.period_end::text
 		 FROM payslips p

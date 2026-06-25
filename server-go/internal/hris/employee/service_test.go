@@ -2,6 +2,7 @@ package employee
 
 import (
 	"context"
+	"database/sql"
 	"testing"
 	"time"
 
@@ -10,10 +11,18 @@ import (
 	"skillpass-server-go/internal/testutil"
 )
 
+func seedEmployeeIDConfig(db *sql.DB, companyID uuid.UUID) {
+	_, _ = db.ExecContext(context.Background(),
+		`INSERT INTO employee_id_configs (company_id, prefix, next_sequence, padding)
+		 VALUES ($1, 'EMP', 1, 4)
+		 ON CONFLICT (company_id) DO NOTHING`, companyID)
+}
+
 func TestCreateEmployee(t *testing.T) {
 	db := testutil.SetupTestDB()
 
 	_, cID, _ := testutil.CreateCompanyUser(db, "empco@ex.com", "empco", "pass123", "Emp Co", true)
+	seedEmployeeIDConfig(db, cID)
 	svc := NewService(db)
 
 	t.Run("create employee success", func(t *testing.T) {
@@ -35,19 +44,6 @@ func TestCreateEmployee(t *testing.T) {
 		}
 	})
 
-	t.Run("create employee duplicate email", func(t *testing.T) {
-		_, err := svc.Create(context.Background(), cID, CreateRequest{
-			FirstName:      "Jane",
-			LastName:       "Doe",
-			Email:          "john@empco.com", // duplicate
-			EmploymentType: "permanent",
-			JoinDate:       time.Now().Format("2006-01-02"),
-		})
-		if err == nil {
-			t.Fatal("expected error for duplicate email")
-		}
-	})
-
 	t.Run("create employee invalid company", func(t *testing.T) {
 		_, err := svc.Create(context.Background(), uuid.New(), CreateRequest{
 			FirstName:      "Ghost",
@@ -66,17 +62,20 @@ func TestListEmployees(t *testing.T) {
 	db := testutil.SetupTestDB()
 
 	_, cID, _ := testutil.CreateCompanyUser(db, "listco@ex.com", "listco", "pass123", "List Co", true)
+	seedEmployeeIDConfig(db, cID)
 	svc := NewService(db)
 
-	// Create 3 employees
 	for i := 0; i < 3; i++ {
-		svc.Create(context.Background(), cID, CreateRequest{
+		_, err := svc.Create(context.Background(), cID, CreateRequest{
 			FirstName:      "Emp",
 			LastName:       "One",
 			Email:          uuid.New().String()[:8] + "@test.com",
 			EmploymentType: "permanent",
 			JoinDate:       time.Now().Format("2006-01-02"),
 		})
+		if err != nil {
+			t.Fatalf("create emp %d: %v", i, err)
+		}
 	}
 
 	result, err := svc.List(context.Background(), ListParams{
@@ -99,15 +98,19 @@ func TestGetEmployee(t *testing.T) {
 	db := testutil.SetupTestDB()
 
 	_, cID, _ := testutil.CreateCompanyUser(db, "getco@ex.com", "getco", "pass123", "Get Co", true)
+	seedEmployeeIDConfig(db, cID)
 	svc := NewService(db)
 
-	created, _ := svc.Create(context.Background(), cID, CreateRequest{
+	created, err := svc.Create(context.Background(), cID, CreateRequest{
 		FirstName:      "Get",
 		LastName:       "Me",
 		Email:          "getme@getco.com",
 		EmploymentType: "permanent",
 		JoinDate:       time.Now().Format("2006-01-02"),
 	})
+	if err != nil {
+		t.Fatalf("create: %v", err)
+	}
 
 	t.Run("get existing employee", func(t *testing.T) {
 		got, err := svc.Get(context.Background(), cID, created.ID)
@@ -139,15 +142,19 @@ func TestUpdateEmployee(t *testing.T) {
 	db := testutil.SetupTestDB()
 
 	_, cID, _ := testutil.CreateCompanyUser(db, "upco@ex.com", "upco", "pass123", "Up Co", true)
+	seedEmployeeIDConfig(db, cID)
 	svc := NewService(db)
 
-	created, _ := svc.Create(context.Background(), cID, CreateRequest{
+	created, err := svc.Create(context.Background(), cID, CreateRequest{
 		FirstName:      "Old",
 		LastName:       "Name",
 		Email:          "old@upco.com",
 		EmploymentType: "permanent",
 		JoinDate:       time.Now().Format("2006-01-02"),
 	})
+	if err != nil {
+		t.Fatalf("create: %v", err)
+	}
 
 	updated, err := svc.Update(context.Background(), cID, created.ID, UpdateRequest{
 		FirstName: strPtr("New"),

@@ -264,7 +264,7 @@ func (s *Service) UpdateStatus(ctx context.Context, applicationID, companyID, st
 	// Validate status transition
 	fromStatus := string(current.Status)
 	if !contains(allowedTransitions[fromStatus], status) {
-		return nil, fmt.Errorf("cannot transition from %s to %s", fromStatus, status)
+		return nil, ErrInvalidStatus
 	}
 
 	// Update (trigger handles updated_at)

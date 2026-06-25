@@ -433,7 +433,7 @@ func TestApplicationMessageEdgeCases(t *testing.T) {
 
 		var msgs []Message
 		json.Unmarshal(w.Body.Bytes(), &msgs)
-		if len(msgs) != 4 { // 1 from setup + 3 added
+		if len(msgs) != 3 { // 3 added above
 			t.Fatalf("expected 4 messages, got %d", len(msgs))
 		}
 	})

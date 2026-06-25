@@ -14,8 +14,7 @@ type ProfileView struct {
 	ViewerID        uuid.UUID  `json:"viewerId"`
 	CompanyID       *uuid.UUID `json:"companyId,omitempty"`
 	ViewedAt        time.Time  `json:"viewedAt"`
-	ViewerFirstName string     `json:"viewerFirstName"`
-	ViewerLastName  string     `json:"viewerLastName"`
+	ViewerName      string     `json:"viewerName"`
 }
 
 type Service struct {
@@ -50,7 +49,7 @@ func (s *Service) RecordView(ctx context.Context, profileID, viewerID uuid.UUID,
 func (s *Service) GetViewsByProfile(ctx context.Context, profileID uuid.UUID) ([]ProfileView, error) {
 	rows, err := s.db.QueryContext(ctx,
 		`SELECT pv.id, pv.profile_id, pv.viewer_id, pv.company_id, pv.viewed_at,
-		        u.first_name, u.last_name
+		        u.name
 		 FROM profile_views pv
 		 JOIN users u ON u.id = pv.viewer_id
 		 WHERE pv.profile_id = $1
@@ -65,7 +64,7 @@ func (s *Service) GetViewsByProfile(ctx context.Context, profileID uuid.UUID) ([
 	views := make([]ProfileView, 0)
 	for rows.Next() {
 		var v ProfileView
-		if err := rows.Scan(&v.ID, &v.ProfileID, &v.ViewerID, &v.CompanyID, &v.ViewedAt, &v.ViewerFirstName, &v.ViewerLastName); err != nil {
+		if err := rows.Scan(&v.ID, &v.ProfileID, &v.ViewerID, &v.CompanyID, &v.ViewedAt, &v.ViewerName); err != nil {
 			return nil, err
 		}
 		views = append(views, v)

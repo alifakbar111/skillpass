@@ -4,8 +4,6 @@ import (
 	"context"
 	"testing"
 
-	"github.com/google/uuid"
-
 	"skillpass-server-go/internal/testutil"
 )
 
@@ -81,9 +79,10 @@ func TestGetReputation(t *testing.T) {
 	db := testutil.SetupTestDB()
 
 	_, cID, _ := testutil.CreateCompanyUser(db, "repco@ex.com", "repco", "pass123", "Rep Co", true)
+	_, pID, _ := testutil.CreateJobseeker(db, "repjs@ex.com", "repjs", "pass123", "Rep JS")
 	svc := NewService(db)
 
-		svc.Create(context.Background(), cID.String(), uuid.New().String(), CreateReviewRequest{
+	svc.Create(context.Background(), cID.String(), pID.String(), CreateReviewRequest{
 		Rating:          5,
 		Review:          "Excellent",
 		InteractionType: "interviewed",

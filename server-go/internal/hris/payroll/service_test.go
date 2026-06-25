@@ -10,11 +10,12 @@ import (
 func TestCreatePayrollRun(t *testing.T) {
 	db := testutil.SetupTestDB()
 
-	cu, cID, _ := testutil.CreateCompanyUser(db, "payco@ex.com", "payco", "pass123", "Pay Co", true)
+	_, cID, _ := testutil.CreateCompanyUser(db, "payco@ex.com", "payco", "pass123", "Pay Co", true)
+	empID, _ := testutil.CreateEmployee(db, cID, "Run", "Creator", "run@payco.com")
 	svc := NewService(db)
 
 	t.Run("create payroll run", func(t *testing.T) {
-		run, err := svc.CreateRun(context.Background(), cID, cu, "2026-06-01", "2026-06-30", nil)
+		run, err := svc.CreateRun(context.Background(), cID, empID, "2026-06-01", "2026-06-30", nil)
 		if err != nil {
 			t.Fatalf("create run: %v", err)
 		}
@@ -134,7 +135,7 @@ func TestSetEmployeeSalary(t *testing.T) {
 func TestCalculateAndApproveRun(t *testing.T) {
 	db := testutil.SetupTestDB()
 
-	cu, cID, _ := testutil.CreateCompanyUser(db, "paycalc@ex.com", "paycalc", "pass123", "Pay Calc Co", true)
+	_, cID, _ := testutil.CreateCompanyUser(db, "paycalc@ex.com", "paycalc", "pass123", "Pay Calc Co", true)
 	empID, _ := testutil.CreateEmployee(db, cID, "Pay", "Calc", "paycalc@paycalc.com")
 	svc := NewService(db)
 
@@ -145,8 +146,8 @@ func TestCalculateAndApproveRun(t *testing.T) {
 		{ComponentID: comp.ID, Amount: 5000000},
 	})
 
-	// Create run
-	run, _ := svc.CreateRun(context.Background(), cID, cu, "2026-07-01", "2026-07-31", nil)
+	// Create run (run_by must be an employee, not a user)
+	run, _ := svc.CreateRun(context.Background(), cID, empID, "2026-07-01", "2026-07-31", nil)
 
 	t.Run("calculate run", func(t *testing.T) {
 		err := svc.CalculateRun(context.Background(), cID, run.ID)
@@ -156,15 +157,15 @@ func TestCalculateAndApproveRun(t *testing.T) {
 	})
 
 	t.Run("approve run", func(t *testing.T) {
-		err := svc.ApproveRun(context.Background(), cID, run.ID, cu)
+		err := svc.ApproveRun(context.Background(), cID, run.ID, empID)
 		if err != nil {
 			t.Fatalf("approve: %v", err)
 		}
 	})
 
 	t.Run("cannot approve non-calculated run", func(t *testing.T) {
-		run2, _ := svc.CreateRun(context.Background(), cID, cu, "2026-08-01", "2026-08-31", nil)
-		err := svc.ApproveRun(context.Background(), cID, run2.ID, cu)
+		run2, _ := svc.CreateRun(context.Background(), cID, empID, "2026-08-01", "2026-08-31", nil)
+		err := svc.ApproveRun(context.Background(), cID, run2.ID, empID)
 		if err == nil {
 			t.Fatal("expected error for approving draft run")
 		}
