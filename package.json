@@ -21,7 +21,9 @@
     "lint:fix": "biome check --write .",
     "format": "biome format --write .",
     "format:check": "biome format .",
-    "test:server": "go -C server-go test ./... -count=1 -p=1"
+    "test": "bun run test:server && bun run test:web",
+    "test:server": "go -C server-go test ./... -count=1 -p=1",
+    "test:web": "bun --cwd web vitest run"
   },
   "devDependencies": {
     "@biomejs/biome": "^2.5.0",

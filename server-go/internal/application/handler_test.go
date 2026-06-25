@@ -300,6 +300,145 @@ func TestApplicationMessages(t *testing.T) {
 	})
 }
 
+func TestStatusTransitions(t *testing.T) {
+	db := testutil.SetupTestDB()
+
+	cu, cID, _ := testutil.CreateCompanyUser(db, "trans@ex.com", "trans", "pass123", "Trans Co", true)
+	jID, _ := testutil.CreateJob(db, cID, "Test Job", "Technology", true)
+	_, pID, _ := testutil.CreateJobseeker(db, "transjs@ex.com", "transjs", "pass123", "Trans JS")
+	appID, _ := testutil.CreateApplication(db, pID, jID, "applied")
+	ctok := testutil.GenerateToken(cu.String(), "company", 15*time.Minute)
+
+	svc := NewService(db)
+	h := NewHandler(svc)
+
+	router := gin.New()
+	sg := router.Group("/api/v1/applications")
+	sg.Use(middleware.AuthRequired(testutil.TestJWTSecret), middleware.RequireRole("company"), middleware.RequireVerifiedCompany(db))
+	sg.PUT("/:id/status", h.UpdateStatus)
+
+	tests := []struct {
+		name       string
+		from       string
+		to         string
+		wantStatus int
+	}{
+		{"applied to reviewed", "applied", "reviewed", http.StatusOK},
+		{"applied to interviewed (invalid)", "applied", "interviewed", http.StatusBadRequest},
+		{"applied to offered (invalid)", "applied", "offered", http.StatusBadRequest},
+		{"applied to rejected", "applied", "rejected", http.StatusOK},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			// Reset status to 'applied' for each test
+			db.ExecContext(context.Background(),
+				`UPDATE applications SET status = 'applied' WHERE id = $1`, appID)
+
+			body := fmt.Sprintf(`{"status":"%s"}`, tt.to)
+			w := httptest.NewRecorder()
+			req := httptest.NewRequest("PUT", fmt.Sprintf("/api/v1/applications/%s/status", appID),
+				bytes.NewBufferString(body))
+			req.Header.Set("Content-Type", "application/json")
+			req.Header.Set("Authorization", "Bearer "+ctok)
+			router.ServeHTTP(w, req)
+
+			if w.Code != tt.wantStatus {
+				t.Fatalf("expected %d, got %d: %s", tt.wantStatus, w.Code, w.Body.String())
+			}
+		})
+	}
+}
+
+func TestApplicationUnauthorized(t *testing.T) {
+	db := testutil.SetupTestDB()
+
+	svc := NewService(db)
+	h := NewHandler(svc)
+
+	router := gin.New()
+	ag := router.Group("/api/v1/jobs")
+	ag.POST("/:id/apply", h.Apply)
+
+	t.Run("apply without token returns 401", func(t *testing.T) {
+		w := httptest.NewRecorder()
+		req := httptest.NewRequest("POST", "/api/v1/jobs/00000000-0000-0000-0000-000000000000/apply", nil)
+		router.ServeHTTP(w, req)
+		if w.Code != http.StatusUnauthorized {
+			t.Fatalf("expected 401, got %d", w.Code)
+		}
+	})
+}
+
+func TestApplicationMessageEdgeCases(t *testing.T) {
+	db := testutil.SetupTestDB()
+
+	cu, cID, _ := testutil.CreateCompanyUser(db, "msgedge@ex.com", "msgedge", "pass123", "Msg Edge Co", true)
+	jID, _ := testutil.CreateJob(db, cID, "Msg Job", "Technology", true)
+	_, pID, _ := testutil.CreateJobseeker(db, "msgedgejs@ex.com", "msgedgejs", "pass123", "Msg Edge JS")
+	appID, _ := testutil.CreateApplication(db, pID, jID, "applied")
+	ctok := testutil.GenerateToken(cu.String(), "company", 15*time.Minute)
+
+	svc := NewService(db)
+	h := NewHandler(svc)
+
+	router := gin.New()
+	g := router.Group("/api/v1/applications")
+	g.Use(middleware.AuthRequired(testutil.TestJWTSecret), middleware.RequireRole("company"), middleware.RequireVerifiedCompany(db))
+	g.POST("/:id/messages", h.AddMessage)
+	g.GET("/:id/messages", h.ListMessages)
+
+	t.Run("empty body rejected", func(t *testing.T) {
+		w := httptest.NewRecorder()
+		req := httptest.NewRequest("POST", fmt.Sprintf("/api/v1/applications/%s/messages", appID),
+			bytes.NewBufferString(`{"body":""}`))
+		req.Header.Set("Content-Type", "application/json")
+		req.Header.Set("Authorization", "Bearer "+ctok)
+		router.ServeHTTP(w, req)
+		if w.Code != http.StatusBadRequest {
+			t.Fatalf("expected 400, got %d: %s", w.Code, w.Body.String())
+		}
+	})
+
+	t.Run("nonexistent application returns 404", func(t *testing.T) {
+		w := httptest.NewRecorder()
+		req := httptest.NewRequest("POST", "/api/v1/applications/00000000-0000-0000-0000-000000000000/messages",
+			bytes.NewBufferString(`{"body":"Hello"}`))
+		req.Header.Set("Content-Type", "application/json")
+		req.Header.Set("Authorization", "Bearer "+ctok)
+		router.ServeHTTP(w, req)
+		if w.Code != http.StatusNotFound {
+			t.Fatalf("expected 404, got %d: %s", w.Code, w.Body.String())
+		}
+	})
+
+	t.Run("multiple messages ordered chronologically", func(t *testing.T) {
+		for i := 0; i < 3; i++ {
+			body := fmt.Sprintf(`{"body":"Message %d"}`, i)
+			w := httptest.NewRecorder()
+			req := httptest.NewRequest("POST", fmt.Sprintf("/api/v1/applications/%s/messages", appID),
+				bytes.NewBufferString(body))
+			req.Header.Set("Content-Type", "application/json")
+			req.Header.Set("Authorization", "Bearer "+ctok)
+			router.ServeHTTP(w, req)
+			if w.Code != http.StatusCreated {
+				t.Fatalf("message %d: expected 201, got %d", i, w.Code)
+			}
+		}
+
+		w := httptest.NewRecorder()
+		req := httptest.NewRequest("GET", fmt.Sprintf("/api/v1/applications/%s/messages", appID), nil)
+		req.Header.Set("Authorization", "Bearer "+ctok)
+		router.ServeHTTP(w, req)
+
+		var msgs []Message
+		json.Unmarshal(w.Body.Bytes(), &msgs)
+		if len(msgs) != 4 { // 1 from setup + 3 added
+			t.Fatalf("expected 4 messages, got %d", len(msgs))
+		}
+	})
+}
+
 func TestListCompanyApplications(t *testing.T) {
 	db := testutil.SetupTestDB()
 
