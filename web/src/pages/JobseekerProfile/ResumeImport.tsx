@@ -123,6 +123,7 @@ export function ResumeImport({ onExperienceAdded, open, onToggle }: Props) {
           <input
             ref={fileInputRef}
             type="file"
+            aria-label="pdf-input"
             accept="application/pdf"
             className="hidden"
             onChange={(e) => {
