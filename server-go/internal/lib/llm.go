@@ -420,5 +420,10 @@ func (m *MockLLMClient) Chat(ctx context.Context, systemPrompt, userPrompt strin
 	if err != nil {
 		return fmt.Errorf("mock marshal: %w", err)
 	}
+	// If resultPtr is *string, store the raw JSON string (caller handles parsing).
+	if ptr, ok := resultPtr.(*string); ok {
+		*ptr = string(data)
+		return nil
+	}
 	return json.Unmarshal(data, resultPtr)
 }
