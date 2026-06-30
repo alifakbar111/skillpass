@@ -75,6 +75,7 @@ type chatRequest struct {
 	Temperature    float64         `json:"temperature"`
 	MaxTokens      int             `json:"max_tokens"`
 	ResponseFormat *responseFormat `json:"response_format,omitempty"`
+	Stream         bool            `json:"stream"`
 }
 
 type chatMessage struct {
@@ -111,6 +112,7 @@ func (c *OpenAIClient) Chat(ctx context.Context, systemPrompt, userPrompt string
 		Temperature:    0.3,
 		MaxTokens:      4096,
 		ResponseFormat: &responseFormat{Type: "json_object"},
+		Stream:         false,
 	}
 
 	payload, err := json.Marshal(body)
@@ -141,9 +143,21 @@ func (c *OpenAIClient) Chat(ctx context.Context, systemPrompt, userPrompt string
 		return fmt.Errorf("read response: %w", err)
 	}
 
+	// Extract the outermost JSON object (handle trailing SSE junk like "data: [DONE]").
+	cleaned := extractOuterJSON(respBody)
+
 	var chatResp chatResponse
-	if err := json.Unmarshal(respBody, &chatResp); err != nil {
-		return fmt.Errorf("parse response: %w (body: %s)", err, string(respBody))
+	if err := json.Unmarshal(cleaned, &chatResp); err != nil || len(chatResp.Choices) == 0 {
+		// The proxy may have returned Anthropic format instead of OpenAI format.
+		// json.Unmarshal into chatResponse "succeeds" for Anthropic format because
+		// it ignores unknown fields — but Choices will be empty.
+		if parsed := tryAnthropicAsOpenAI(cleaned); parsed != nil {
+			chatResp = *parsed
+		} else if err != nil {
+			return fmt.Errorf("parse response: %w (body: %s)", err, string(respBody))
+		} else {
+			return fmt.Errorf("llm returned no choices (body: %s)", string(respBody))
+		}
 	}
 
 	if chatResp.Error != nil {
@@ -155,12 +169,93 @@ func (c *OpenAIClient) Chat(ctx context.Context, systemPrompt, userPrompt string
 	}
 
 	content := chatResp.Choices[0].Message.Content
+	// Strip markdown code fences from the LLM content.
+	content = stripMarkdownFences(content)
+
+	// If resultPtr is *string, store the raw content (caller handles JSON parsing).
+	if ptr, ok := resultPtr.(*string); ok {
+		*ptr = content
+		return nil
+	}
+
 	if err := json.Unmarshal([]byte(content), resultPtr); err != nil {
 		return fmt.Errorf("parse llm json response: %w (content: %s)", err, content)
 	}
 
 	return nil
 }
+
+// extractOuterJSON finds the outermost complete JSON object in a byte slice,
+// ignoring any trailing junk like "data: [DONE]" or logging metadata.
+func extractOuterJSON(body []byte) []byte {
+	s := strings.TrimSpace(string(body))
+	start := strings.Index(s, "{")
+	end := strings.LastIndex(s, "}")
+	if start >= 0 && end > start {
+		return []byte(s[start : end+1])
+	}
+	return body
+}
+
+// stripMarkdownFences removes markdown code block fences (```json, ```)
+// surrounding the actual JSON content.
+func stripMarkdownFences(s string) string {
+	s = strings.TrimSpace(s)
+	// Remove opening fences: ```json, ```, or ``` with optional whitespace
+	if strings.HasPrefix(s, "```") {
+		// Find the newline after the opening fence
+		if nl := strings.Index(s, "\n"); nl != -1 {
+			s = s[nl+1:]
+		}
+	}
+	// Remove closing fences
+	s = strings.TrimSpace(s)
+	s = strings.TrimSuffix(s, "```")
+	return strings.TrimSpace(s)
+}
+
+// anthropicCompatMessage mirrors the Anthropic message response shape.
+type anthropicCompatMessage struct {
+	Content []struct {
+		Type string `json:"type"`
+		Text string `json:"text"`
+	} `json:"content,omitempty"`
+}
+
+// tryAnthropicAsOpenAI attempts to parse an Anthropic-format response and
+// convert it to the OpenAI chatResponse shape. Returns nil if parsing fails.
+func tryAnthropicAsOpenAI(body []byte) *chatResponse {
+	var am anthropicCompatMessage
+	if err := json.Unmarshal(body, &am); err != nil {
+		return nil
+	}
+	if len(am.Content) == 0 {
+		return nil
+	}
+	var text string
+	for _, block := range am.Content {
+		if block.Type == "text" {
+			text = block.Text
+			break
+		}
+	}
+	if text == "" {
+		return nil
+	}
+	return &chatResponse{
+		Choices: []struct {
+			Message struct {
+				Content string `json:"content"`
+			} `json:"message"`
+		}{
+			{Message: struct {
+				Content string `json:"content"`
+			}{Content: text}},
+		},
+	}
+}
+
+
 
 // AnthropicClient implements LLMClient using the Anthropic Messages API.
 type AnthropicClient struct {
@@ -260,8 +355,11 @@ func (c *AnthropicClient) Chat(ctx context.Context, systemPrompt, userPrompt str
 		return fmt.Errorf("read response: %w", err)
 	}
 
+	// The 9Router proxy may append "data: [DONE]" after the JSON body.
+	cleaned := extractOuterJSON(respBody)
+
 	var anthropicResp anthropicResponse
-	if err := json.Unmarshal(respBody, &anthropicResp); err != nil {
+	if err := json.Unmarshal(cleaned, &anthropicResp); err != nil {
 		return fmt.Errorf("parse response: %w (body: %s)", err, string(respBody))
 	}
 
@@ -279,6 +377,15 @@ func (c *AnthropicClient) Chat(ctx context.Context, systemPrompt, userPrompt str
 	}
 	if textContent == "" {
 		return fmt.Errorf("anthropic returned no text content (body: %s)", string(respBody))
+	}
+
+	// Strip markdown code fences that some proxies may wrap around the content.
+	textContent = stripMarkdownFences(textContent)
+
+	// If resultPtr is *string, store the raw content (caller handles JSON parsing).
+	if ptr, ok := resultPtr.(*string); ok {
+		*ptr = textContent
+		return nil
 	}
 
 	if err := json.Unmarshal([]byte(textContent), resultPtr); err != nil {

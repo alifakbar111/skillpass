@@ -969,6 +969,8 @@ definitions:
         type: array
       headline:
         type: string
+      rawMarkdown:
+        type: string
       yearsOfExperience:
         type: integer
     type: object
@@ -2897,6 +2899,42 @@ paths:
       security:
       - BearerAuth: []
       summary: Update an experience entry
+      tags:
+      - profiles
+  /profiles/me/resume-markdown:
+    post:
+      consumes:
+      - multipart/form-data
+      description: Upload a PDF and get back the raw Markdown text (for debugging
+        / inspection). Returns text/plain.
+      parameters:
+      - description: PDF resume
+        in: formData
+        name: file
+        required: true
+        type: file
+      produces:
+      - text/plain
+      responses:
+        "200":
+          description: Markdown content
+          schema:
+            type: string
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Convert resume PDF to Markdown
       tags:
       - profiles
   /profiles/me/resume-parse:

@@ -3398,6 +3398,61 @@
                 ]
             }
         },
+        "/profiles/me/resume-markdown": {
+            "post": {
+                "description": "Upload a PDF and get back the raw Markdown text (for debugging / inspection). Returns text/plain.",
+                "tags": [
+                    "profiles"
+                ],
+                "summary": "Convert resume PDF to Markdown",
+                "requestBody": {
+                    "$ref": "#/components/requestBodies/postProfilesMeResumeMarkdown"
+                },
+                "responses": {
+                    "200": {
+                        "description": "Markdown content",
+                        "content": {
+                            "text/plain": {
+                                "schema": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "content": {
+                            "text/plain": {
+                                "schema": {
+                                    "type": "object",
+                                    "additionalProperties": {
+                                        "type": "string"
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "content": {
+                            "text/plain": {
+                                "schema": {
+                                    "type": "object",
+                                    "additionalProperties": {
+                                        "type": "string"
+                                    }
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ]
+            }
+        },
         "/profiles/me/resume-parse": {
             "post": {
                 "description": "Extract structured profile data (headline, about, experiences) from pasted resume text using AI. Does not modify the profile — the client reviews and saves entries.",
@@ -3487,24 +3542,7 @@
                 ],
                 "summary": "Upload resume PDF",
                 "requestBody": {
-                    "content": {
-                        "multipart/form-data": {
-                            "schema": {
-                                "type": "object",
-                                "properties": {
-                                    "file": {
-                                        "description": "PDF resume",
-                                        "type": "string",
-                                        "format": "binary"
-                                    }
-                                },
-                                "required": [
-                                    "file"
-                                ]
-                            }
-                        }
-                    },
-                    "required": true
+                    "$ref": "#/components/requestBodies/postProfilesMeResumeMarkdown"
                 },
                 "responses": {
                     "200": {
@@ -3734,6 +3772,28 @@
         }
     ],
     "components": {
+        "requestBodies": {
+            "postProfilesMeResumeMarkdown": {
+                "content": {
+                    "multipart/form-data": {
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "file": {
+                                    "description": "PDF resume",
+                                    "type": "string",
+                                    "format": "binary"
+                                }
+                            },
+                            "required": [
+                                "file"
+                            ]
+                        }
+                    }
+                },
+                "required": true
+            }
+        },
         "securitySchemes": {
             "BearerAuth": {
                 "type": "apiKey",
@@ -5200,6 +5260,9 @@
                         }
                     },
                     "headline": {
+                        "type": "string"
+                    },
+                    "rawMarkdown": {
                         "type": "string"
                     },
                     "yearsOfExperience": {

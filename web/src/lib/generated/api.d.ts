@@ -3513,6 +3513,67 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/profiles/me/resume-markdown": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Convert resume PDF to Markdown
+         * @description Upload a PDF and get back the raw Markdown text (for debugging / inspection). Returns text/plain.
+         */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody: components["requestBodies"]["postProfilesMeResumeMarkdown"];
+            responses: {
+                /** @description Markdown content */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": string;
+                    };
+                };
+                /** @description Bad Request */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": {
+                            [key: string]: string;
+                        };
+                    };
+                };
+                /** @description Internal Server Error */
+                500: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": {
+                            [key: string]: string;
+                        };
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/profiles/me/resume-parse": {
         parameters: {
             query?: never;
@@ -3612,17 +3673,7 @@ export interface paths {
                 path?: never;
                 cookie?: never;
             };
-            requestBody: {
-                content: {
-                    "multipart/form-data": {
-                        /**
-                         * Format: binary
-                         * @description PDF resume
-                         */
-                        file: string;
-                    };
-                };
-            };
+            requestBody: components["requestBodies"]["postProfilesMeResumeMarkdown"];
             responses: {
                 /** @description OK */
                 200: {
@@ -4282,6 +4333,7 @@ export interface components {
             about?: string;
             experiences?: components["schemas"]["internal_resume.ParsedExperience"][];
             headline?: string;
+            rawMarkdown?: string;
             yearsOfExperience?: number;
         };
         "internal_webhook.Webhook": {
@@ -4294,7 +4346,19 @@ export interface components {
     };
     responses: never;
     parameters: never;
-    requestBodies: never;
+    requestBodies: {
+        postProfilesMeResumeMarkdown: {
+            content: {
+                "multipart/form-data": {
+                    /**
+                     * Format: binary
+                     * @description PDF resume
+                     */
+                    file: string;
+                };
+            };
+        };
+    };
     headers: never;
     pathItems: never;
 }

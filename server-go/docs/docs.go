@@ -2917,6 +2917,61 @@ const docTemplate = `{
                 ]
             }
         },
+        "/profiles/me/resume-markdown": {
+            "post": {
+                "description": "Upload a PDF and get back the raw Markdown text (for debugging / inspection). Returns text/plain.",
+                "consumes": [
+                    "multipart/form-data"
+                ],
+                "produces": [
+                    "text/plain"
+                ],
+                "tags": [
+                    "profiles"
+                ],
+                "summary": "Convert resume PDF to Markdown",
+                "parameters": [
+                    {
+                        "type": "file",
+                        "description": "PDF resume",
+                        "name": "file",
+                        "in": "formData",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Markdown content",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ]
+            }
+        },
         "/profiles/me/resume-parse": {
             "post": {
                 "description": "Extract structured profile data (headline, about, experiences) from pasted resume text using AI. Does not modify the profile — the client reviews and saves entries.",
@@ -4650,6 +4705,9 @@ const docTemplate = `{
                     }
                 },
                 "headline": {
+                    "type": "string"
+                },
+                "rawMarkdown": {
                     "type": "string"
                 },
                 "yearsOfExperience": {

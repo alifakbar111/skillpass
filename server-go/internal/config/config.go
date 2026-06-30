@@ -8,6 +8,7 @@ type Config struct {
 	DatabaseURL string
 	CORSOrigin  string
 	ServeStatic bool
+	MarkItDownURL string
 }
 
 func Load() *Config {
@@ -22,11 +23,12 @@ func Load() *Config {
 	}
 
 	return &Config{
-		Port:        getEnv("PORT", "1234"),
-		JWTSecret:   jwtSecret,
-		DatabaseURL: dbURL,
-		CORSOrigin:  getEnv("CORS_ORIGIN", "http://localhost:4200"),
-		ServeStatic: getEnv("SERVE_STATIC", "true") == "true",
+		Port:          getEnv("PORT", "1234"),
+		JWTSecret:     jwtSecret,
+		DatabaseURL:   dbURL,
+		CORSOrigin:    getEnv("CORS_ORIGIN", "http://localhost:4200"),
+		ServeStatic:   getEnv("SERVE_STATIC", "true") == "true",
+		MarkItDownURL: getEnv("MARKITDOWN_URL", ""),
 	}
 }
 

@@ -21,6 +21,7 @@ type profileViewsTable struct {
 	ProfileID postgres.ColumnString
 	CompanyID postgres.ColumnString
 	ViewedAt  postgres.ColumnTimestampz
+	ViewerID  postgres.ColumnString
 
 	AllColumns     postgres.ColumnList
 	MutableColumns postgres.ColumnList
@@ -66,8 +67,9 @@ func newProfileViewsTableImpl(schemaName, tableName, alias string) profileViewsT
 		ProfileIDColumn = postgres.StringColumn("profile_id")
 		CompanyIDColumn = postgres.StringColumn("company_id")
 		ViewedAtColumn  = postgres.TimestampzColumn("viewed_at")
-		allColumns      = postgres.ColumnList{IDColumn, ProfileIDColumn, CompanyIDColumn, ViewedAtColumn}
-		mutableColumns  = postgres.ColumnList{ProfileIDColumn, CompanyIDColumn, ViewedAtColumn}
+		ViewerIDColumn  = postgres.StringColumn("viewer_id")
+		allColumns      = postgres.ColumnList{IDColumn, ProfileIDColumn, CompanyIDColumn, ViewedAtColumn, ViewerIDColumn}
+		mutableColumns  = postgres.ColumnList{ProfileIDColumn, CompanyIDColumn, ViewedAtColumn, ViewerIDColumn}
 		defaultColumns  = postgres.ColumnList{IDColumn, ViewedAtColumn}
 	)
 
@@ -79,6 +81,7 @@ func newProfileViewsTableImpl(schemaName, tableName, alias string) profileViewsT
 		ProfileID: ProfileIDColumn,
 		CompanyID: CompanyIDColumn,
 		ViewedAt:  ViewedAtColumn,
+		ViewerID:  ViewerIDColumn,
 
 		AllColumns:     allColumns,
 		MutableColumns: mutableColumns,

@@ -23,6 +23,8 @@ services:
     depends_on:
       db:
         condition: service_healthy
+      markitdown:
+        condition: service_healthy
     environment:
       DATABASE_URL: postgres://postgres:postgres@db:5432/skillpass
       JWT_SECRET: skillpass-dev-secret
@@ -30,8 +32,24 @@ services:
       PORT: 1234
       APP_URL: http://localhost:4200
       UPLOAD_DIR: /app/uploads
+      MARKITDOWN_URL: http://markitdown:8000
     volumes:
       - uploads:/app/uploads
+
+  markitdown:
+    build:
+      context: ./markitdown-service
+    expose:
+      - "8000"
+    environment:
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
+      LLM_MODEL: ${LLM_MODEL:-gpt-4o-mini}
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
 
   web:
     build:

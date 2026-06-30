@@ -2,7 +2,9 @@ package resume
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
+	"strings"
 
 	"skillpass-server-go/internal/lib"
 )
@@ -35,6 +37,7 @@ type ParsedResume struct {
 	About             string             `json:"about"`
 	YearsOfExperience int                `json:"yearsOfExperience"`
 	Experiences       []ParsedExperience `json:"experiences,omitempty"`
+	RawMarkdown       string             `json:"rawMarkdown,omitempty"`
 }
 
 func (s *Service) Parse(ctx context.Context, resumeText string) (*ParsedResume, error) {
@@ -59,14 +62,36 @@ Rules:
 
 	userPrompt := fmt.Sprintf("Parse this resume:\n\n%s", resumeText)
 
-	var result ParsedResume
-	if err := s.llm.Chat(ctx, systemPrompt, userPrompt, &result); err != nil {
+	var raw string
+	if err := s.llm.Chat(ctx, systemPrompt, userPrompt, &raw); err != nil {
 		return nil, fmt.Errorf("llm resume parse: %w", err)
 	}
+	// var result ParsedResume
+	// if err := s.llm.Chat(ctx, systemPrompt, userPrompt, &result); err != nil {
+	// 	return nil, fmt.Errorf("llm resume parse: %w", err)
+	// }
 
+	// Clean the output
+	clean := extractJSON(raw)
+
+	var result ParsedResume
+	if err := json.Unmarshal([]byte(clean), &result); err != nil {
+		return nil, fmt.Errorf("resume parse failed: %w", err)
+	}
 	// Defensive: ensure non-nil slice for stable JSON output.
 	if result.Experiences == nil {
 		result.Experiences = []ParsedExperience{}
 	}
 	return &result, nil
+}
+
+// Helper to strip fences and trailing junk
+func extractJSON(raw string) string {
+	raw = strings.TrimSpace(raw)
+	start := strings.Index(raw, "{")
+	end := strings.LastIndex(raw, "}")
+	if start >= 0 && end > start {
+		return raw[start : end+1]
+	}
+	return raw
 }

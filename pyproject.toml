@@ -1,0 +1,9 @@
+[project]
+name = "skillpass"
+version = "0.1.0"
+description = "Skillpass feature for convert pdf into markdown"
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+    "uvicorn>=0.49.0",
+]

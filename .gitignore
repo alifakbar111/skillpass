@@ -26,3 +26,7 @@ web/src/**/*.js.map
 # Local file uploads (avatars) in dev
 server-go/uploads/
 uploads/
+
+# MarkItDown exports (generated markdown files)
+markitdown-service/export-pdf/*
+!markitdown-service/export-pdf/.gitkeep

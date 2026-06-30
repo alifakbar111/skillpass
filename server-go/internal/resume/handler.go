@@ -1,8 +1,11 @@
 package resume
 
 import (
+	"bytes"
+	"encoding/json"
 	"io"
 	"log/slog"
+	"mime/multipart"
 	"net/http"
 	"strings"
 
@@ -10,11 +13,14 @@ import (
 )
 
 type Handler struct {
-	service *Service
+	service       *Service
+	markItDownURL string // e.g. "http://markitdown:8000" — empty disables the remote converter
 }
 
-func NewHandler(service *Service) *Handler {
-	return &Handler{service: service}
+func NewHandler(service *Service, markItDownURL string) *Handler {
+	url := strings.TrimRight(markItDownURL, "/")
+	slog.Info("resume handler initialized", "markitdown_url", url)
+	return &Handler{service: service, markItDownURL: url}
 }
 
 // ParseResume	godoc
@@ -86,7 +92,28 @@ func (h *Handler) UploadResume(c *gin.Context) {
 		return
 	}
 
-	text, err := extractPDFText(f, fileHeader.Size)
+	// Try the MarkItDown microservice first (rich Markdown output);
+	// fall back to the basic Go PDF extractor if the service is unavailable.
+	var text string
+	if h.markItDownURL != "" {
+		text, err = h.convertWithMarkItDown(f, fileHeader)
+		if err != nil {
+			slog.Warn("markitdown conversion failed, falling back to local extractor",
+				"error", err, "markitdown_url", h.markItDownURL)
+			// Reset seek position for the fallback reader.
+			if _, seekErr := f.Seek(0, io.SeekStart); seekErr != nil {
+				c.JSON(http.StatusInternalServerError, gin.H{"error": "Could not process upload"})
+				return
+			}
+			text, err = extractPDFText(f, fileHeader.Size)
+		} else {
+			slog.Info("markitdown conversion succeeded", "chars", len(text))
+		}
+	} else {
+		slog.Warn("markitdown URL not configured, using local PDF extractor only")
+		text, err = extractPDFText(f, fileHeader.Size)
+	}
+
 	if err != nil {
 		slog.Warn("pdf text extraction failed", "error", err)
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Could not read text from this PDF"})
@@ -98,6 +125,62 @@ func (h *Handler) UploadResume(c *gin.Context) {
 	}
 
 	h.parseAndRespond(c, text)
+}
+
+// markItDownResponse is the JSON shape returned by the Python microservice.
+type markItDownResponse struct {
+	Markdown string `json:"markdown"`
+}
+
+// convertWithMarkItDown uploads the PDF to the MarkItDown microservice and
+// returns the Markdown text content.
+func (h *Handler) convertWithMarkItDown(r multipart.File, fh *multipart.FileHeader) (string, error) {
+	// Build a multipart request body.
+	var buf bytes.Buffer
+	writer := multipart.NewWriter(&buf)
+	part, err := writer.CreateFormFile("file", fh.Filename)
+	if err != nil {
+		return "", err
+	}
+	if _, err := io.Copy(part, r); err != nil {
+		return "", err
+	}
+	if err := writer.Close(); err != nil {
+		return "", err
+	}
+
+	url := h.markItDownURL + "/convert"
+	req, err := http.NewRequest(http.MethodPost, url, &buf)
+	if err != nil {
+		return "", err
+	}
+	req.Header.Set("Content-Type", writer.FormDataContentType())
+
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		return "", err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		body, _ := io.ReadAll(resp.Body)
+		return "", &markItDownError{status: resp.StatusCode, body: string(body)}
+	}
+
+	var result markItDownResponse
+	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
+		return "", err
+	}
+	return result.Markdown, nil
+}
+
+type markItDownError struct {
+	status int
+	body   string
+}
+
+func (e *markItDownError) Error() string {
+	return "markitdown service returned " + http.StatusText(e.status) + ": " + e.body
 }
 
 // parseAndRespond trims and bounds the resume text, runs the LLM parse, and
@@ -121,5 +204,71 @@ func (h *Handler) parseAndRespond(c *gin.Context, raw string) {
 		return
 	}
 
+	// Attach the raw Markdown so the frontend can offer a download.
+	result.RawMarkdown = raw
+
 	c.JSON(http.StatusOK, result)
+}
+
+// ConvertToMarkdown godoc
+// @Summary		Convert resume PDF to Markdown
+// @Description	Upload a PDF and get back the raw Markdown text (for debugging / inspection). Returns text/plain.
+// @Tags		profiles
+// @Accept		mpfd
+// @Produce		plain
+// @Security	BearerAuth
+// @Param		file formData file true "PDF resume"
+// @Success		200 {string} string "Markdown content"
+// @Failure		400 {object} map[string]string
+// @Failure		500 {object} map[string]string
+// @Router		/profiles/me/resume-markdown [post]
+func (h *Handler) ConvertToMarkdown(c *gin.Context) {
+	fileHeader, err := c.FormFile("file")
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "A 'file' upload field is required"})
+		return
+	}
+	if fileHeader.Size > maxResumePDFBytes {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "PDF too large (max 8MB)"})
+		return
+	}
+
+	f, err := fileHeader.Open()
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Could not read upload"})
+		return
+	}
+	defer f.Close()
+
+	head := make([]byte, 5)
+	if _, err := io.ReadFull(f, head); err != nil || string(head) != "%PDF-" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "File is not a PDF"})
+		return
+	}
+	if _, err := f.Seek(0, io.SeekStart); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Could not process upload"})
+		return
+	}
+
+	var text string
+	if h.markItDownURL != "" {
+		text, err = h.convertWithMarkItDown(f, fileHeader)
+		if err != nil {
+			slog.Warn("markitdown conversion failed, falling back to local extractor", "error", err)
+			if _, seekErr := f.Seek(0, io.SeekStart); seekErr != nil {
+				c.JSON(http.StatusInternalServerError, gin.H{"error": "Could not process upload"})
+				return
+			}
+			text, err = extractPDFText(f, fileHeader.Size)
+		}
+	} else {
+		text, err = extractPDFText(f, fileHeader.Size)
+	}
+
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Could not read text from this PDF"})
+		return
+	}
+
+	c.Data(http.StatusOK, "text/plain; charset=utf-8", []byte(text))
 }

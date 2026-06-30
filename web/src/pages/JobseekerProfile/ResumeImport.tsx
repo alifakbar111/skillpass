@@ -1,4 +1,4 @@
-import { Check, FileUp, Sparkles, Wand2 } from 'lucide-react';
+import { Check, Download, FileUp, Sparkles, Wand2 } from 'lucide-react';
 import { useRef, useState } from 'react';
 import { LoadingSpinner } from '@/components/ui/LoadingFallback';
 import { ApiError, api } from '@/lib/api';
@@ -78,6 +78,17 @@ export function ResumeImport({ onExperienceAdded, open, onToggle }: Props) {
     } finally {
       setSavingIdx(null);
     }
+  }
+
+  function downloadMarkdown() {
+    if (!parsed?.rawMarkdown) return;
+    const blob = new Blob([parsed.rawMarkdown], { type: 'text/markdown' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'resume.md';
+    a.click();
+    URL.revokeObjectURL(url);
   }
 
   async function addAll() {
@@ -168,11 +179,18 @@ export function ResumeImport({ onExperienceAdded, open, onToggle }: Props) {
                 <h3 className="font-medium text-sm">
                   Found {parsed.experiences.length} {parsed.experiences.length === 1 ? 'entry' : 'entries'}
                 </h3>
-                {parsed.experiences.length > 0 && (
-                  <button type="button" className="btn btn-outline btn-xs" onClick={addAll}>
-                    Add all
-                  </button>
-                )}
+                <div className="flex gap-1">
+                  {parsed.rawMarkdown && (
+                    <button type="button" className="btn btn-outline btn-xs gap-1" onClick={downloadMarkdown}>
+                      <Download size={12} /> Save .md
+                    </button>
+                  )}
+                  {parsed.experiences.length > 0 && (
+                    <button type="button" className="btn btn-outline btn-xs" onClick={addAll}>
+                      Add all
+                    </button>
+                  )}
+                </div>
               </div>
 
               <div className="space-y-2">

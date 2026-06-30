@@ -16,6 +16,8 @@ export interface ParsedResume {
   about: string;
   yearsOfExperience: number;
   experiences: ParsedExperience[];
+  /** Raw Markdown extracted from the PDF by MarkItDown (available on upload). */
+  rawMarkdown?: string;
 }
 
 export async function parseResume(text: string): Promise<ParsedResume> {

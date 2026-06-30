@@ -17,4 +17,5 @@ type ProfileViews struct {
 	ProfileID uuid.UUID
 	CompanyID uuid.UUID
 	ViewedAt  time.Time
+	ViewerID  uuid.UUID
 }

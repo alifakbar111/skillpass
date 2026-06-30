@@ -111,7 +111,7 @@ func main() {
 	evalHandler := evaluation.NewHandler(database, evalService)
 
 	resumeService := resume.NewService(llmClient)
-	resumeHandler := resume.NewHandler(resumeService)
+	resumeHandler := resume.NewHandler(resumeService, cfg.MarkItDownURL)
 
 	appService := application.NewService(database)
 	appHandler := application.NewHandler(appService)
@@ -176,6 +176,7 @@ func main() {
 	authGroup.DELETE("/me/experience/:id", profiles.DeleteExperience)
 	authGroup.POST("/me/resume-parse", resumeHandler.ParseResume)
 	authGroup.POST("/me/resume-upload", resumeHandler.UploadResume)
+	authGroup.POST("/me/resume-markdown", resumeHandler.ConvertToMarkdown)
 	authGroup.POST("/me/avatar", uploads.UploadAvatar)
 	authGroup.GET("/me/analytics", analyticsHandler.JobseekerAnalytics)
 
