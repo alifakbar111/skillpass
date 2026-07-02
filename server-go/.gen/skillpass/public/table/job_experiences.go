@@ -29,6 +29,7 @@ type jobExperiencesTable struct {
 	Industry     postgres.ColumnString
 	SkillsUsed   postgres.ColumnStringArray
 	URL          postgres.ColumnString
+	SortOrder    postgres.ColumnInteger
 
 	AllColumns     postgres.ColumnList
 	MutableColumns postgres.ColumnList
@@ -82,9 +83,10 @@ func newJobExperiencesTableImpl(schemaName, tableName, alias string) jobExperien
 		IndustryColumn     = postgres.StringColumn("industry")
 		SkillsUsedColumn   = postgres.StringArrayColumn("skills_used")
 		URLColumn          = postgres.StringColumn("url")
-		allColumns         = postgres.ColumnList{IDColumn, ProfileIDColumn, TypeColumn, TitleColumn, OrganizationColumn, StartDateColumn, EndDateColumn, IsCurrentColumn, DescriptionColumn, IndustryColumn, SkillsUsedColumn, URLColumn}
-		mutableColumns     = postgres.ColumnList{ProfileIDColumn, TypeColumn, TitleColumn, OrganizationColumn, StartDateColumn, EndDateColumn, IsCurrentColumn, DescriptionColumn, IndustryColumn, SkillsUsedColumn, URLColumn}
-		defaultColumns     = postgres.ColumnList{IDColumn, IsCurrentColumn}
+		SortOrderColumn    = postgres.IntegerColumn("sort_order")
+		allColumns         = postgres.ColumnList{IDColumn, ProfileIDColumn, TypeColumn, TitleColumn, OrganizationColumn, StartDateColumn, EndDateColumn, IsCurrentColumn, DescriptionColumn, IndustryColumn, SkillsUsedColumn, URLColumn, SortOrderColumn}
+		mutableColumns     = postgres.ColumnList{ProfileIDColumn, TypeColumn, TitleColumn, OrganizationColumn, StartDateColumn, EndDateColumn, IsCurrentColumn, DescriptionColumn, IndustryColumn, SkillsUsedColumn, URLColumn, SortOrderColumn}
+		defaultColumns     = postgres.ColumnList{IDColumn, IsCurrentColumn, SortOrderColumn}
 	)
 
 	return jobExperiencesTable{
@@ -103,6 +105,7 @@ func newJobExperiencesTableImpl(schemaName, tableName, alias string) jobExperien
 		Industry:     IndustryColumn,
 		SkillsUsed:   SkillsUsedColumn,
 		URL:          URLColumn,
+		SortOrder:    SortOrderColumn,
 
 		AllColumns:     allColumns,
 		MutableColumns: mutableColumns,

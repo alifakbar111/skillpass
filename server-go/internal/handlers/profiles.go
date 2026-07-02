@@ -51,6 +51,15 @@ type UpdateExperienceRequest struct {
 	URL          *string  `json:"url"`
 } //@name UpdateExperienceRequest
 
+type ReorderExperienceRequest struct {
+	Experiences []ReorderItem `json:"experiences" binding:"required,min=1,dive"`
+} //@name ReorderExperienceRequest
+
+type ReorderItem struct {
+	ID        string `json:"id" binding:"required"`
+	SortOrder int    `json:"sortOrder" binding:"required"`
+} //@name ReorderItem
+
 type Experience struct {
 	ID           string   `json:"id"`
 	ProfileID    string   `json:"profileId"`
@@ -241,7 +250,8 @@ func (h *ProfileHandler) GetMyProfile(c *gin.Context) {
 	).WHERE(
 		gen.JobExperiences.ProfileID.EQ(UUID(profile.ID)),
 	).ORDER_BY(
-		gen.JobExperiences.StartDate.ASC(),
+		gen.JobExperiences.SortOrder.ASC(),
+		gen.JobExperiences.StartDate.DESC(),
 	)
 
 	var exps []model.JobExperiences
@@ -384,6 +394,92 @@ func isValidExperienceURL(raw *string) bool {
 	return u.Scheme == "http" || u.Scheme == "https"
 }
 
+// ReorderExperience	godoc
+// @Summary		Reorder experiences
+// @Description	Update sort_order for multiple experiences at once
+// @Tags		profiles
+// @Accept		json
+// @Produce		json
+// @Security	BearerAuth
+// @Param		body body ReorderExperienceRequest true "Experience IDs with new sort orders"
+// @Success		200 {object} MessageResponse
+// @Failure		400 {object} map[string]string
+// @Failure		401 {object} map[string]string
+// @Router		/profiles/me/experience/reorder [put]
+func (h *ProfileHandler) ReorderExperience(c *gin.Context) {
+	userIDVal, ok := c.Get("userId")
+	if !ok {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "Unauthorized"})
+		return
+	}
+	userIDStr, ok := userIDVal.(string)
+	if !ok || userIDStr == "" {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "Unauthorized"})
+		return
+	}
+
+	userUUID, err := lib.ParseUUID(userIDStr)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid user ID"})
+		return
+	}
+
+	var req ReorderExperienceRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request body"})
+		return
+	}
+
+	profileStmt := SELECT(gen.JobseekerProfiles.ID).FROM(gen.JobseekerProfiles).
+		WHERE(gen.JobseekerProfiles.UserID.EQ(UUID(userUUID)))
+	var profiles []model.JobseekerProfiles
+	err = profileStmt.QueryContext(c.Request.Context(), h.db, &profiles)
+	if err != nil || len(profiles) == 0 {
+		c.JSON(http.StatusNotFound, gin.H{"error": "Profile not found"})
+		return
+	}
+	profileID := profiles[0].ID
+
+	tx, err := h.db.BeginTx(c.Request.Context(), nil)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to start transaction"})
+		return
+	}
+	defer tx.Rollback()
+
+	for _, item := range req.Experiences {
+		expUUID, err := lib.ParseUUID(item.ID)
+		if err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": fmt.Sprintf("Invalid experience ID: %s", item.ID)})
+			return
+		}
+		updateStmt := gen.JobExperiences.UPDATE().
+			SET(gen.JobExperiences.SortOrder.SET(Int64(int64(item.SortOrder)))).
+			WHERE(
+				gen.JobExperiences.ID.EQ(UUID(expUUID)).AND(
+					gen.JobExperiences.ProfileID.EQ(UUID(profileID)),
+				),
+			)
+		result, err := updateStmt.ExecContext(c.Request.Context(), tx)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to update experience order"})
+			return
+		}
+		ra, _ := result.RowsAffected()
+		if ra == 0 {
+			c.JSON(http.StatusNotFound, gin.H{"error": fmt.Sprintf("Experience %s not found", item.ID)})
+			return
+		}
+	}
+
+	if err := tx.Commit(); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to commit reorder"})
+		return
+	}
+
+	c.JSON(http.StatusOK, MessageResponse{Message: "Reordered"})
+}
+
 // CreateExperience	godoc
 // @Summary		Add experience entry
 // @Description	Add a new employment, gig, education, certification, project, or volunteering entry to the profile
@@ -479,6 +575,16 @@ func (h *ProfileHandler) CreateExperience(c *gin.Context) {
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to create experience"})
 		return
+	}
+
+	// Upsert skills into skills table for autocomplete (best-effort, non-blocking)
+	for _, skill := range req.SkillsUsed {
+		if skill == "" {
+			continue
+		}
+		upsertStmt := gen.Skills.INSERT(gen.Skills.Name).VALUES(skill).
+			ON_CONFLICT(gen.Skills.Name).DO_NOTHING()
+		_, _ = upsertStmt.ExecContext(c.Request.Context(), h.db)
 	}
 
 	c.JSON(http.StatusCreated, mapExperience(exp))
@@ -625,6 +731,18 @@ func (h *ProfileHandler) UpdateExperience(c *gin.Context) {
 	if len(exps) == 0 {
 		c.JSON(http.StatusNotFound, gin.H{"error": "Experience not found"})
 		return
+	}
+
+	// Upsert skills into skills table for autocomplete
+	if req.SkillsUsed != nil {
+		for _, skill := range req.SkillsUsed {
+			if skill == "" {
+				continue
+			}
+			upsertStmt := gen.Skills.INSERT(gen.Skills.Name).VALUES(skill).
+				ON_CONFLICT(gen.Skills.Name).DO_NOTHING()
+			_, _ = upsertStmt.ExecContext(c.Request.Context(), h.db)
+		}
 	}
 
 	c.JSON(http.StatusOK, mapExperience(exps[0]))

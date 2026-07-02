@@ -1,4 +1,4 @@
-import { useMutation, useQuery } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Briefcase, Calendar, CheckCircle, DollarSign, MapPin, Send } from 'lucide-react';
 import { Link, useParams } from 'react-router-dom';
 import { LoadingFallback } from '@/components/ui/LoadingFallback';
@@ -10,6 +10,7 @@ import { SkillsGapPanel } from '@/pages/JobDetail/SkillsGapPanel';
 
 export function JobDetail() {
   const { id } = useParams();
+  const queryClient = useQueryClient();
   const { user } = useAuth();
 
   const {
@@ -24,6 +25,10 @@ export function JobDetail() {
 
   const applyMutation = useMutation({
     mutationFn: () => applyToJob(id as string),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['jobseeker', 'analytics'] });
+      queryClient.invalidateQueries({ queryKey: ['applications', 'me'] });
+    },
     onError: (err) => {
       if (err instanceof ApiError && err.status === 409) {
         // Handled as 'duplicate' via error path
@@ -60,9 +65,23 @@ export function JobDetail() {
           </span>
         </div>
 
-        {job.experienceLevel && <span className="badge mb-4">{job.experienceLevel}</span>}
+        {job.yearsExperienceMin != null ? (
+          <span className="badge badge-outline mb-4">
+            {job.yearsExperienceMin}
+            {job.yearsExperienceMax != null ? ` - ${job.yearsExperienceMax}` : '+'} years experience
+          </span>
+        ) : (
+          job.experienceLevel && <span className="badge mb-4">{job.experienceLevel}</span>
+        )}
 
         <p className="mb-4 whitespace-pre-wrap">{job.description}</p>
+
+        {job.requirements && (
+          <div className="mb-4">
+            <h3 className="font-semibold mb-2">Requirements</h3>
+            <p className="whitespace-pre-wrap">{job.requirements}</p>
+          </div>
+        )}
 
         {job.requiredSkills && job.requiredSkills.length > 0 && (
           <div className="mb-4">

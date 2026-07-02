@@ -42,41 +42,53 @@ var jobStatusMap = map[string]StringExpression{
 }
 
 type JobResponse struct {
-	ID              string    `json:"id"`
-	CompanyID       string    `json:"companyId"`
-	Title           string    `json:"title"`
-	Description     string    `json:"description"`
-	Industry        string    `json:"industry"`
-	Tags            []string  `json:"tags,omitempty"`
-	RequiredSkills  []string  `json:"requiredSkills,omitempty"`
-	ExperienceLevel *string   `json:"experienceLevel,omitempty"`
-	Location        *string   `json:"location,omitempty"`
-	SalaryRange     *string   `json:"salaryRange,omitempty"`
-	Status          string    `json:"status"`
-	CreatedAt       time.Time `json:"createdAt"`
+	ID                string    `json:"id"`
+	CompanyID         string    `json:"companyId"`
+	Title             string    `json:"title"`
+	Description       string    `json:"description"`
+	Industry          string    `json:"industry"`
+	Tags              []string  `json:"tags,omitempty"`
+	RequiredSkills    []string  `json:"requiredSkills,omitempty"`
+	ExperienceLevel   *string   `json:"experienceLevel,omitempty"`
+	Location          *string   `json:"location,omitempty"`
+	SalaryRange       *string   `json:"salaryRange,omitempty"`
+	Requirements      *string   `json:"requirements,omitempty"`
+	YearsExperienceMin *int     `json:"yearsExperienceMin,omitempty"`
+	YearsExperienceMax *int     `json:"yearsExperienceMax,omitempty"`
+	Status              string    `json:"status"`
+	IsFreshGradFriendly bool      `json:"isFreshGradFriendly"`
+	CreatedAt           time.Time `json:"createdAt"`
 } //@name JobResponse
 
 type CreateJobRequest struct {
-	Title           string   `json:"title" binding:"required"`
-	Description     string   `json:"description" binding:"required"`
-	Industry        string   `json:"industry" binding:"required"`
-	Tags            []string `json:"tags,omitempty"`
-	RequiredSkills  []string `json:"requiredSkills,omitempty"`
-	ExperienceLevel *string  `json:"experienceLevel,omitempty" binding:"omitempty,oneof=entry mid senior lead"`
-	Location        *string  `json:"location,omitempty"`
-	SalaryRange     *string  `json:"salaryRange,omitempty"`
+	Title              string   `json:"title" binding:"required"`
+	Description        string   `json:"description" binding:"required"`
+	Industry           string   `json:"industry" binding:"required"`
+	Tags               []string `json:"tags,omitempty"`
+	RequiredSkills     []string `json:"requiredSkills,omitempty"`
+	ExperienceLevel    *string  `json:"experienceLevel,omitempty" binding:"omitempty,oneof=entry mid senior lead"`
+	Location           *string  `json:"location,omitempty"`
+	SalaryRange        *string  `json:"salaryRange,omitempty"`
+	Requirements       *string  `json:"requirements,omitempty"`
+	YearsExperienceMin   *int  `json:"yearsExperienceMin,omitempty"`
+	YearsExperienceMax   *int  `json:"yearsExperienceMax,omitempty"`
+	IsFreshGradFriendly  bool  `json:"isFreshGradFriendly"`
 } //@name CreateJobRequest
 
 type UpdateJobRequest struct {
-	Title           *string  `json:"title" binding:"omitempty,min=1"`
-	Description     *string  `json:"description" binding:"omitempty,min=1"`
-	Industry        *string  `json:"industry" binding:"omitempty,min=1"`
-	Tags            []string `json:"tags"`
-	RequiredSkills  []string `json:"requiredSkills"`
-	ExperienceLevel *string  `json:"experienceLevel" binding:"omitempty,oneof=entry mid senior lead"`
-	Location        *string  `json:"location"`
-	SalaryRange     *string  `json:"salaryRange"`
-	Status          *string  `json:"status" binding:"omitempty,oneof=open closed"`
+	Title              *string  `json:"title" binding:"omitempty,min=1"`
+	Description        *string  `json:"description" binding:"omitempty,min=1"`
+	Industry           *string  `json:"industry" binding:"omitempty,min=1"`
+	Tags               []string `json:"tags"`
+	RequiredSkills     []string `json:"requiredSkills"`
+	ExperienceLevel    *string  `json:"experienceLevel" binding:"omitempty,oneof=entry mid senior lead"`
+	Location           *string  `json:"location"`
+	SalaryRange        *string  `json:"salaryRange"`
+	Requirements       *string  `json:"requirements"`
+	YearsExperienceMin   *int    `json:"yearsExperienceMin"`
+	YearsExperienceMax   *int    `json:"yearsExperienceMax"`
+	IsFreshGradFriendly  *bool   `json:"isFreshGradFriendly"`
+	Status               *string `json:"status" binding:"omitempty,oneof=open closed"`
 } //@name UpdateJobRequest
 
 type JobHandler struct {
@@ -101,19 +113,33 @@ func jobFromModel(j model.JobPostings) JobResponse {
 		v := string(*j.ExperienceLevel)
 		expLevel = &v
 	}
+	var yearsExpMin *int
+	if j.YearsExperienceMin != nil {
+		v := int(*j.YearsExperienceMin)
+		yearsExpMin = &v
+	}
+	var yearsExpMax *int
+	if j.YearsExperienceMax != nil {
+		v := int(*j.YearsExperienceMax)
+		yearsExpMax = &v
+	}
 	return JobResponse{
-		ID:              j.ID.String(),
-		CompanyID:       j.CompanyID.String(),
-		Title:           j.Title,
-		Description:     j.Description,
-		Industry:        j.Industry,
-		Tags:            tags,
-		RequiredSkills:  requiredSkills,
-		ExperienceLevel: expLevel,
-		Location:        j.Location,
-		SalaryRange:     j.SalaryRange,
-		Status:          string(j.Status),
-		CreatedAt:       j.CreatedAt,
+		ID:                  j.ID.String(),
+		CompanyID:           j.CompanyID.String(),
+		Title:               j.Title,
+		Description:         j.Description,
+		Industry:            j.Industry,
+		Tags:                tags,
+		RequiredSkills:      requiredSkills,
+		ExperienceLevel:     expLevel,
+		Location:            j.Location,
+		SalaryRange:         j.SalaryRange,
+		Requirements:        j.Requirements,
+		YearsExperienceMin:  yearsExpMin,
+		YearsExperienceMax:  yearsExpMax,
+		IsFreshGradFriendly: bool(j.IsFreshGradFriendly),
+		Status:              string(j.Status),
+		CreatedAt:           j.CreatedAt,
 	}
 }
 
@@ -308,10 +334,18 @@ func (h *JobHandler) CreateJob(c *gin.Context) {
 		gen.JobPostings.CompanyID, gen.JobPostings.Title, gen.JobPostings.Description,
 		gen.JobPostings.Industry, gen.JobPostings.Tags, gen.JobPostings.RequiredSkills,
 		gen.JobPostings.ExperienceLevel, gen.JobPostings.Location, gen.JobPostings.SalaryRange,
+		gen.JobPostings.Requirements,
+		gen.JobPostings.YearsExperienceMin,
+		gen.JobPostings.YearsExperienceMax,
+		gen.JobPostings.IsFreshGradFriendly,
 	).VALUES(
 		companyIDStr, req.Title, req.Description, req.Industry,
 		StringArray(req.Tags...), StringArray(req.RequiredSkills...),
 		req.ExperienceLevel, req.Location, req.SalaryRange,
+		req.Requirements,
+		req.YearsExperienceMin,
+		req.YearsExperienceMax,
+		req.IsFreshGradFriendly,
 	).RETURNING(
 		gen.JobPostings.AllColumns,
 	)
@@ -397,6 +431,18 @@ func (h *JobHandler) UpdateJob(c *gin.Context) {
 	}
 	if req.SalaryRange != nil {
 		setVals = append(setVals, gen.JobPostings.SalaryRange.SET(String(*req.SalaryRange)))
+	}
+	if req.Requirements != nil {
+		setVals = append(setVals, gen.JobPostings.Requirements.SET(String(*req.Requirements)))
+	}
+	if req.YearsExperienceMin != nil {
+		setVals = append(setVals, gen.JobPostings.YearsExperienceMin.SET(Int64(int64(*req.YearsExperienceMin))))
+	}
+	if req.YearsExperienceMax != nil {
+		setVals = append(setVals, gen.JobPostings.YearsExperienceMax.SET(Int64(int64(*req.YearsExperienceMax))))
+	}
+	if req.IsFreshGradFriendly != nil {
+		setVals = append(setVals, gen.JobPostings.IsFreshGradFriendly.SET(Bool(*req.IsFreshGradFriendly)))
 	}
 	if req.Status != nil {
 		if expr, ok := jobStatusMap[*req.Status]; ok {

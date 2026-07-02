@@ -149,6 +149,9 @@ func main() {
 	api.GET("/industries", ref.GetIndustries)
 	api.GET("/tags", ref.GetTags)
 
+	skillsHandler := handlers.NewSkillsHandler(database)
+	api.GET("/skills", skillsHandler.SearchSkills)
+
 	api.GET("/jobs", jobs.ListJobs)
 	api.GET("/jobs/:id", jobs.GetJob)
 
@@ -172,6 +175,7 @@ func main() {
 	authGroup.GET("/me", profiles.GetMyProfile)
 	authGroup.PUT("/me", profiles.UpdateMyProfile)
 	authGroup.POST("/me/experience", profiles.CreateExperience)
+	authGroup.PUT("/me/experience/reorder", profiles.ReorderExperience)
 	authGroup.PUT("/me/experience/:id", profiles.UpdateExperience)
 	authGroup.DELETE("/me/experience/:id", profiles.DeleteExperience)
 	authGroup.POST("/me/resume-parse", resumeHandler.ParseResume)

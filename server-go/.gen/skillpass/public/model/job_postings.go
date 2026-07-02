@@ -14,16 +14,20 @@ import (
 )
 
 type JobPostings struct {
-	ID              uuid.UUID `sql:"primary_key"`
-	CompanyID       uuid.UUID
-	Title           string
-	Description     string
-	Industry        string
-	Tags            *pq.StringArray
-	RequiredSkills  *pq.StringArray
-	ExperienceLevel *ExperienceLevel
-	Location        *string
-	SalaryRange     *string
-	Status          JobStatus
-	CreatedAt       time.Time
+	ID                  uuid.UUID `sql:"primary_key"`
+	CompanyID           uuid.UUID
+	Title               string
+	Description         string
+	Industry            string
+	Tags                *pq.StringArray
+	RequiredSkills      *pq.StringArray
+	ExperienceLevel     *ExperienceLevel
+	Location            *string
+	SalaryRange         *string
+	Status              JobStatus
+	CreatedAt           time.Time
+	Requirements        *string
+	YearsExperienceMin  *int32
+	YearsExperienceMax  *int32
+	IsFreshGradFriendly bool
 }

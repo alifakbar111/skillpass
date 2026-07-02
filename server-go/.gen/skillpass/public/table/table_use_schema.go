@@ -55,6 +55,7 @@ func UseSchema(schema string) {
 	SalaryComponents = SalaryComponents.FromSchema(schema)
 	SchemaMigrations = SchemaMigrations.FromSchema(schema)
 	ShiftTemplates = ShiftTemplates.FromSchema(schema)
+	Skills = Skills.FromSchema(schema)
 	SpDidRecords = SpDidRecords.FromSchema(schema)
 	Tags = Tags.FromSchema(schema)
 	Users = Users.FromSchema(schema)

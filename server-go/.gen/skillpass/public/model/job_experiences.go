@@ -25,4 +25,5 @@ type JobExperiences struct {
 	Industry     *string
 	SkillsUsed   *pq.StringArray
 	URL          *string
+	SortOrder    int32
 }

@@ -7,12 +7,12 @@ import { z } from 'zod';
 import { JobMatches } from '@/components/company/JobMatches';
 import { Form } from '@/components/ui/Form';
 import { FormInput } from '@/components/ui/FormInput';
+import { FormNumberInput } from '@/components/ui/FormNumberInput';
 import { FormSelect } from '@/components/ui/FormSelect';
 import { FormTextarea } from '@/components/ui/FormTextarea';
 import { LoadingSpinner } from '@/components/ui/LoadingFallback';
 import { useIndustries } from '@/hooks/useIndustries';
 import { ApiError, api, apiWithSchema } from '@/lib/api';
-import { EXPERIENCE_LEVEL_OPTIONS } from '@/lib/constants';
 import { type JobForm, jobSchema } from '@/lib/schemas';
 import { type Job, JobSchema } from '@/lib/schemas/job';
 
@@ -29,7 +29,14 @@ function parseFormData(data: JobForm) {
         .map((s) => s.trim())
         .filter(Boolean)
     : [];
-  return { ...data, tags, requiredSkills };
+  return {
+    ...data,
+    tags,
+    requiredSkills,
+    yearsExperienceMin: data.yearsExperienceMin ?? undefined,
+    yearsExperienceMax: data.yearsExperienceMax ?? undefined,
+    isFreshGradFriendly: data.isFreshGradFriendly ?? false,
+  };
 }
 
 export function CompanyJobs() {
@@ -50,10 +57,14 @@ export function CompanyJobs() {
     defaultValues: {
       title: '',
       description: '',
+      requirements: '',
       industry: 'Technology',
       tags: '',
       requiredSkills: '',
       experienceLevel: 'mid',
+      yearsExperienceMin: undefined,
+      yearsExperienceMax: undefined,
+      isFreshGradFriendly: false,
       location: '',
       salaryRange: '',
     },
@@ -115,10 +126,14 @@ export function CompanyJobs() {
     methods.reset({
       title: '',
       description: '',
+      requirements: '',
       industry: 'Technology',
       tags: '',
       requiredSkills: '',
       experienceLevel: 'mid',
+      yearsExperienceMin: undefined,
+      yearsExperienceMax: undefined,
+      isFreshGradFriendly: false,
       location: '',
       salaryRange: '',
     });
@@ -130,10 +145,14 @@ export function CompanyJobs() {
     methods.reset({
       title: job.title,
       description: job.description,
+      requirements: job.requirements ?? '',
       industry: job.industry,
       tags: job.tags?.join(', ') ?? '',
       requiredSkills: job.requiredSkills?.join(', ') ?? '',
       experienceLevel: (job.experienceLevel as 'entry' | 'mid' | 'senior' | 'lead') ?? 'mid',
+      yearsExperienceMin: job.yearsExperienceMin ?? undefined,
+      yearsExperienceMax: job.yearsExperienceMax ?? undefined,
+      isFreshGradFriendly: job.isFreshGradFriendly ?? false,
       location: job.location ?? '',
       salaryRange: job.salaryRange ?? '',
     });
@@ -180,6 +199,12 @@ export function CompanyJobs() {
           <h2 className="font-semibold text-lg">{editingJobId ? 'Edit Job' : 'New Job'}</h2>
           <FormInput label="Job Title" name="title" placeholder="Job Title" />
           <FormTextarea label="Job Description" name="description" placeholder="Job Description" rows={4} />
+          <FormTextarea
+            label="Job Requirements"
+            name="requirements"
+            placeholder="e.g. 5+ years of React, Bachelor's degree in CS"
+            rows={3}
+          />
           <FormSelect
             label="Industry"
             name="industry"
@@ -187,7 +212,18 @@ export function CompanyJobs() {
               .filter((ind): ind is typeof ind & { name: string } => ind.name != null)
               .map((ind) => ({ value: ind.name, label: ind.name }))}
           />
-          <FormSelect label="Experience Level" name="experienceLevel" options={EXPERIENCE_LEVEL_OPTIONS} />
+          <div className="grid grid-cols-2 gap-2">
+            <FormNumberInput label="Min Years Experience" name="yearsExperienceMin" min={0} max={50} placeholder="0" />
+            <FormNumberInput label="Max Years Experience" name="yearsExperienceMax" min={0} max={50} placeholder="10" />
+          </div>
+          <label className="label cursor-pointer justify-start gap-2">
+            <input
+              type="checkbox"
+              className="checkbox checkbox-primary"
+              {...methods.register('isFreshGradFriendly', { setValueAs: (v) => !!v })}
+            />
+            <span className="label-text">Fresh Graduate Friendly</span>
+          </label>
           <FormInput label="Tags (comma-separated)" name="tags" placeholder="e.g. remote, full-time" />
           <FormInput
             label="Required Skills (comma-separated)"
@@ -219,11 +255,27 @@ export function CompanyJobs() {
                   {job.industry} {job.location ? `· ${job.location}` : ''}
                 </p>
                 <div className="flex gap-2 mt-1">
-                  <span className="badge badge-sm">{job.experienceLevel}</span>
+                  {job.yearsExperienceMin != null ? (
+                    <span className="badge badge-sm badge-outline">
+                      {job.yearsExperienceMin}
+                      {job.yearsExperienceMax != null ? `-${job.yearsExperienceMax}` : '+'} yrs
+                    </span>
+                  ) : (
+                    <span className="badge badge-sm">{job.experienceLevel}</span>
+                  )}
+                  {job.isFreshGradFriendly && <span className="badge badge-sm badge-primary">Fresh Grad OK</span>}
                   <span className={`badge badge-sm ${job.status === 'open' ? 'badge-success' : 'badge-ghost'}`}>
                     {job.status}
                   </span>
                 </div>
+                {job.requirements && (
+                  <details className="collapse collapse-arrow mt-2">
+                    <summary className="collapse-title text-sm font-medium p-0 min-h-0">Requirements</summary>
+                    <div className="collapse-content p-0 pt-1">
+                      <p className="text-sm whitespace-pre-wrap">{job.requirements}</p>
+                    </div>
+                  </details>
+                )}
               </div>
               <div className="flex gap-1">
                 <button

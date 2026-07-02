@@ -8,7 +8,7 @@ interface FormInputProps extends Omit<React.InputHTMLAttributes<HTMLInputElement
   error?: FieldError;
   name?: string;
   // Text-style inputs only; use FormNumberInput for numeric fields.
-  type?: 'text' | 'email' | 'password' | 'url' | 'tel' | 'search' | 'date';
+  type?: 'text' | 'email' | 'password' | 'url' | 'tel' | 'search' | 'date' | 'month';
 }
 
 export function FormInput({ label, registration, error, name, ...rest }: FormInputProps) {

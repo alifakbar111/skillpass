@@ -3237,6 +3237,69 @@
                 ]
             }
         },
+        "/profiles/me/experience/reorder": {
+            "put": {
+                "description": "Update sort_order for multiple experiences at once",
+                "tags": [
+                    "profiles"
+                ],
+                "summary": "Reorder experiences",
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/ReorderExperienceRequest"
+                            }
+                        }
+                    },
+                    "description": "Experience IDs with new sort orders",
+                    "required": true
+                },
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/MessageResponse"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "additionalProperties": {
+                                        "type": "string"
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "additionalProperties": {
+                                        "type": "string"
+                                    }
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ]
+            }
+        },
         "/profiles/me/experience/{id}": {
             "put": {
                 "description": "Update specific fields of an experience entry owned by the authenticated jobseeker",
@@ -3718,6 +3781,40 @@
                 ]
             }
         },
+        "/skills": {
+            "get": {
+                "description": "Autocomplete search for skills by name prefix",
+                "tags": [
+                    "skills"
+                ],
+                "summary": "Search skills",
+                "parameters": [
+                    {
+                        "description": "Search query (prefix match)",
+                        "name": "q",
+                        "in": "query",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "array",
+                                    "items": {
+                                        "$ref": "#/components/schemas/SkillResponse"
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/tags": {
             "get": {
                 "description": "Get skill tags, optionally filtered by industry category",
@@ -4074,6 +4171,9 @@
                     "industry": {
                         "type": "string"
                     },
+                    "isFreshGradFriendly": {
+                        "type": "boolean"
+                    },
                     "location": {
                         "type": "string"
                     },
@@ -4082,6 +4182,9 @@
                         "items": {
                             "type": "string"
                         }
+                    },
+                    "requirements": {
+                        "type": "string"
                     },
                     "salaryRange": {
                         "type": "string"
@@ -4094,6 +4197,12 @@
                     },
                     "title": {
                         "type": "string"
+                    },
+                    "yearsExperienceMax": {
+                        "type": "integer"
+                    },
+                    "yearsExperienceMin": {
+                        "type": "integer"
                     }
                 }
             },
@@ -4289,6 +4398,9 @@
                     "industry": {
                         "type": "string"
                     },
+                    "isFreshGradFriendly": {
+                        "type": "boolean"
+                    },
                     "location": {
                         "type": "string"
                     },
@@ -4297,6 +4409,9 @@
                         "items": {
                             "type": "string"
                         }
+                    },
+                    "requirements": {
+                        "type": "string"
                     },
                     "salaryRange": {
                         "type": "string"
@@ -4312,6 +4427,12 @@
                     },
                     "title": {
                         "type": "string"
+                    },
+                    "yearsExperienceMax": {
+                        "type": "integer"
+                    },
+                    "yearsExperienceMin": {
+                        "type": "integer"
                     }
                 }
             },
@@ -4527,6 +4648,36 @@
                     }
                 }
             },
+            "ReorderExperienceRequest": {
+                "type": "object",
+                "required": [
+                    "experiences"
+                ],
+                "properties": {
+                    "experiences": {
+                        "type": "array",
+                        "minItems": 1,
+                        "items": {
+                            "$ref": "#/components/schemas/ReorderItem"
+                        }
+                    }
+                }
+            },
+            "ReorderItem": {
+                "type": "object",
+                "required": [
+                    "id",
+                    "sortOrder"
+                ],
+                "properties": {
+                    "id": {
+                        "type": "string"
+                    },
+                    "sortOrder": {
+                        "type": "integer"
+                    }
+                }
+            },
             "SkillNote": {
                 "type": "object",
                 "properties": {
@@ -4537,6 +4688,17 @@
                         "type": "integer"
                     },
                     "skill": {
+                        "type": "string"
+                    }
+                }
+            },
+            "SkillResponse": {
+                "type": "object",
+                "properties": {
+                    "id": {
+                        "type": "string"
+                    },
+                    "name": {
                         "type": "string"
                     }
                 }
@@ -4683,6 +4845,9 @@
                         "type": "string",
                         "minLength": 1
                     },
+                    "isFreshGradFriendly": {
+                        "type": "boolean"
+                    },
                     "location": {
                         "type": "string"
                     },
@@ -4691,6 +4856,9 @@
                         "items": {
                             "type": "string"
                         }
+                    },
+                    "requirements": {
+                        "type": "string"
                     },
                     "salaryRange": {
                         "type": "string"
@@ -4711,6 +4879,12 @@
                     "title": {
                         "type": "string",
                         "minLength": 1
+                    },
+                    "yearsExperienceMax": {
+                        "type": "integer"
+                    },
+                    "yearsExperienceMin": {
+                        "type": "integer"
                     }
                 }
             },

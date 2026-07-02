@@ -17,18 +17,22 @@ type jobPostingsTable struct {
 	postgres.Table
 
 	// Columns
-	ID              postgres.ColumnString
-	CompanyID       postgres.ColumnString
-	Title           postgres.ColumnString
-	Description     postgres.ColumnString
-	Industry        postgres.ColumnString
-	Tags            postgres.ColumnStringArray
-	RequiredSkills  postgres.ColumnStringArray
-	ExperienceLevel postgres.ColumnString
-	Location        postgres.ColumnString
-	SalaryRange     postgres.ColumnString
-	Status          postgres.ColumnString
-	CreatedAt       postgres.ColumnTimestampz
+	ID                  postgres.ColumnString
+	CompanyID           postgres.ColumnString
+	Title               postgres.ColumnString
+	Description         postgres.ColumnString
+	Industry            postgres.ColumnString
+	Tags                postgres.ColumnStringArray
+	RequiredSkills      postgres.ColumnStringArray
+	ExperienceLevel     postgres.ColumnString
+	Location            postgres.ColumnString
+	SalaryRange         postgres.ColumnString
+	Status              postgres.ColumnString
+	CreatedAt           postgres.ColumnTimestampz
+	Requirements        postgres.ColumnString
+	YearsExperienceMin  postgres.ColumnInteger
+	YearsExperienceMax  postgres.ColumnInteger
+	IsFreshGradFriendly postgres.ColumnBool
 
 	AllColumns     postgres.ColumnList
 	MutableColumns postgres.ColumnList
@@ -70,39 +74,47 @@ func newJobPostingsTable(schemaName, tableName, alias string) *JobPostingsTable 
 
 func newJobPostingsTableImpl(schemaName, tableName, alias string) jobPostingsTable {
 	var (
-		IDColumn              = postgres.StringColumn("id")
-		CompanyIDColumn       = postgres.StringColumn("company_id")
-		TitleColumn           = postgres.StringColumn("title")
-		DescriptionColumn     = postgres.StringColumn("description")
-		IndustryColumn        = postgres.StringColumn("industry")
-		TagsColumn            = postgres.StringArrayColumn("tags")
-		RequiredSkillsColumn  = postgres.StringArrayColumn("required_skills")
-		ExperienceLevelColumn = postgres.StringColumn("experience_level")
-		LocationColumn        = postgres.StringColumn("location")
-		SalaryRangeColumn     = postgres.StringColumn("salary_range")
-		StatusColumn          = postgres.StringColumn("status")
-		CreatedAtColumn       = postgres.TimestampzColumn("created_at")
-		allColumns            = postgres.ColumnList{IDColumn, CompanyIDColumn, TitleColumn, DescriptionColumn, IndustryColumn, TagsColumn, RequiredSkillsColumn, ExperienceLevelColumn, LocationColumn, SalaryRangeColumn, StatusColumn, CreatedAtColumn}
-		mutableColumns        = postgres.ColumnList{CompanyIDColumn, TitleColumn, DescriptionColumn, IndustryColumn, TagsColumn, RequiredSkillsColumn, ExperienceLevelColumn, LocationColumn, SalaryRangeColumn, StatusColumn, CreatedAtColumn}
-		defaultColumns        = postgres.ColumnList{IDColumn, StatusColumn, CreatedAtColumn}
+		IDColumn                  = postgres.StringColumn("id")
+		CompanyIDColumn           = postgres.StringColumn("company_id")
+		TitleColumn               = postgres.StringColumn("title")
+		DescriptionColumn         = postgres.StringColumn("description")
+		IndustryColumn            = postgres.StringColumn("industry")
+		TagsColumn                = postgres.StringArrayColumn("tags")
+		RequiredSkillsColumn      = postgres.StringArrayColumn("required_skills")
+		ExperienceLevelColumn     = postgres.StringColumn("experience_level")
+		LocationColumn            = postgres.StringColumn("location")
+		SalaryRangeColumn         = postgres.StringColumn("salary_range")
+		StatusColumn              = postgres.StringColumn("status")
+		CreatedAtColumn           = postgres.TimestampzColumn("created_at")
+		RequirementsColumn        = postgres.StringColumn("requirements")
+		YearsExperienceMinColumn  = postgres.IntegerColumn("years_experience_min")
+		YearsExperienceMaxColumn  = postgres.IntegerColumn("years_experience_max")
+		IsFreshGradFriendlyColumn = postgres.BoolColumn("is_fresh_grad_friendly")
+		allColumns                = postgres.ColumnList{IDColumn, CompanyIDColumn, TitleColumn, DescriptionColumn, IndustryColumn, TagsColumn, RequiredSkillsColumn, ExperienceLevelColumn, LocationColumn, SalaryRangeColumn, StatusColumn, CreatedAtColumn, RequirementsColumn, YearsExperienceMinColumn, YearsExperienceMaxColumn, IsFreshGradFriendlyColumn}
+		mutableColumns            = postgres.ColumnList{CompanyIDColumn, TitleColumn, DescriptionColumn, IndustryColumn, TagsColumn, RequiredSkillsColumn, ExperienceLevelColumn, LocationColumn, SalaryRangeColumn, StatusColumn, CreatedAtColumn, RequirementsColumn, YearsExperienceMinColumn, YearsExperienceMaxColumn, IsFreshGradFriendlyColumn}
+		defaultColumns            = postgres.ColumnList{IDColumn, StatusColumn, CreatedAtColumn, IsFreshGradFriendlyColumn}
 	)
 
 	return jobPostingsTable{
 		Table: postgres.NewTable(schemaName, tableName, alias, allColumns...),
 
 		//Columns
-		ID:              IDColumn,
-		CompanyID:       CompanyIDColumn,
-		Title:           TitleColumn,
-		Description:     DescriptionColumn,
-		Industry:        IndustryColumn,
-		Tags:            TagsColumn,
-		RequiredSkills:  RequiredSkillsColumn,
-		ExperienceLevel: ExperienceLevelColumn,
-		Location:        LocationColumn,
-		SalaryRange:     SalaryRangeColumn,
-		Status:          StatusColumn,
-		CreatedAt:       CreatedAtColumn,
+		ID:                  IDColumn,
+		CompanyID:           CompanyIDColumn,
+		Title:               TitleColumn,
+		Description:         DescriptionColumn,
+		Industry:            IndustryColumn,
+		Tags:                TagsColumn,
+		RequiredSkills:      RequiredSkillsColumn,
+		ExperienceLevel:     ExperienceLevelColumn,
+		Location:            LocationColumn,
+		SalaryRange:         SalaryRangeColumn,
+		Status:              StatusColumn,
+		CreatedAt:           CreatedAtColumn,
+		Requirements:        RequirementsColumn,
+		YearsExperienceMin:  YearsExperienceMinColumn,
+		YearsExperienceMax:  YearsExperienceMaxColumn,
+		IsFreshGradFriendly: IsFreshGradFriendlyColumn,
 
 		AllColumns:     allColumns,
 		MutableColumns: mutableColumns,

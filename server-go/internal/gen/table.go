@@ -17,4 +17,5 @@ var (
 	AdminAuditLog      = table.AdminAuditLog
 	AiEvaluations      = table.AiEvaluations
 	Applications       = table.Applications
+	Skills             = table.Skills
 )

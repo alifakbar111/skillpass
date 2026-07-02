@@ -179,12 +179,16 @@ definitions:
         type: string
       industry:
         type: string
+      isFreshGradFriendly:
+        type: boolean
       location:
         type: string
       requiredSkills:
         items:
           type: string
         type: array
+      requirements:
+        type: string
       salaryRange:
         type: string
       tags:
@@ -193,6 +197,10 @@ definitions:
         type: array
       title:
         type: string
+      yearsExperienceMax:
+        type: integer
+      yearsExperienceMin:
+        type: integer
     required:
     - description
     - industry
@@ -324,12 +332,16 @@ definitions:
         type: string
       industry:
         type: string
+      isFreshGradFriendly:
+        type: boolean
       location:
         type: string
       requiredSkills:
         items:
           type: string
         type: array
+      requirements:
+        type: string
       salaryRange:
         type: string
       status:
@@ -340,6 +352,10 @@ definitions:
         type: array
       title:
         type: string
+      yearsExperienceMax:
+        type: integer
+      yearsExperienceMin:
+        type: integer
     type: object
   LoginRequest:
     properties:
@@ -482,6 +498,26 @@ definitions:
     - role
     - username
     type: object
+  ReorderExperienceRequest:
+    properties:
+      experiences:
+        items:
+          $ref: '#/definitions/ReorderItem'
+        minItems: 1
+        type: array
+    required:
+    - experiences
+    type: object
+  ReorderItem:
+    properties:
+      id:
+        type: string
+      sortOrder:
+        type: integer
+    required:
+    - id
+    - sortOrder
+    type: object
   SkillNote:
     properties:
       note:
@@ -489,6 +525,13 @@ definitions:
       score:
         type: integer
       skill:
+        type: string
+    type: object
+  SkillResponse:
+    properties:
+      id:
+        type: string
+      name:
         type: string
     type: object
   SkillScoreItem:
@@ -588,12 +631,16 @@ definitions:
       industry:
         minLength: 1
         type: string
+      isFreshGradFriendly:
+        type: boolean
       location:
         type: string
       requiredSkills:
         items:
           type: string
         type: array
+      requirements:
+        type: string
       salaryRange:
         type: string
       status:
@@ -608,6 +655,10 @@ definitions:
       title:
         minLength: 1
         type: string
+      yearsExperienceMax:
+        type: integer
+      yearsExperienceMin:
+        type: integer
     type: object
   UpdateProfileRequest:
     properties:
@@ -2901,6 +2952,42 @@ paths:
       summary: Update an experience entry
       tags:
       - profiles
+  /profiles/me/experience/reorder:
+    put:
+      consumes:
+      - application/json
+      description: Update sort_order for multiple experiences at once
+      parameters:
+      - description: Experience IDs with new sort orders
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/ReorderExperienceRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/MessageResponse'
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Reorder experiences
+      tags:
+      - profiles
   /profiles/me/resume-markdown:
     post:
       consumes:
@@ -3066,6 +3153,26 @@ paths:
       summary: Search candidates
       tags:
       - search
+  /skills:
+    get:
+      description: Autocomplete search for skills by name prefix
+      parameters:
+      - description: Search query (prefix match)
+        in: query
+        name: q
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/SkillResponse'
+            type: array
+      summary: Search skills
+      tags:
+      - skills
   /tags:
     get:
       description: Get skill tags, optionally filtered by industry category

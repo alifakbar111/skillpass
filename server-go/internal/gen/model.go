@@ -19,4 +19,5 @@ type (
 	AdminAudit        = model.AdminAuditLog
 	AiEvaluation      = model.AiEvaluations
 	Application       = model.Applications
+	Skill             = model.Skills
 )

@@ -1,8 +1,28 @@
 import { render, waitFor } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
-import { beforeEach, describe, expect, it } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { ProtectedRoute } from '@/components/ui/ProtectedRoute';
 import { AuthProvider } from '@/hooks/useAuth';
+import type { AuthUser } from '@/lib/api';
+
+const mockUser: AuthUser = {
+  id: 'user-1',
+  email: 'test@example.com',
+  username: 'testuser',
+  role: 'jobseeker' as const,
+  name: 'Test User',
+};
+
+vi.mock('@/lib/api', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/lib/api')>();
+  return {
+    ...actual,
+    api: vi.fn().mockImplementation((path: string) => {
+      if (path === '/auth/me') return Promise.resolve(mockUser);
+      return actual.api(path);
+    }),
+  };
+});
 
 function wrapper({ children }: { children: React.ReactNode }) {
   return (

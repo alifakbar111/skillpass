@@ -3374,6 +3374,72 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/profiles/me/experience/reorder": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /**
+         * Reorder experiences
+         * @description Update sort_order for multiple experiences at once
+         */
+        put: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            /** @description Experience IDs with new sort orders */
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["ReorderExperienceRequest"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["MessageResponse"];
+                    };
+                };
+                /** @description Bad Request */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            [key: string]: string;
+                        };
+                    };
+                };
+                /** @description Unauthorized */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            [key: string]: string;
+                        };
+                    };
+                };
+            };
+        };
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/profiles/me/experience/{id}": {
         parameters: {
             query?: never;
@@ -3828,6 +3894,48 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/skills": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Search skills
+         * @description Autocomplete search for skills by name prefix
+         */
+        get: {
+            parameters: {
+                query?: {
+                    /** @description Search query (prefix match) */
+                    q?: string;
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["SkillResponse"][];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/tags": {
         parameters: {
             query?: never;
@@ -3967,11 +4075,15 @@ export interface components {
             /** @enum {string} */
             experienceLevel?: "entry" | "mid" | "senior" | "lead";
             industry: string;
+            isFreshGradFriendly?: boolean;
             location?: string;
             requiredSkills?: string[];
+            requirements?: string;
             salaryRange?: string;
             tags?: string[];
             title: string;
+            yearsExperienceMax?: number;
+            yearsExperienceMin?: number;
         };
         DevelopmentStep: {
             action?: string;
@@ -4032,12 +4144,16 @@ export interface components {
             experienceLevel?: string;
             id?: string;
             industry?: string;
+            isFreshGradFriendly?: boolean;
             location?: string;
             requiredSkills?: string[];
+            requirements?: string;
             salaryRange?: string;
             status?: string;
             tags?: string[];
             title?: string;
+            yearsExperienceMax?: number;
+            yearsExperienceMin?: number;
         };
         LoginRequest: {
             email?: string;
@@ -4106,10 +4222,21 @@ export interface components {
             username: string;
             website?: string;
         };
+        ReorderExperienceRequest: {
+            experiences: components["schemas"]["ReorderItem"][];
+        };
+        ReorderItem: {
+            id: string;
+            sortOrder: number;
+        };
         SkillNote: {
             note?: string;
             score?: number;
             skill?: string;
+        };
+        SkillResponse: {
+            id?: string;
+            name?: string;
         };
         SkillScoreItem: {
             category?: string;
@@ -4156,13 +4283,17 @@ export interface components {
             /** @enum {string} */
             experienceLevel?: "entry" | "mid" | "senior" | "lead";
             industry?: string;
+            isFreshGradFriendly?: boolean;
             location?: string;
             requiredSkills?: string[];
+            requirements?: string;
             salaryRange?: string;
             /** @enum {string} */
             status?: "open" | "closed";
             tags?: string[];
             title?: string;
+            yearsExperienceMax?: number;
+            yearsExperienceMin?: number;
         };
         UpdateProfileRequest: {
             about?: string;

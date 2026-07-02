@@ -1,8 +1,12 @@
+import { closestCenter, DndContext, type DragEndEvent } from '@dnd-kit/core';
+import { SortableContext, useSortable, verticalListSortingStrategy } from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Plus, Trash2, X } from 'lucide-react';
+import { CheckCircle, GripVertical, Pencil, Plus, Trash2, X } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { useForm } from 'react-hook-form';
+import { AIEvaluationSection } from '@/components/jobseeker/AIEvaluationSection';
 import { AvatarUploader } from '@/components/jobseeker/AvatarUploader';
 import { JobseekerOnboarding } from '@/components/onboarding/JobseekerOnboarding';
 import { Form } from '@/components/ui/Form';
@@ -11,6 +15,7 @@ import { FormNumberInput } from '@/components/ui/FormNumberInput';
 import { FormSelect } from '@/components/ui/FormSelect';
 import { FormTextarea } from '@/components/ui/FormTextarea';
 import { LoadingFallback, LoadingSpinner } from '@/components/ui/LoadingFallback';
+import { SkillsAutocomplete } from '@/components/ui/SkillsAutocomplete';
 import { useAuth } from '@/hooks/useAuth';
 import { ApiError, api } from '@/lib/api';
 import type { Experience, Profile } from '@/lib/api-types';
@@ -86,6 +91,7 @@ export function JobseekerProfile() {
     onMutate: () => setError(null),
     onSuccess: () => {
       invalidateProfileViews();
+      profileForm.reset(profileForm.getValues());
     },
     onError: (err) => {
       setError(err instanceof ApiError ? (err.serverMessage ?? err.message) : 'Failed to save profile');
@@ -143,9 +149,97 @@ export function JobseekerProfile() {
     },
   });
 
+  const [editingId, setEditingId] = useState<string | null>(null);
+
+  const [sortedExperiences, setSortedExperiences] = useState<Experience[]>([]);
+
+  useEffect(() => {
+    if (profile?.experiences) {
+      setSortedExperiences(profile.experiences);
+    }
+  }, [profile?.experiences]);
+
+  const updateExperienceMutation = useMutation({
+    mutationFn: ({ id, data }: { id: string; data: ExperienceForm }) => {
+      const skills = data.skills
+        ? data.skills
+            .split(',')
+            .map((s) => s.trim())
+            .filter(Boolean)
+        : [];
+      return api<Experience>(`/profiles/me/experience/${encodeURIComponent(id)}`, {
+        method: 'PUT',
+        body: {
+          ...data,
+          skillsUsed: skills,
+          endDate: data.isCurrent ? undefined : data.endDate || undefined,
+          url: data.url || undefined,
+        },
+      });
+    },
+    onMutate: () => setError(null),
+    onSuccess: () => {
+      invalidateProfileViews();
+      setEditingId(null);
+      setShowExpForm(false);
+      expForm.reset({
+        type: 'employment',
+        title: '',
+        organization: '',
+        startDate: '',
+        endDate: '',
+        isCurrent: false,
+        description: '',
+        industry: '',
+        skills: '',
+        url: '',
+      });
+    },
+    onError: (err) => {
+      setError(err instanceof ApiError ? (err.serverMessage ?? err.message) : 'Failed to update experience');
+    },
+  });
+
+  const reorderMutation = useMutation({
+    mutationFn: (experiences: { id: string; sortOrder: number }[]) =>
+      api('/profiles/me/experience/reorder', {
+        method: 'PUT',
+        body: { experiences },
+      }),
+    onError: () => {
+      if (profile?.experiences) {
+        setSortedExperiences(profile.experiences);
+      }
+      setError('Failed to save new order. Please try again.');
+    },
+  });
+
   const saveProfile = (data: ProfileForm) => saveProfileMutation.mutate(data);
-  const addExperience = (data: ExperienceForm) => addExperienceMutation.mutate(data);
+  const submitExperience = (data: ExperienceForm) => {
+    if (editingId) {
+      updateExperienceMutation.mutate({ id: editingId, data });
+    } else {
+      addExperienceMutation.mutate(data);
+    }
+  };
   const deleteExperience = (id: string) => deleteExperienceMutation.mutate(id);
+
+  const handleDragEnd = (event: DragEndEvent) => {
+    const { active, over } = event;
+    if (!over || active.id === over.id) return;
+
+    const oldIndex = sortedExperiences.findIndex((e) => e.id === active.id);
+    const newIndex = sortedExperiences.findIndex((e) => e.id === over.id);
+    if (oldIndex === -1 || newIndex === -1) return;
+
+    const newOrder = [...sortedExperiences];
+    const [moved] = newOrder.splice(oldIndex, 1);
+    newOrder.splice(newIndex, 0, moved);
+    setSortedExperiences(newOrder);
+
+    const reorderPayload = newOrder.map((exp, i) => ({ id: exp.id ?? '', sortOrder: i }));
+    reorderMutation.mutate(reorderPayload);
+  };
 
   if (loading) return <LoadingFallback text="Loading profile" />;
 
@@ -195,9 +289,15 @@ export function JobseekerProfile() {
         <FormInput label="Headline" name="headline" placeholder="e.g. Senior Full-Stack Developer" />
         <FormTextarea label="About" name="about" rows={4} />
         <FormNumberInput label="Years of Experience" name="yearsOfExperience" min={0} />
-        <button type="submit" className="btn btn-primary" disabled={saveProfileMutation.isPending}>
-          {saveProfileMutation.isPending ? <LoadingSpinner size="sm" /> : 'Save Profile'}
-        </button>
+        {profileForm.formState.isDirty ? (
+          <button type="submit" className="btn btn-primary" disabled={saveProfileMutation.isPending}>
+            {saveProfileMutation.isPending ? <LoadingSpinner size="sm" /> : 'Save Profile'}
+          </button>
+        ) : (
+          <span className="text-sm text-muted flex items-center gap-1">
+            <CheckCircle size={14} className="text-success" /> No unsaved changes
+          </span>
+        )}
       </Form>
 
       <ResumeImport
@@ -224,20 +324,25 @@ export function JobseekerProfile() {
         </div>
 
         {showExpForm && (
-          <Form methods={expForm} onSubmit={addExperience} className="space-y-3 mb-4 p-3 bg-base-100 rounded-box">
+          <Form methods={expForm} onSubmit={submitExperience} className="space-y-3 mb-4 p-3 bg-base-100 rounded-box">
             <FormSelect label="Type" name="type" options={EXPERIENCE_TYPES} />
             <FormInput label="Title" name="title" />
             <FormInput label="Organization" name="organization" />
             <div className="grid grid-cols-2 gap-2">
-              <FormInput label="Start Date" name="startDate" placeholder="2020-01" />
-              <FormInput label="End Date" name="endDate" placeholder="2023-12" disabled={expForm.watch('isCurrent')} />
+              <FormInput label="Start Date" name="startDate" type="month" />
+              <FormInput label="End Date" name="endDate" type="month" disabled={expForm.watch('isCurrent')} />
             </div>
             <label className="flex items-center gap-2 cursor-pointer">
               <input type="checkbox" className="checkbox checkbox-sm" {...expForm.register('isCurrent')} />
               <span className="label-text">I currently work here</span>
             </label>
             <FormTextarea label="Description" name="description" rows={3} />
-            <FormInput label="Skills (comma separated)" name="skills" placeholder="React, TypeScript, Node.js" />
+            <SkillsAutocomplete
+              value={expForm.watch('skills') ?? ''}
+              onChange={(val) => expForm.setValue('skills', val, { shouldDirty: false })}
+              label="Skills"
+              placeholder="Type a skill and press Enter"
+            />
             <FormInput
               label="Evidence URL (optional)"
               name="url"
@@ -245,40 +350,160 @@ export function JobseekerProfile() {
             />
             <div className="flex gap-2">
               <button type="submit" className="btn btn-primary btn-sm">
-                Add Experience
+                {editingId ? 'Update Experience' : 'Add Experience'}
               </button>
-              <button type="button" className="btn btn-ghost btn-sm" onClick={() => setShowExpForm(false)}>
+              <button
+                type="button"
+                className="btn btn-ghost btn-sm"
+                onClick={() => {
+                  setShowExpForm(false);
+                  setEditingId(null);
+                  expForm.reset({
+                    type: 'employment',
+                    title: '',
+                    organization: '',
+                    startDate: '',
+                    endDate: '',
+                    isCurrent: false,
+                    description: '',
+                    industry: '',
+                    skills: '',
+                    url: '',
+                  });
+                }}
+              >
                 Cancel
               </button>
             </div>
           </Form>
         )}
 
-        {(profile?.experiences ?? []).length === 0 && (
-          <p className="text-sm text-muted py-4 text-center">No experience added yet. Click "Add" to get started.</p>
-        )}
-
-        <div className="space-y-2">
-          {(profile?.experiences ?? []).map((exp) => (
-            <div key={exp.id} className="p-3 bg-base-100 rounded-box flex justify-between items-start">
-              <div>
-                <p className="font-medium">{exp.title}</p>
-                <p className="text-sm text-muted">
-                  {exp.organization} &middot; {exp.startDate}
-                  {exp.isCurrent ? ' - Present' : exp.endDate ? ` - ${exp.endDate}` : ''}
+        <DndContext collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+          <SortableContext items={sortedExperiences.map((e) => e.id ?? '')} strategy={verticalListSortingStrategy}>
+            <div className="space-y-2">
+              {sortedExperiences.length === 0 && (
+                <p className="text-sm text-muted py-4 text-center">
+                  No experience added yet. Click "Add" to get started.
                 </p>
-              </div>
-              <button
-                type="button"
-                className="btn btn-ghost btn-xs text-error"
-                onClick={() => exp.id && deleteExperience(exp.id)}
-                aria-label={`Delete ${exp.title}`}
-              >
-                <Trash2 size={16} aria-hidden="true" />
-              </button>
+              )}
+              {sortedExperiences.map((exp) => (
+                <SortableExperienceItem
+                  key={exp.id}
+                  exp={exp}
+                  onEdit={() => {
+                    if (!exp.id) return;
+                    setEditingId(exp.id);
+                    expForm.reset({
+                      type: exp.type as ExperienceForm['type'],
+                      title: exp.title,
+                      organization: exp.organization,
+                      startDate: exp.startDate,
+                      endDate: exp.endDate ?? '',
+                      isCurrent: exp.isCurrent ?? false,
+                      description: exp.description ?? '',
+                      industry: exp.industry ?? '',
+                      skills: (exp.skillsUsed ?? []).join(', '),
+                      url: exp.url ?? '',
+                    });
+                    setShowExpForm(true);
+                    window.scrollTo({ top: 0, behavior: 'smooth' });
+                  }}
+                  onDelete={() => exp.id && deleteExperience(exp.id)}
+                />
+              ))}
             </div>
-          ))}
+          </SortableContext>
+        </DndContext>
+      </div>
+
+      <AIEvaluationSection />
+    </div>
+  );
+}
+
+function SortableExperienceItem({
+  exp,
+  onEdit,
+  onDelete,
+}: {
+  exp: Experience;
+  onEdit: () => void;
+  onDelete: () => void;
+}) {
+  const sortableId = exp.id ?? '';
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
+    id: sortableId,
+  });
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.5 : 1,
+  };
+
+  return (
+    <div
+      ref={setNodeRef}
+      style={style}
+      className={`collapse collapse-arrow bg-base-100 rounded-box ${isDragging ? 'shadow-lg' : ''}`}
+    >
+      <summary className="collapse-title flex items-center gap-2">
+        <button
+          className="cursor-grab touch-none btn btn-ghost btn-xs px-1"
+          {...attributes}
+          {...listeners}
+          aria-label="Drag to reorder"
+        >
+          <GripVertical size={16} className="text-muted" />
+        </button>
+        <div className="flex-1">
+          <p className="font-medium">{exp.title}</p>
+          <p className="text-sm text-muted">
+            {exp.organization} &middot; {exp.startDate}
+            {exp.isCurrent ? ' - Present' : exp.endDate ? ` - ${exp.endDate}` : ''}
+          </p>
         </div>
+        <div className="flex gap-1">
+          <button
+            type="button"
+            className="btn btn-ghost btn-xs"
+            onClick={(e) => {
+              e.stopPropagation();
+              onEdit();
+            }}
+            aria-label={`Edit ${exp.title}`}
+          >
+            <Pencil size={16} aria-hidden="true" />
+          </button>
+          <button
+            type="button"
+            className="btn btn-ghost btn-xs text-error"
+            onClick={(e) => {
+              e.stopPropagation();
+              onDelete();
+            }}
+            aria-label={`Delete ${exp.title}`}
+          >
+            <Trash2 size={16} aria-hidden="true" />
+          </button>
+        </div>
+      </summary>
+      <div className="collapse-content space-y-2">
+        {exp.description && <p className="text-sm">{exp.description}</p>}
+        {exp.skillsUsed && exp.skillsUsed.length > 0 && (
+          <div className="flex flex-wrap gap-1">
+            {exp.skillsUsed.map((s) => (
+              <span key={s} className="badge badge-primary badge-sm">
+                {s}
+              </span>
+            ))}
+          </div>
+        )}
+        {exp.industry && <p className="text-xs text-muted">Industry: {exp.industry}</p>}
+        {exp.url && (
+          <a href={exp.url} target="_blank" rel="noopener noreferrer" className="text-xs link link-primary">
+            Evidence URL
+          </a>
+        )}
       </div>
     </div>
   );

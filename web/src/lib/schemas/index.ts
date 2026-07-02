@@ -80,8 +80,12 @@ export const experienceSchema = z.object({
   type: z.enum(['employment', 'gig', 'education', 'certification', 'project', 'volunteering']),
   title: z.string().min(1, 'Title is required'),
   organization: z.string().min(1, 'Organization is required'),
-  startDate: z.string().min(1, 'Start date is required'),
-  endDate: z.string().optional(),
+  startDate: z.string().regex(/^\d{4}-(0[1-9]|1[0-2])$/, 'Start date must be in YYYY-MM format'),
+  endDate: z
+    .string()
+    .regex(/^\d{4}-(0[1-9]|1[0-2])$/, 'End date must be in YYYY-MM format')
+    .optional()
+    .or(z.literal('')),
   isCurrent: z.boolean().optional(),
   description: z.string().optional(),
   industry: z.string().optional(),
@@ -105,6 +109,10 @@ export const jobSchema = z.object({
   tags: z.string().optional(),
   requiredSkills: z.string().optional(),
   experienceLevel: z.enum(EXPERIENCE_VALUES),
+  requirements: z.string().optional(),
+  yearsExperienceMin: z.number().min(0).optional(),
+  yearsExperienceMax: z.number().min(0).optional(),
+  isFreshGradFriendly: z.boolean().optional(),
   location: z.string().optional(),
   salaryRange: z.string().optional(),
 });

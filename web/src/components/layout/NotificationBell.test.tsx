@@ -1,15 +1,23 @@
-import { render, screen } from '@testing-library/react';
+import { render, screen, waitFor } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { NotificationBell } from '@/components/layout/NotificationBell';
+
+vi.mock('@/lib/notifications', () => ({
+  getNotifications: vi.fn().mockResolvedValue({ notifications: [], unreadCount: 0 }),
+  markNotificationRead: vi.fn(),
+  markAllNotificationsRead: vi.fn(),
+}));
 
 function wrapper({ children }: { children: React.ReactNode }) {
   return <MemoryRouter>{children}</MemoryRouter>;
 }
 
 describe('NotificationBell', () => {
-  it('renders bell icon button', () => {
+  it('renders bell icon button', async () => {
     render(<NotificationBell />, { wrapper });
-    expect(screen.getByRole('button', { name: /notifications/i })).toBeInTheDocument();
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: /notifications/i })).toBeInTheDocument();
+    });
   });
 });

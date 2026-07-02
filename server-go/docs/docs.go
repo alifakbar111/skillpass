@@ -2785,6 +2785,63 @@ const docTemplate = `{
                 ]
             }
         },
+        "/profiles/me/experience/reorder": {
+            "put": {
+                "description": "Update sort_order for multiple experiences at once",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "profiles"
+                ],
+                "summary": "Reorder experiences",
+                "parameters": [
+                    {
+                        "description": "Experience IDs with new sort orders",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/ReorderExperienceRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/MessageResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ]
+            }
+        },
         "/profiles/me/experience/{id}": {
             "put": {
                 "description": "Update specific fields of an experience entry owned by the authenticated jobseeker",
@@ -3205,6 +3262,37 @@ const docTemplate = `{
                 ]
             }
         },
+        "/skills": {
+            "get": {
+                "description": "Autocomplete search for skills by name prefix",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "skills"
+                ],
+                "summary": "Search skills",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Search query (prefix match)",
+                        "name": "q",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/SkillResponse"
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/tags": {
             "get": {
                 "description": "Get skill tags, optionally filtered by industry category",
@@ -3519,6 +3607,9 @@ const docTemplate = `{
                 "industry": {
                     "type": "string"
                 },
+                "isFreshGradFriendly": {
+                    "type": "boolean"
+                },
                 "location": {
                     "type": "string"
                 },
@@ -3527,6 +3618,9 @@ const docTemplate = `{
                     "items": {
                         "type": "string"
                     }
+                },
+                "requirements": {
+                    "type": "string"
                 },
                 "salaryRange": {
                     "type": "string"
@@ -3539,6 +3633,12 @@ const docTemplate = `{
                 },
                 "title": {
                     "type": "string"
+                },
+                "yearsExperienceMax": {
+                    "type": "integer"
+                },
+                "yearsExperienceMin": {
+                    "type": "integer"
                 }
             }
         },
@@ -3734,6 +3834,9 @@ const docTemplate = `{
                 "industry": {
                     "type": "string"
                 },
+                "isFreshGradFriendly": {
+                    "type": "boolean"
+                },
                 "location": {
                     "type": "string"
                 },
@@ -3742,6 +3845,9 @@ const docTemplate = `{
                     "items": {
                         "type": "string"
                     }
+                },
+                "requirements": {
+                    "type": "string"
                 },
                 "salaryRange": {
                     "type": "string"
@@ -3757,6 +3863,12 @@ const docTemplate = `{
                 },
                 "title": {
                     "type": "string"
+                },
+                "yearsExperienceMax": {
+                    "type": "integer"
+                },
+                "yearsExperienceMin": {
+                    "type": "integer"
                 }
             }
         },
@@ -3972,6 +4084,36 @@ const docTemplate = `{
                 }
             }
         },
+        "ReorderExperienceRequest": {
+            "type": "object",
+            "required": [
+                "experiences"
+            ],
+            "properties": {
+                "experiences": {
+                    "type": "array",
+                    "minItems": 1,
+                    "items": {
+                        "$ref": "#/definitions/ReorderItem"
+                    }
+                }
+            }
+        },
+        "ReorderItem": {
+            "type": "object",
+            "required": [
+                "id",
+                "sortOrder"
+            ],
+            "properties": {
+                "id": {
+                    "type": "string"
+                },
+                "sortOrder": {
+                    "type": "integer"
+                }
+            }
+        },
         "SkillNote": {
             "type": "object",
             "properties": {
@@ -3982,6 +4124,17 @@ const docTemplate = `{
                     "type": "integer"
                 },
                 "skill": {
+                    "type": "string"
+                }
+            }
+        },
+        "SkillResponse": {
+            "type": "object",
+            "properties": {
+                "id": {
+                    "type": "string"
+                },
+                "name": {
                     "type": "string"
                 }
             }
@@ -4128,6 +4281,9 @@ const docTemplate = `{
                     "type": "string",
                     "minLength": 1
                 },
+                "isFreshGradFriendly": {
+                    "type": "boolean"
+                },
                 "location": {
                     "type": "string"
                 },
@@ -4136,6 +4292,9 @@ const docTemplate = `{
                     "items": {
                         "type": "string"
                     }
+                },
+                "requirements": {
+                    "type": "string"
                 },
                 "salaryRange": {
                     "type": "string"
@@ -4156,6 +4315,12 @@ const docTemplate = `{
                 "title": {
                     "type": "string",
                     "minLength": 1
+                },
+                "yearsExperienceMax": {
+                    "type": "integer"
+                },
+                "yearsExperienceMin": {
+                    "type": "integer"
                 }
             }
         },
