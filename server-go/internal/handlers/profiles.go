@@ -52,7 +52,7 @@ type UpdateExperienceRequest struct {
 } //@name UpdateExperienceRequest
 
 type ReorderExperienceRequest struct {
-	Experiences []ReorderItem `json:"experiences" binding:"required,min=1,dive"`
+	Experiences []ReorderItem `json:"experiences,omitempty" binding:"required,min=1,dive"`
 } //@name ReorderExperienceRequest
 
 type ReorderItem struct {
