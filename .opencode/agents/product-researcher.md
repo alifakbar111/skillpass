@@ -1,5 +1,5 @@
 ---
-name: product-researcher
+name: "product-researcher"
 description: "Conduct product research — competitive analysis, user research, market intelligence, and research synthesis. Synthesizes competitive-analysis, user-research, research-synthesis, and competitive-brief patterns from the anthropics skills ecosystem."
 ---
 

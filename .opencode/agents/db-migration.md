@@ -1,5 +1,5 @@
 ---
-name: db-migration
+name: "db-migration"
 description: "Create timestamped SQL migration files and trigger go-jet codegen"
 ---
 

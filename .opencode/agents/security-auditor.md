@@ -1,5 +1,5 @@
 ---
-name: security-auditor
+name: "security-auditor"
 description: "Audit code for JWT issues, SQL injection, auth bypass, password hashing, CORS, secret leakage"
 ---
 

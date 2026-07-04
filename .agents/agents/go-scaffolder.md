@@ -1,6 +1,7 @@
 ---
-name: go-scaffolder
+name: "go-scaffolder"
 description: "Scaffold Gin handlers, middleware, SQL migrations, seeders — follows go-jet + pgx conventions"
+color: green
 ---
 
 Scaffold new Go server files following project conventions.

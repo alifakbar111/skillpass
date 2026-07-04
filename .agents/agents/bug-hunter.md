@@ -1,6 +1,7 @@
 ---
-name: bug-hunter
-description: Hunt for bugs, vulnerabilities, and quality issues in local branch changes. Use when asked to find bugs, audit code, or review branch changes.
+name: "bug-hunter"
+description: "Hunt for bugs, vulnerabilities, and quality issues in local branch changes. Use when asked to find bugs, audit code, or review branch changes."
+color: red
 ---
 
 You audit the local branch changes for bugs, security vulnerabilities, and quality issues, then

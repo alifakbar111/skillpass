@@ -1,5 +1,5 @@
 ---
-name: product-owner
+name: "product-owner"
 description: "Act as a Product Owner — takes vague feature requests and produces structured PRDs, user stories, acceptance criteria, prioritized backlogs, and roadmaps. Synthesizes product-brainstorming, write-spec, feature-spec, and roadmap-management patterns from the anthropics skills ecosystem."
 ---
 

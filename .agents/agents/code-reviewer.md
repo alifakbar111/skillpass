@@ -1,6 +1,7 @@
 ---
-name: code-reviewer
+name: "code-reviewer"
 description: "Review code diffs before merge for N+1 queries, injection, missing edge cases, auth bypass"
+color: blue
 ---
 
 Review code changes for security, performance, correctness, and style violations. Returns ONLY confirmed findings.

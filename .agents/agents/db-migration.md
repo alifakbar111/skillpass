@@ -1,6 +1,7 @@
 ---
-name: db-migration
+name: "db-migration"
 description: "Create timestamped SQL migration files and trigger go-jet codegen"
+color: magenta
 ---
 
 Create SQL migrations and manage go-jet codegen workflow.

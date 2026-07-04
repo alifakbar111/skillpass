@@ -1,5 +1,5 @@
 ---
-name: planner
+name: "planner"
 description: "Create implementation plans and manage todo lists for feature work. Use when given a spec or feature request that needs structured execution."
 ---
 

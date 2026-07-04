@@ -1,5 +1,5 @@
 ---
-name: code-reviewer
+name: "code-reviewer"
 description: "Review code diffs before merge for N+1 queries, injection, missing edge cases, auth bypass"
 ---
 
