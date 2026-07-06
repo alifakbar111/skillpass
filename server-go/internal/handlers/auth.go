@@ -5,6 +5,7 @@ import (
 	"crypto/sha256"
 	"database/sql"
 	"encoding/hex"
+	"encoding/json"
 	"errors"
 	"net/http"
 	"os"
@@ -236,12 +237,18 @@ func (h *AuthHandler) Register(c *gin.Context) {
 		if req.CompanyName != nil {
 			coName = *req.CompanyName
 		}
+		verificationDocs, _ := json.Marshal(map[string]string{
+			"businessRegistration": coalesceStr(req.BusinessRegistration),
+			"website":              coalesceStr(req.Website),
+			"address":              coalesceStr(req.Address),
+			"contact":              coalesceStr(req.Contact),
+		})
 		_, err = gen.Companies.INSERT(
-			gen.Companies.UserID, gen.Companies.CompanyName, gen.Companies.Industry,
+			gen.Companies.UserID, gen.Companies.CompanyName, gen.Companies.Website, gen.Companies.Industry,
 			gen.Companies.VerificationDocs, gen.Companies.VerificationStatus,
 		).VALUES(
-			user.ID, coName, "Technology",
-			`{"businessRegistration":"","website":"","address":"","contact":""}`, gen.VerificationStatusPending,
+			user.ID, coName, coalesceStr(req.Website), "Technology",
+			string(verificationDocs), gen.VerificationStatusPending,
 		).ExecContext(c.Request.Context(), tx)
 		if err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to create company"})
@@ -482,4 +489,11 @@ func revokeAllForUserString(ctx context.Context, db *sql.DB, userID string) erro
 	)
 	_, err = stmt.ExecContext(ctx, db)
 	return err
+}
+
+func coalesceStr(s *string) string {
+	if s == nil {
+		return ""
+	}
+	return *s
 }
