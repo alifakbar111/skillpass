@@ -66,6 +66,7 @@ skillpass/          — root: orchestration (concurrently runs both)
 
 | Action | Command |
 |---|---|
+| Full setup (fresh clone) | `bun run setup` — starts DB, runs migrations & seed |
 | Dev (server + web concurrently) | `bun run dev` |
 | Dev server only | `bun run dev:server` |
 | Dev web only | `bun run dev:web` |
@@ -74,7 +75,7 @@ skillpass/          — root: orchestration (concurrently runs both)
 | DB generate (go-jet codegen) | `bun run db:generate` |
 | API generate (swag + openapi-typescript) | `bun run api:generate` |
 | API drift check (pre-push gate) | `bun run api:check` |
-| Start fresh | `docker compose up db -d && bun run db:migrate && bun run db:seed` |
+| Start fresh | `bun run setup` |
 | Typecheck web | `bun --cwd web typecheck` (tsc --noEmit) |
 | Lint all | `bun run lint` (Biome check) |
 | Lint + auto-fix | `bun run lint:fix` (Biome check --write) |
@@ -89,6 +90,10 @@ skillpass/          — root: orchestration (concurrently runs both)
 **Local dev startup (non-Docker)** — the server connects to PostgreSQL on `localhost:5432` by default.
 Before running `bun run dev`, you must:
 
+1. `bun run setup`                      — starts DB, runs migrations & seed (does all 3 steps below)
+2. `bun run dev`                        — now safe to start server + web
+
+Or step by step:
 1. `docker compose up db -d`           — start the database container
 2. `bun run db:migrate`                — run SQL migrations
 3. `bun run db:seed`                   — seed initial data
