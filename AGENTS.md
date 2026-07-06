@@ -158,7 +158,7 @@ When changing an API request/response shape:
 - Go has handler tests for most domains (auth, jobs, profiles, companies, search, admin, etc.)
 - Web: `vitest` (happy-dom, @testing-library/react) — tests in `src/**/*.test.{ts,tsx}`
 - Go server: use Go's `testing` package with `httptest`
-- Go tests require a live DB (`SKILLPASS_TEST_DATABASE_URL`) — they truncate tables for isolation
+- Go tests auto-create and use a separate `skillpass_test` DB — your dev `skillpass` data is never touched
 - Go tests run with `-p 1` (serial) because packages share one DB
 - CI runs: Go tests, web typecheck, web tests, web build
 

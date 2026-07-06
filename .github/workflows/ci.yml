@@ -37,8 +37,6 @@ jobs:
       # so they must not run in parallel.
       # ./docs/... is swag-generated code with no tests — exclude it.
       - name: Run tests
-        env:
-          SKILLPASS_TEST_DATABASE_URL: postgres://postgres:postgres@localhost:5432/skillpass
         run: go -C server-go test -p 1 $(go -C server-go list ./... | grep -v '/docs$')
 
   web:

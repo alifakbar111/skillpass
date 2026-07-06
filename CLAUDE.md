@@ -239,7 +239,7 @@ CORS_ORIGIN=http://localhost:4200
 **Go server:**
 - Tests in `*_test.go` files alongside code
 - Use Go's `testing` package + `httptest` for handler tests
-- Tests require a live DB (`SKILLPASS_TEST_DATABASE_URL`) — they truncate tables for isolation
+- Tests auto-create and use a separate `skillpass_test` DB (default) — your dev `skillpass` data is never touched
 - Run with `-p 1` (serial) because packages share one DB
 - Test utilities in `internal/testutil/` (auth helpers, DB setup, factories)
 

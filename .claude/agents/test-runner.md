@@ -29,7 +29,7 @@ You may be dispatched by the Agent Manager as a standalone task or within a work
 | Server single pkg | `go test -p 1 ./server-go/internal/handlers/...` |
 | Lint | `bun run lint` |
 
-Go tests require a live DB (uses `SKILLPASS_TEST_DATABASE_URL`) and must run with `-p 1` (serial).
+Go tests auto-create and use a separate `skillpass_test` DB — runs with `-p 1` (serial).
 
 ---
 

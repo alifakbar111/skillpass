@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"fmt"
 	"log"
+	"net/url"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -19,7 +20,7 @@ var TestDBURL = func() string {
 	if v := os.Getenv("SKILLPASS_TEST_DATABASE_URL"); v != "" {
 		return v
 	}
-	return "postgres://postgres:postgres@localhost:5432/skillpass"
+	return "postgres://postgres:postgres@localhost:5432/skillpass_test"
 }()
 
 var (
@@ -31,6 +32,13 @@ var (
 func SetupTestDB() *sql.DB {
 	setupOnce.Do(func() {
 		ctx := context.Background()
+
+		// Ensure the test database exists (auto-create if it doesn't)
+		if err := ensureTestDBExists(ctx); err != nil {
+			setupErr = fmt.Errorf("ensure test db: %w", err)
+			return
+		}
+
 		db, err := sql.Open("pgx", TestDBURL)
 		if err != nil {
 			setupErr = fmt.Errorf("open test db: %w", err)
@@ -58,6 +66,49 @@ func SetupTestDB() *sql.DB {
 	// Register custom validators needed by handlers
 	RegisterTestValidators()
 	return globalDB
+}
+
+// ensureTestDBExists creates the test database if it doesn't exist.
+// Connects to the default "postgres" database to run CREATE DATABASE.
+func ensureTestDBExists(ctx context.Context) error {
+	u, err := url.Parse(TestDBURL)
+	if err != nil {
+		return fmt.Errorf("parse test db url: %w", err)
+	}
+	// Extract the database name (last path segment)
+	dbName := u.Path
+	if len(dbName) > 0 && dbName[0] == '/' {
+		dbName = dbName[1:]
+	}
+	if dbName == "" {
+		return nil // no database name in URL, skip
+	}
+
+	// Connect to the default 'postgres' database to create the test DB
+	u.Path = "/postgres"
+	adminDB, err := sql.Open("pgx", u.String())
+	if err != nil {
+		return fmt.Errorf("open admin connection: %w", err)
+	}
+	defer adminDB.Close()
+
+	// Check if the database already exists
+	var exists bool
+	err = adminDB.QueryRowContext(ctx,
+		"SELECT EXISTS(SELECT 1 FROM pg_database WHERE datname = $1)", dbName,
+	).Scan(&exists)
+	if err != nil {
+		return fmt.Errorf("check db exists: %w", err)
+	}
+	if !exists {
+		// CREATE DATABASE cannot run inside a transaction
+		_, err = adminDB.ExecContext(ctx, fmt.Sprintf("CREATE DATABASE %s", dbName))
+		if err != nil {
+			return fmt.Errorf("create database %s: %w", dbName, err)
+		}
+		log.Printf("Created test database: %s", dbName)
+	}
+	return nil
 }
 
 func NewTestTx(t *testing.T, db *sql.DB) (*sql.Tx, func()) {
