@@ -1,8 +1,9 @@
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Pencil, Plus, Users, X } from 'lucide-react';
+import { Pencil, Plus, ShieldAlert, Users, X } from 'lucide-react';
 import { useState } from 'react';
 import { useForm } from 'react-hook-form';
+import { Link } from 'react-router-dom';
 import { z } from 'zod';
 import { JobMatches } from '@/components/company/JobMatches';
 import { Form } from '@/components/ui/Form';
@@ -176,17 +177,37 @@ export function CompanyJobs() {
 
   const closeJob = (id: string) => closeMutation.mutate(id);
 
+  const { data: verification } = useQuery({
+    queryKey: ['company', 'verification-status'],
+    queryFn: () => api<{ verificationStatus: string }>('/company/verification-status'),
+  });
+
+  const isVerified = verification?.verificationStatus === 'verified';
+
   return (
     <div className="max-w-3xl mx-auto p-4 space-y-4">
+      {!isVerified && (
+        <div className="alert alert-warning flex items-center gap-2">
+          <ShieldAlert size={20} aria-hidden="true" />
+          <span>
+            Your company is not yet verified.{' '}
+            <Link to="/company/verification" className="link link-primary font-medium">
+              Complete verification
+            </Link>{' '}
+            to post new jobs.
+          </span>
+        </div>
+      )}
+
       <div className="flex justify-between items-center">
         <h1 className="text-2xl font-bold">My Job Postings</h1>
-        <button type="button" className="btn btn-primary btn-sm" onClick={openCreateForm}>
+        <button type="button" className="btn btn-primary btn-sm" disabled={!isVerified} onClick={openCreateForm}>
           <Plus size={16} aria-hidden="true" /> New Job
         </button>
       </div>
 
       {error && (
-        <div className="alert alert-error">
+        <div className="flex flex-row justify-between alert alert-error">
           <span>{error}</span>
           <button type="button" title="close" className="btn btn-ghost btn-xs" onClick={() => setError(null)}>
             <X size={14} />
@@ -194,7 +215,7 @@ export function CompanyJobs() {
         </div>
       )}
 
-      {showForm && (
+      {showForm && isVerified && (
         <Form methods={methods} onSubmit={onSubmit} className="card bg-base-200 p-4 space-y-3">
           <h2 className="font-semibold text-lg">{editingJobId ? 'Edit Job' : 'New Job'}</h2>
           <FormInput label="Job Title" name="title" placeholder="Job Title" />
