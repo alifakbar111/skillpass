@@ -1,8 +1,11 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { AlertTriangle, CheckCircle, Plus, XCircle } from 'lucide-react';
 import { useRef, useState } from 'react';
+import Pagination from '@/components/ui/Pagination';
 import { usePermissions } from '@/hooks/usePermissions';
 import { type AttendanceException, createException, listExceptions, reviewException } from '@/lib/hris/attendance';
+
+const PAGE_SIZE = 15;
 
 export default function AttendanceExceptions() {
   const qc = useQueryClient();
@@ -13,6 +16,7 @@ export default function AttendanceExceptions() {
   const [error, setError] = useState('');
   const [filter, setFilter] = useState('');
   const [reviewing, setReviewing] = useState<AttendanceException | null>(null);
+  const [page, setPage] = useState(1);
 
   const { data: exceptions, isLoading } = useQuery({
     queryKey: ['hris', 'attendance-exceptions', filter],
@@ -80,6 +84,9 @@ export default function AttendanceExceptions() {
     );
   }
 
+  const totalPages = exceptions ? Math.ceil(exceptions.length / PAGE_SIZE) : 0;
+  const paginatedExceptions = exceptions?.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
+
   if (isLoading)
     return (
       <div className="flex justify-center p-8">
@@ -94,7 +101,10 @@ export default function AttendanceExceptions() {
         <div className="flex gap-2">
           <select
             value={filter}
-            onChange={(e) => setFilter(e.target.value)}
+            onChange={(e) => {
+              setFilter(e.target.value);
+              setPage(1);
+            }}
             className="select select-bordered select-sm"
           >
             <option value="">All</option>
@@ -128,7 +138,7 @@ export default function AttendanceExceptions() {
             </tr>
           </thead>
           <tbody>
-            {exceptions?.map((ex) => (
+            {paginatedExceptions?.map((ex) => (
               <tr key={ex.id}>
                 <td className="font-medium">{ex.employeeName || ex.employeeId.slice(0, 8)}</td>
                 <td>{ex.date}</td>
@@ -156,7 +166,7 @@ export default function AttendanceExceptions() {
                 )}
               </tr>
             ))}
-            {exceptions?.length === 0 && (
+            {paginatedExceptions?.length === 0 && (
               <tr>
                 <td colSpan={canManage ? 6 : 5} className="text-center py-8 text-base-content/50">
                   No exceptions found.
@@ -165,6 +175,7 @@ export default function AttendanceExceptions() {
             )}
           </tbody>
         </table>
+        <Pagination page={page} totalPages={totalPages} onPageChange={setPage} />
       </div>
 
       <dialog ref={dialogRef} className="modal">

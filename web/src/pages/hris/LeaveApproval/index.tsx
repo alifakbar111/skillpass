@@ -1,7 +1,10 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { CheckCircle, XCircle } from 'lucide-react';
 import { useRef, useState } from 'react';
+import Pagination from '@/components/ui/Pagination';
 import { type LeaveRequest, listLeaveRequests, reviewLeaveRequest } from '@/lib/hris/leave';
+
+const PAGE_SIZE = 15;
 
 export default function LeaveApproval() {
   const qc = useQueryClient();
@@ -9,6 +12,7 @@ export default function LeaveApproval() {
   const [filter, setFilter] = useState('pending');
   const [reviewing, setReviewing] = useState<LeaveRequest | null>(null);
   const [error, setError] = useState('');
+  const [page, setPage] = useState(1);
 
   const { data: requests, isLoading } = useQuery({
     queryKey: ['hris', 'leave-requests', filter],
@@ -45,6 +49,15 @@ export default function LeaveApproval() {
     return <span className={`badge badge-sm ${map[status] ?? 'badge-ghost'}`}>{status}</span>;
   }
 
+  // Client-side pagination
+  const totalPages = requests ? Math.ceil(requests.length / PAGE_SIZE) : 0;
+  const paginatedRequests = requests?.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
+
+  function handleFilterChange(newFilter: string) {
+    setFilter(newFilter);
+    setPage(1);
+  }
+
   if (isLoading)
     return (
       <div className="flex justify-center p-8">
@@ -56,7 +69,11 @@ export default function LeaveApproval() {
     <div>
       <div className="flex items-center justify-between mb-6">
         <h1 className="text-2xl font-bold">Leave Approval</h1>
-        <select value={filter} onChange={(e) => setFilter(e.target.value)} className="select select-bordered select-sm">
+        <select
+          value={filter}
+          onChange={(e) => handleFilterChange(e.target.value)}
+          className="select select-bordered select-sm"
+        >
           <option value="">All</option>
           <option value="pending">Pending</option>
           <option value="approved">Approved</option>
@@ -79,7 +96,7 @@ export default function LeaveApproval() {
             </tr>
           </thead>
           <tbody>
-            {requests?.map((r) => (
+            {paginatedRequests?.map((r) => (
               <tr key={r.id}>
                 <td className="font-medium">{r.employeeName || r.employeeId.slice(0, 8)}</td>
                 <td>
@@ -107,7 +124,7 @@ export default function LeaveApproval() {
                 </td>
               </tr>
             ))}
-            {requests?.length === 0 && (
+            {paginatedRequests?.length === 0 && (
               <tr>
                 <td colSpan={8} className="text-center py-8 text-base-content/50">
                   No leave requests found.
@@ -116,6 +133,7 @@ export default function LeaveApproval() {
             )}
           </tbody>
         </table>
+        <Pagination page={page} totalPages={totalPages} onPageChange={setPage} />
       </div>
 
       <dialog ref={dialogRef} className="modal">

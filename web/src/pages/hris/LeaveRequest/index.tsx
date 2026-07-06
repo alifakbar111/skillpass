@@ -1,12 +1,16 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Plus } from 'lucide-react';
 import { useRef, useState } from 'react';
+import Pagination from '@/components/ui/Pagination';
 import { cancelLeaveRequest, createLeaveRequest, listLeaveTypes, myLeaveRequests } from '@/lib/hris/leave';
+
+const PAGE_SIZE = 15;
 
 export default function LeaveRequestPage() {
   const qc = useQueryClient();
   const dialogRef = useRef<HTMLDialogElement>(null);
   const [error, setError] = useState('');
+  const [page, setPage] = useState(1);
 
   const { data: requests, isLoading } = useQuery({
     queryKey: ['hris', 'my-leave-requests'],
@@ -57,6 +61,9 @@ export default function LeaveRequestPage() {
     return <span className={`badge badge-sm ${map[status] ?? 'badge-ghost'}`}>{status}</span>;
   }
 
+  const totalPages = requests ? Math.ceil(requests.length / PAGE_SIZE) : 0;
+  const paginatedRequests = requests?.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
+
   if (isLoading)
     return (
       <div className="flex justify-center p-8">
@@ -94,7 +101,7 @@ export default function LeaveRequestPage() {
             </tr>
           </thead>
           <tbody>
-            {requests?.map((r) => (
+            {paginatedRequests?.map((r) => (
               <tr key={r.id}>
                 <td className="font-medium">{r.leaveTypeName}</td>
                 <td>{r.startDate}</td>
@@ -115,7 +122,7 @@ export default function LeaveRequestPage() {
                 </td>
               </tr>
             ))}
-            {requests?.length === 0 && (
+            {paginatedRequests?.length === 0 && (
               <tr>
                 <td colSpan={7} className="text-center py-8 text-base-content/50">
                   No leave requests yet.
@@ -124,6 +131,7 @@ export default function LeaveRequestPage() {
             )}
           </tbody>
         </table>
+        <Pagination page={page} totalPages={totalPages} onPageChange={setPage} />
       </div>
 
       <dialog ref={dialogRef} className="modal">

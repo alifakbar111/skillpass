@@ -64,7 +64,7 @@ export function CompanyApplications() {
       <h1 className="text-2xl font-bold mb-6">Applications</h1>
 
       {error && (
-        <div className="alert alert-error mb-4">
+        <div className="flex flex-row justify-between alert alert-error mb-4">
           <span>{error}</span>
           <button type="button" className="btn btn-sm btn-ghost" onClick={() => setError(null)}>
             Dismiss

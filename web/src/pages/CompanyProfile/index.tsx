@@ -84,7 +84,7 @@ export function CompanyProfile() {
       <h1 className="text-2xl font-bold mb-6">Company Profile</h1>
 
       {error && (
-        <div className="alert alert-error mb-4">
+        <div className="flex flex-row justify-between alert alert-error mb-4">
           <span>{error}</span>
           <button type="button" title="close" className="btn btn-ghost btn-xs" onClick={() => setError(null)}>
             <X size={14} />
