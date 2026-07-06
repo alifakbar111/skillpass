@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+	"strings"
 
 	"github.com/google/uuid"
 )
@@ -190,6 +191,161 @@ func (s *Service) EnsureCompanyRoles(ctx context.Context, companyID uuid.UUID) e
 	}
 
 	return s.seedRolePermissions(ctx, companyID)
+}
+
+// Permission represents a single permission record.
+type Permission struct {
+	ID          string `json:"id"`
+	Code        string `json:"code"`
+	Module      string `json:"module"`
+	Description string `json:"description"`
+}
+
+func (s *Service) ListPermissions(ctx context.Context) ([]Permission, error) {
+	rows, err := s.db.QueryContext(ctx,
+		`SELECT id, code, module, description FROM permissions ORDER BY module, code`)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var perms []Permission
+	for rows.Next() {
+		var p Permission
+		if err := rows.Scan(&p.ID, &p.Code, &p.Module, &p.Description); err != nil {
+			return nil, err
+		}
+		perms = append(perms, p)
+	}
+	return perms, rows.Err()
+}
+
+func (s *Service) CreateRole(ctx context.Context, companyID uuid.UUID, name string, description *string) (*Role, error) {
+	if name == "" {
+		return nil, fmt.Errorf("role name cannot be empty")
+	}
+
+	var r Role
+	err := s.db.QueryRowContext(ctx,
+		`INSERT INTO hris_roles (company_id, name, description, is_system)
+		 VALUES ($1, $2, $3, false)
+		 RETURNING id, name, description, is_system`,
+		companyID, name, description,
+	).Scan(&r.ID, &r.Name, &r.Description, &r.IsSystem)
+	if err != nil {
+		if isPGUniqueViolation(err) {
+			return nil, fmt.Errorf("role %q already exists in this company", name)
+		}
+		return nil, fmt.Errorf("insert role: %w", err)
+	}
+	return &r, nil
+}
+
+func (s *Service) UpdateRole(ctx context.Context, companyID uuid.UUID, roleID uuid.UUID, name string, description *string) (*Role, error) {
+	if name == "" {
+		return nil, fmt.Errorf("role name cannot be empty")
+	}
+
+	// Check if it's a system role — system roles cannot be modified
+	var isSystem bool
+	err := s.db.QueryRowContext(ctx,
+		`SELECT is_system FROM hris_roles WHERE id = $1 AND company_id = $2`,
+		roleID, companyID,
+	).Scan(&isSystem)
+	if err != nil {
+		return nil, fmt.Errorf("role not found")
+	}
+	if isSystem {
+		return nil, fmt.Errorf("cannot modify system role")
+	}
+
+	var r Role
+	err = s.db.QueryRowContext(ctx,
+		`UPDATE hris_roles SET name = $1, description = $2 WHERE id = $3 AND company_id = $4
+		 RETURNING id, name, description, is_system`,
+		name, description, roleID, companyID,
+	).Scan(&r.ID, &r.Name, &r.Description, &r.IsSystem)
+	if err != nil {
+		if isPGUniqueViolation(err) {
+			return nil, fmt.Errorf("role %q already exists in this company", name)
+		}
+		return nil, fmt.Errorf("update role: %w", err)
+	}
+	return &r, nil
+}
+
+func (s *Service) DeleteRole(ctx context.Context, companyID uuid.UUID, roleID uuid.UUID) error {
+	// Check if it's a system role — system roles cannot be deleted
+	var isSystem bool
+	err := s.db.QueryRowContext(ctx,
+		`SELECT is_system FROM hris_roles WHERE id = $1 AND company_id = $2`,
+		roleID, companyID,
+	).Scan(&isSystem)
+	if err != nil {
+		return fmt.Errorf("role not found")
+	}
+	if isSystem {
+		return fmt.Errorf("cannot delete system role")
+	}
+
+	result, err := s.db.ExecContext(ctx,
+		`DELETE FROM hris_roles WHERE id = $1 AND company_id = $2`,
+		roleID, companyID,
+	)
+	if err != nil {
+		return fmt.Errorf("delete role: %w", err)
+	}
+	n, _ := result.RowsAffected()
+	if n == 0 {
+		return fmt.Errorf("role not found")
+	}
+	return nil
+}
+
+func (s *Service) SetRolePermissions(ctx context.Context, companyID uuid.UUID, roleID uuid.UUID, permissionIDs []string) error {
+	// Verify the role exists and belongs to this company
+	var exists bool
+	err := s.db.QueryRowContext(ctx,
+		`SELECT EXISTS(SELECT 1 FROM hris_roles WHERE id = $1 AND company_id = $2)`,
+		roleID, companyID,
+	).Scan(&exists)
+	if err != nil {
+		return fmt.Errorf("verify role: %w", err)
+	}
+	if !exists {
+		return fmt.Errorf("role not found")
+	}
+
+	tx, err := s.db.BeginTx(ctx, nil)
+	if err != nil {
+		return fmt.Errorf("begin tx: %w", err)
+	}
+	defer tx.Rollback()
+
+	// Remove all existing permissions for this role
+	if _, err := tx.ExecContext(ctx,
+		`DELETE FROM role_permissions WHERE role_id = $1`, roleID,
+	); err != nil {
+		return fmt.Errorf("clear permissions: %w", err)
+	}
+
+	// Insert new permissions
+	if len(permissionIDs) > 0 {
+		for _, pid := range permissionIDs {
+			if _, err := tx.ExecContext(ctx,
+				`INSERT INTO role_permissions (role_id, permission_id) VALUES ($1, $2) ON CONFLICT DO NOTHING`,
+				roleID, pid,
+			); err != nil {
+				return fmt.Errorf("assign permission %s: %w", pid, err)
+			}
+		}
+	}
+
+	return tx.Commit()
+}
+
+func isPGUniqueViolation(err error) bool {
+	return err != nil && (strings.Contains(err.Error(), "duplicate key") || strings.Contains(err.Error(), "unique constraint"))
 }
 
 func (s *Service) seedRolePermissions(ctx context.Context, companyID uuid.UUID) error {
