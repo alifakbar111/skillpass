@@ -136,36 +136,46 @@ export function JobseekerPassport() {
         <div className="card bg-base-200 p-4">
           <h3 className="font-semibold mb-3">Experience</h3>
           <div className="space-y-2">
-            {(data.experiences ?? []).map((exp, i) => (
-              // biome-ignore lint/suspicious/noArrayIndexKey: experiences array has no stable id in this view
-              <div key={i} className="p-3 bg-base-100 rounded-box">
-                <p className="font-medium">{exp.title}</p>
-                <p className="text-sm opacity-70">
-                  {exp.organization} · {exp.startDate}{' '}
-                  {exp.isCurrent ? '- Present' : exp.endDate ? `- ${exp.endDate}` : ''}
-                </p>
-                {exp.description && <p className="text-sm mt-1 opacity-60">{exp.description}</p>}
-                {exp.skillsUsed && exp.skillsUsed.length > 0 && (
-                  <div className="flex flex-wrap gap-1 mt-1">
-                    {exp.skillsUsed.map((s) => (
-                      <span key={s} className="badge badge-sm">
-                        {s}
-                      </span>
-                    ))}
-                  </div>
-                )}
-                {exp.url && (
-                  <a
-                    href={exp.url}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="link link-primary text-xs inline-flex items-center gap-1 mt-2"
-                  >
-                    <ExternalLink size={12} aria-hidden="true" /> View evidence
-                  </a>
-                )}
-              </div>
-            ))}
+            {(data.experiences ?? [])
+              .sort((a, b) => {
+                // Current positions first
+                if (a.isCurrent && !b.isCurrent) return -1;
+                if (!a.isCurrent && b.isCurrent) return 1;
+                // Then by startDate descending (newest first)
+                const aStart = a.startDate ? new Date(a.startDate).getTime() : 0;
+                const bStart = b.startDate ? new Date(b.startDate).getTime() : 0;
+                return bStart - aStart;
+              })
+              .map((exp, i) => (
+                // biome-ignore lint/suspicious/noArrayIndexKey: experiences array has no stable id in this view
+                <div key={i} className="p-3 bg-base-100 rounded-box">
+                  <p className="font-medium">{exp.title}</p>
+                  <p className="text-sm opacity-70">
+                    {exp.organization} · {exp.startDate}{' '}
+                    {exp.isCurrent ? '- Present' : exp.endDate ? `- ${exp.endDate}` : ''}
+                  </p>
+                  {exp.description && <p className="text-sm mt-1 opacity-60">{exp.description}</p>}
+                  {exp.skillsUsed && exp.skillsUsed.length > 0 && (
+                    <div className="flex flex-wrap gap-1 mt-1">
+                      {exp.skillsUsed.map((s) => (
+                        <span key={s} className="badge badge-sm">
+                          {s}
+                        </span>
+                      ))}
+                    </div>
+                  )}
+                  {exp.url && (
+                    <a
+                      href={exp.url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="link link-primary text-xs inline-flex items-center gap-1 mt-2"
+                    >
+                      <ExternalLink size={12} aria-hidden="true" /> View evidence
+                    </a>
+                  )}
+                </div>
+              ))}
           </div>
         </div>
       </div>

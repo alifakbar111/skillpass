@@ -52,8 +52,14 @@ export function Navbar() {
           <>
             {user.role === 'jobseeker' && (
               <>
+                <Link to="/jobs" className="btn btn-ghost btn-sm">
+                  Jobs
+                </Link>
                 <Link to="/jobseeker/profile" className="btn btn-ghost btn-sm">
                   My Profile
+                </Link>
+                <Link to="/jobseeker/passport" className="btn btn-ghost btn-sm">
+                  Passport
                 </Link>
                 <Link to="/jobseeker/matches" className="btn btn-ghost btn-sm">
                   Matches
@@ -115,6 +121,13 @@ export function Navbar() {
                   <li>
                     <hr className="divider my-1" />
                   </li>
+                  {user.role === 'jobseeker' && (
+                    <li role="none">
+                      <Link role="menuitem" to="/jobseeker/passport" onClick={() => setDropdownOpen(false)}>
+                        My Passport
+                      </Link>
+                    </li>
+                  )}
                   {user.role === 'company' && (
                     <li role="none">
                       <Link role="menuitem" to="/company/profile" onClick={() => setDropdownOpen(false)}>

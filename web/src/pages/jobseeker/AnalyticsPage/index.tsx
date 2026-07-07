@@ -54,7 +54,7 @@ export function AnalyticsPage() {
           <div className="stat bg-base-200 rounded-box p-4">
             <div className="stat-title text-xs">Response Rate</div>
             <div className="stat-value text-xl">
-              {stats.responseRate !== null ? `${Math.round(stats.responseRate)}%` : '—'}
+              {stats.responseRate != null ? `${Math.round(stats.responseRate)}%` : '—'}
             </div>
           </div>
           <div className="stat bg-base-200 rounded-box p-4">

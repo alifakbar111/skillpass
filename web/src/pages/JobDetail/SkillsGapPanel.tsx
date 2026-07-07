@@ -21,7 +21,7 @@ export function SkillsGapPanel({ jobId }: { jobId: string }) {
   }, [jobId]);
 
   if (!gap) return null;
-  if (gap.matchedSkills.length === 0 && gap.missingSkills.length === 0) return null;
+  if ((gap.matchedSkills ?? []).length === 0 && (gap.missingSkills ?? []).length === 0) return null;
 
   return (
     <div className="mt-4 p-4 bg-base-100 rounded-box">

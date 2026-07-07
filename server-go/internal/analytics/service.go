@@ -37,17 +37,17 @@ type CompanyAnalytics struct {
 	TotalJobs            int           `json:"totalJobs"`
 	OpenJobs             int           `json:"openJobs"`
 	TotalApplications    int           `json:"totalApplications"`
-	ApplicationsByStatus []StatusCount `json:"applicationsByStatus,omitempty"`
-	AvgDaysToDecision    *float64      `json:"avgDaysToDecision,omitempty"`
-	Jobs                 []JobFunnel   `json:"jobs,omitempty"`
+	ApplicationsByStatus []StatusCount `json:"applicationsByStatus"`
+	AvgDaysToDecision    *float64      `json:"avgDaysToDecision"`
+	Jobs                 []JobFunnel   `json:"jobs"`
 }
 
 // JobseekerAnalytics is the jobseeker stats payload.
 type JobseekerAnalytics struct {
 	TotalApplications    int           `json:"totalApplications"`
-	ApplicationsByStatus []StatusCount `json:"applicationsByStatus,omitempty"`
+	ApplicationsByStatus []StatusCount `json:"applicationsByStatus"`
 	PassportViews        int           `json:"passportViews"`
-	ResponseRate         *float64      `json:"responseRate,omitempty"`
+	ResponseRate         *float64      `json:"responseRate"`
 }
 
 func (s *Service) ForCompany(ctx context.Context, companyID string) (*CompanyAnalytics, error) {

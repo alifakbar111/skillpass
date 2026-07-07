@@ -62,14 +62,14 @@ export function CompanyAnalytics() {
           </div>
           <div className="stat-title">Avg. Time to Decision</div>
           <div className="stat-value text-2xl">
-            {data.avgDaysToDecision !== null ? `${data.avgDaysToDecision.toFixed(1)}d` : '—'}
+            {data.avgDaysToDecision != null ? `${data.avgDaysToDecision.toFixed(1)}d` : '—'}
           </div>
           <div className="stat-desc">applied → offer/reject</div>
         </div>
         <div className="stat bg-base-200 rounded-box">
           <div className="stat-title">Offers Made</div>
           <div className="stat-value text-2xl">
-            {data.applicationsByStatus.find((s) => s.status === 'offered')?.count ?? 0}
+            {(data.applicationsByStatus ?? []).find((s) => s.status === 'offered')?.count ?? 0}
           </div>
         </div>
       </div>
@@ -78,7 +78,7 @@ export function CompanyAnalytics() {
         <div className="card bg-base-200 p-4">
           <h2 className="font-semibold mb-3">Pipeline Overview</h2>
           <div className="flex w-full h-6 rounded-full overflow-hidden">
-            {sortByStatus(data.applicationsByStatus).map((s) => (
+            {sortByStatus(data.applicationsByStatus ?? []).map((s) => (
               <div
                 key={s.status}
                 className={STATUS_COLOR[s.status] ?? 'bg-neutral'}
@@ -88,7 +88,7 @@ export function CompanyAnalytics() {
             ))}
           </div>
           <div className="flex flex-wrap gap-3 mt-2 text-xs">
-            {sortByStatus(data.applicationsByStatus).map((s) => (
+            {sortByStatus(data.applicationsByStatus ?? []).map((s) => (
               <span key={s.status} className="flex items-center gap-1">
                 <span className={`w-2 h-2 rounded-full inline-block ${STATUS_COLOR[s.status] ?? 'bg-neutral'}`} />
                 {s.status} ({s.count})
@@ -100,9 +100,9 @@ export function CompanyAnalytics() {
 
       <div className="card bg-base-200 p-4">
         <h2 className="font-semibold mb-3">Per-Job Funnels</h2>
-        {data.jobs.length === 0 && <p className="text-sm opacity-60">No job postings yet.</p>}
+        {(data.jobs ?? []).length === 0 && <p className="text-sm opacity-60">No job postings yet.</p>}
         <div className="space-y-3">
-          {data.jobs.map((job) => (
+          {(data.jobs ?? []).map((job) => (
             <div key={job.jobPostingId} className="bg-base-100 rounded-box p-3">
               <div className="flex justify-between items-center">
                 <div className="font-medium text-sm">{job.title}</div>

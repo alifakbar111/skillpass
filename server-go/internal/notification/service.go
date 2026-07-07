@@ -60,7 +60,7 @@ type Notification struct {
 }
 
 type ListResult struct {
-	Notifications []Notification `json:"notifications,omitempty"`
+	Notifications []Notification `json:"notifications"`
 	UnreadCount   int            `json:"unreadCount"`
 }
 

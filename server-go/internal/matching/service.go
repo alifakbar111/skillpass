@@ -80,10 +80,11 @@ func (s *Service) MatchJobs(ctx context.Context, profileID string) ([]JobMatch, 
 		return nil, nil
 	}
 
-	// Build candidate skill map once (optimization)
+	// Build candidate skill map once (optimization).
+	// skillNames are already normalized, but re-normalize for safety.
 	candidateMap := make(map[string]bool, len(skillNames))
 	for _, s := range skillNames {
-		candidateMap[strings.ToLower(s)] = true
+		candidateMap[normalizeSkill(s)] = true
 	}
 
 	// Raw SQL: go-jet's qrm does not reliably scan joined columns and text[]
@@ -281,8 +282,8 @@ func (s *Service) MatchCandidates(ctx context.Context, jobPostingID string) ([]C
 type SkillsGap struct {
 	JobPostingID  string   `json:"jobPostingId"`
 	JobTitle      string   `json:"jobTitle"`
-	MatchedSkills []string `json:"matchedSkills,omitempty"`
-	MissingSkills []string `json:"missingSkills,omitempty"`
+	MatchedSkills []string `json:"matchedSkills"`
+	MissingSkills []string `json:"missingSkills"`
 	MatchPercent  float64  `json:"matchPercent"`
 	HasEvaluation bool     `json:"hasEvaluation"`
 }
@@ -382,6 +383,14 @@ func (s *Service) getLatestEvaluation(ctx context.Context, profileID string) (*m
 	return &evals[0], nil
 }
 
+// normalizeSkill strips punctuation and whitespace for fuzzy skill name matching.
+// e.g. "Next.js" → "nextjs", "CI/CD" → "cicd", "REST API" → "restapi"
+func normalizeSkill(name string) string {
+	n := strings.ToLower(name)
+	n = strings.NewReplacer(".", "", "-", "", "/", "", " ", "", "'", "").Replace(n)
+	return n
+}
+
 func extractSkillNames(eval *model.AiEvaluations) []string {
 	var scores []skillScoreData
 	if err := json.Unmarshal([]byte(eval.SkillScores), &scores); err != nil {
@@ -389,10 +398,21 @@ func extractSkillNames(eval *model.AiEvaluations) []string {
 		return nil
 	}
 
+	// Find the maximum score to determine the scale the LLM used.
+	// The LLM scores individual skills on a variable scale (observed 1-20 per skill,
+	// not a fixed 0-100). A relative threshold adapts to whatever scale it uses.
+	maxScore := 0.0
+	for _, s := range scores {
+		if s.Score > maxScore {
+			maxScore = s.Score
+		}
+	}
+	threshold := maxScore * 0.5
+
 	skillSet := map[string]bool{}
 	for _, s := range scores {
-		if s.Score >= 50 {
-			skillSet[strings.ToLower(s.Skill)] = true
+		if s.Score >= threshold {
+			skillSet[normalizeSkill(s.Skill)] = true
 		}
 	}
 
@@ -410,13 +430,13 @@ func computeMatchScore(sourceSkills, targetSkills []string) float64 {
 
 	sourceMap := make(map[string]bool, len(sourceSkills))
 	for _, s := range sourceSkills {
-		sourceMap[strings.ToLower(s)] = true
+		sourceMap[normalizeSkill(s)] = true
 	}
 	return computeMatchScoreWithMap(sourceMap, targetSkills)
 }
 
 // computeMatchScoreWithMap uses a pre-built source map for efficiency.
-// sourceMap is a map of lowercased skill names from the source (candidate).
+// sourceMap is a map of normalized skill names from the source (candidate).
 // targetSkills are skills from the job posting.
 func computeMatchScoreWithMap(sourceMap map[string]bool, targetSkills []string) float64 {
 	if len(targetSkills) == 0 {
@@ -425,7 +445,7 @@ func computeMatchScoreWithMap(sourceMap map[string]bool, targetSkills []string) 
 
 	matches := 0
 	for _, t := range targetSkills {
-		if sourceMap[strings.ToLower(t)] {
+		if sourceMap[normalizeSkill(t)] {
 			matches++
 		}
 	}
