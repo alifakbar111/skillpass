@@ -52,7 +52,8 @@ After writing the complete plan:
 ### Execution Handoff
 
 After saving the plan, offer execution choice:
-- **Subagent-Driven (recommended)** — dispatch a fresh subagent per task, review between tasks
+- **Delegate Agents** — Route and delegate to the right agent(s) — single dispatch or multi-step workflow
+- **Subagent-Driven** — dispatch a fresh subagent per task, review between tasks
 - **Inline Execution** — execute tasks in this session with batch checkpoints
 
 ## Return

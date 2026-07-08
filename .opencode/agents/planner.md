@@ -18,7 +18,7 @@ Every plan MUST start with this header:
 ```markdown
 # [Feature Name] Implementation Plan
 
-> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task.
+> **For agentic workers:** REQUIRED Delegate Agents — Route and delegate to the right agent(s) — single dispatch or multi-step workflow
 
 **Goal:** [One sentence describing what this builds]
 
