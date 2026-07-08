@@ -30,6 +30,10 @@ export async function getLatestEvaluation(): Promise<EvaluationResult | null> {
   }
 }
 
+export async function getEvaluationHistory(): Promise<EvaluationResult[]> {
+  return api<EvaluationResult[]>('/evaluate/me/history');
+}
+
 export async function getCareerPath(): Promise<CareerPathResult> {
   return api<CareerPathResult>('/evaluate/me/career-path', { method: 'POST' });
 }
