@@ -1633,6 +1633,43 @@ const docTemplate = `{
                 ]
             }
         },
+        "/evaluate/me/history": {
+            "get": {
+                "description": "Get all AI evaluations for the authenticated jobseeker (history)",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "evaluation"
+                ],
+                "summary": "Get all evaluations",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/EvaluationResponse"
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ]
+            }
+        },
         "/evaluate/me/results": {
             "get": {
                 "description": "Get the most recent AI evaluation result for the authenticated jobseeker",
@@ -3661,6 +3698,9 @@ const docTemplate = `{
                 },
                 "id": {
                     "type": "string"
+                },
+                "isExpired": {
+                    "type": "boolean"
                 },
                 "overallScore": {
                     "type": "integer"

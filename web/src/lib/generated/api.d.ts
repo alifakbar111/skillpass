@@ -1958,6 +1958,56 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/evaluate/me/history": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get all evaluations
+         * @description Get all AI evaluations for the authenticated jobseeker (history)
+         */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["EvaluationResponse"][];
+                    };
+                };
+                /** @description Unauthorized */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            [key: string]: string;
+                        };
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/evaluate/me/results": {
         parameters: {
             query?: never;
@@ -4092,6 +4142,7 @@ export interface components {
         EvaluationResponse: {
             createdAt?: string;
             id?: string;
+            isExpired?: boolean;
             overallScore?: number;
             skillCounts?: components["schemas"]["internal_evaluation.SkillCountResult"][];
             skillScores?: components["schemas"]["SkillScoreItem"][];

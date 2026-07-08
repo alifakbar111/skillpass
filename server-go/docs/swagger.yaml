@@ -219,6 +219,8 @@ definitions:
         type: string
       id:
         type: string
+      isExpired:
+        type: boolean
       overallScore:
         type: integer
       skillCounts:
@@ -2123,6 +2125,29 @@ paths:
       security:
       - BearerAuth: []
       summary: Career path recommendations
+      tags:
+      - evaluation
+  /evaluate/me/history:
+    get:
+      description: Get all AI evaluations for the authenticated jobseeker (history)
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/EvaluationResponse'
+            type: array
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Get all evaluations
       tags:
       - evaluation
   /evaluate/me/results:

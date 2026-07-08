@@ -1883,6 +1883,48 @@
                 ]
             }
         },
+        "/evaluate/me/history": {
+            "get": {
+                "description": "Get all AI evaluations for the authenticated jobseeker (history)",
+                "tags": [
+                    "evaluation"
+                ],
+                "summary": "Get all evaluations",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "array",
+                                    "items": {
+                                        "$ref": "#/components/schemas/EvaluationResponse"
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "additionalProperties": {
+                                        "type": "string"
+                                    }
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ]
+            }
+        },
         "/evaluate/me/results": {
             "get": {
                 "description": "Get the most recent AI evaluation result for the authenticated jobseeker",
@@ -4225,6 +4267,9 @@
                     },
                     "id": {
                         "type": "string"
+                    },
+                    "isExpired": {
+                        "type": "boolean"
                     },
                     "overallScore": {
                         "type": "integer"
