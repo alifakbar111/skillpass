@@ -7,8 +7,9 @@ import { SkillScoresChart } from '@/components/jobseeker/SkillScoresChart';
 import { LoadingFallback } from '@/components/ui/LoadingFallback';
 import { useAuth } from '@/hooks/useAuth';
 import { ApiError } from '@/lib/api';
-import { getLatestEvaluation, triggerEvaluation } from '@/lib/evaluation';
+import { getLatestEvaluation, getEvaluationHistory, triggerEvaluation } from '@/lib/evaluation';
 import { CareerPathSection } from '@/pages/jobseeker/EvaluationPage/CareerPathSection';
+import { CountGrowthTimeline } from '@/components/jobseeker/CountGrowthTimeline';
 
 export function EvaluationPage() {
   const { user } = useAuth();
@@ -20,6 +21,12 @@ export function EvaluationPage() {
     enabled: !!user,
     queryFn: getLatestEvaluation,
     retry: (count, err) => count < 1 && !(err instanceof ApiError && err.status === 404),
+  });
+
+  const { data: history } = useQuery({
+    queryKey: ['evaluation', 'history'],
+    enabled: !!user,
+    queryFn: getEvaluationHistory,
   });
 
   const evaluateMutation = useMutation({
@@ -154,6 +161,8 @@ export function EvaluationPage() {
           </div>
 
           <CareerPathSection />
+
+          {history && history.length > 1 && <CountGrowthTimeline history={history} />}
 
           <p className="text-xs opacity-50 text-center">
             Last evaluated: {evaluation.createdAt ? new Date(evaluation.createdAt).toLocaleString() : 'unknown'}

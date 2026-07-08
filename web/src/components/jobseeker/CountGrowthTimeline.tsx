@@ -1,9 +1,9 @@
 import { TrendingUp } from 'lucide-react';
 
 interface HistoryEntry {
-  id: string;
-  overallScore: number;
-  createdAt: string;
+  id?: string;
+  overallScore?: number;
+  createdAt?: string;
 }
 
 interface Props {
@@ -11,7 +11,12 @@ interface Props {
 }
 
 export function CountGrowthTimeline({ history }: Props) {
-  if (history.length === 0) {
+  const entries = history.filter(
+    (e): e is Required<Pick<HistoryEntry, 'id' | 'overallScore' | 'createdAt'>> & HistoryEntry =>
+      e.id != null && e.overallScore != null && e.createdAt != null,
+  );
+
+  if (entries.length === 0) {
     return (
       <div className="card bg-base-200 p-4">
         <p className="text-sm opacity-60 text-center">No evaluation history available.</p>
@@ -25,8 +30,8 @@ export function CountGrowthTimeline({ history }: Props) {
         <TrendingUp size={18} aria-hidden="true" /> Count Growth
       </h3>
       <div className="space-y-3">
-        {history.map((entry, index) => {
-          const prev = index > 0 ? history[index - 1].overallScore : null;
+        {entries.map((entry, index) => {
+          const prev = index > 0 ? entries[index - 1].overallScore : null;
           const growth = prev !== null ? entry.overallScore - prev : null;
           const date = new Date(entry.createdAt).toLocaleDateString('en-US', {
             month: 'short',
@@ -37,7 +42,7 @@ export function CountGrowthTimeline({ history }: Props) {
             <div key={entry.id} className="flex items-center gap-3">
               <div className="flex flex-col items-center">
                 <div className="w-3 h-3 rounded-full bg-primary" aria-hidden="true" />
-                {index < history.length - 1 && <div className="w-0.5 h-8 bg-base-300" aria-hidden="true" />}
+                {index < entries.length - 1 && <div className="w-0.5 h-8 bg-base-300" aria-hidden="true" />}
               </div>
               <div className="flex-1 flex justify-between items-center">
                 <div>
