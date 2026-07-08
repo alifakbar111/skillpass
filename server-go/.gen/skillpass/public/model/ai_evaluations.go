@@ -22,4 +22,5 @@ type AiEvaluations struct {
 	SkillScores  string
 	RawAnalysis  string
 	CreatedAt    time.Time
+	IsCurrent    bool
 }

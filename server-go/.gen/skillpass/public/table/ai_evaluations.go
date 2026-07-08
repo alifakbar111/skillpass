@@ -26,6 +26,7 @@ type aiEvaluationsTable struct {
 	SkillScores  postgres.ColumnString
 	RawAnalysis  postgres.ColumnString
 	CreatedAt    postgres.ColumnTimestampz
+	IsCurrent    postgres.ColumnBool
 
 	AllColumns     postgres.ColumnList
 	MutableColumns postgres.ColumnList
@@ -76,9 +77,10 @@ func newAiEvaluationsTableImpl(schemaName, tableName, alias string) aiEvaluation
 		SkillScoresColumn  = postgres.StringColumn("skill_scores")
 		RawAnalysisColumn  = postgres.StringColumn("raw_analysis")
 		CreatedAtColumn    = postgres.TimestampzColumn("created_at")
-		allColumns         = postgres.ColumnList{IDColumn, ProfileIDColumn, OverallScoreColumn, StrengthsColumn, WeaknessesColumn, SuggestionsColumn, SkillScoresColumn, RawAnalysisColumn, CreatedAtColumn}
-		mutableColumns     = postgres.ColumnList{ProfileIDColumn, OverallScoreColumn, StrengthsColumn, WeaknessesColumn, SuggestionsColumn, SkillScoresColumn, RawAnalysisColumn, CreatedAtColumn}
-		defaultColumns     = postgres.ColumnList{IDColumn, StrengthsColumn, WeaknessesColumn, SuggestionsColumn, SkillScoresColumn, RawAnalysisColumn, CreatedAtColumn}
+		IsCurrentColumn    = postgres.BoolColumn("is_current")
+		allColumns         = postgres.ColumnList{IDColumn, ProfileIDColumn, OverallScoreColumn, StrengthsColumn, WeaknessesColumn, SuggestionsColumn, SkillScoresColumn, RawAnalysisColumn, CreatedAtColumn, IsCurrentColumn}
+		mutableColumns     = postgres.ColumnList{ProfileIDColumn, OverallScoreColumn, StrengthsColumn, WeaknessesColumn, SuggestionsColumn, SkillScoresColumn, RawAnalysisColumn, CreatedAtColumn, IsCurrentColumn}
+		defaultColumns     = postgres.ColumnList{IDColumn, StrengthsColumn, WeaknessesColumn, SuggestionsColumn, SkillScoresColumn, RawAnalysisColumn, CreatedAtColumn, IsCurrentColumn}
 	)
 
 	return aiEvaluationsTable{
@@ -94,6 +96,7 @@ func newAiEvaluationsTableImpl(schemaName, tableName, alias string) aiEvaluation
 		SkillScores:  SkillScoresColumn,
 		RawAnalysis:  RawAnalysisColumn,
 		CreatedAt:    CreatedAtColumn,
+		IsCurrent:    IsCurrentColumn,
 
 		AllColumns:     allColumns,
 		MutableColumns: mutableColumns,
