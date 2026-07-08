@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Sparkles, X } from 'lucide-react';
 import { useState } from 'react';
+import { EvaluationExpiryBanner } from '@/components/jobseeker/EvaluationExpiryBanner';
 import { EvaluationScoreBadge } from '@/components/jobseeker/EvaluationScoreBadge';
 import { SkillScoresChart } from '@/components/jobseeker/SkillScoresChart';
 import { LoadingFallback } from '@/components/ui/LoadingFallback';
@@ -79,6 +80,8 @@ export function EvaluationPage() {
 
       {evaluation ? (
         <>
+          {evaluation.createdAt && <EvaluationExpiryBanner createdAt={evaluation.createdAt} />}
+
           <div className="card bg-base-200 p-6">
             <div className="flex items-center justify-between">
               <div>
