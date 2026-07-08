@@ -94,6 +94,95 @@ export const experienceSchema = z.object({
 });
 export type ExperienceForm = z.infer<typeof experienceSchema>;
 
+// Employment-specific schema (employment & gig)
+export const workHistorySchema = z.object({
+  type: z.enum(['employment', 'gig']),
+  title: z.string().min(1, 'Title is required'),
+  organization: z.string().min(1, 'Organization is required'),
+  startDate: z.string().regex(/^\d{4}-(0[1-9]|1[0-2])$/, 'Start date must be in YYYY-MM format'),
+  endDate: z
+    .string()
+    .regex(/^\d{4}-(0[1-9]|1[0-2])$/, 'End date must be in YYYY-MM format')
+    .optional()
+    .or(z.literal('')),
+  isCurrent: z.boolean().optional(),
+  description: z.string().optional(),
+  industry: z.string().min(1, 'Industry is required'),
+  skills: z.string().optional(),
+  url: z.string().url('Invalid URL').or(z.literal('')).optional(),
+});
+export type WorkHistoryForm = z.infer<typeof workHistorySchema>;
+
+// Education-specific schema
+export const educationSchema = z.object({
+  type: z.literal('education'),
+  title: z.string().min(1, 'Degree/Diploma title is required'),
+  organization: z.string().min(1, 'Institution is required'),
+  startDate: z.string().regex(/^\d{4}-(0[1-9]|1[0-2])$/, 'Start date must be in YYYY-MM format'),
+  endDate: z
+    .string()
+    .regex(/^\d{4}-(0[1-9]|1[0-2])$/, 'End date must be in YYYY-MM format')
+    .optional()
+    .or(z.literal('')),
+  isCurrent: z.boolean().optional(),
+  description: z.string().optional(),
+  skills: z.string().optional(),
+  url: z.string().url('Invalid URL').or(z.literal('')).optional(),
+});
+export type EducationForm = z.infer<typeof educationSchema>;
+
+// Certification-specific schema
+export const certificationSchema = z.object({
+  type: z.literal('certification'),
+  title: z.string().min(1, 'Certification name is required'),
+  organization: z.string().min(1, 'Issuer is required'),
+  startDate: z.string().regex(/^\d{4}-(0[1-9]|1[0-2])$/, 'Issue date must be in YYYY-MM format'),
+  endDate: z
+    .string()
+    .regex(/^\d{4}-(0[1-9]|1[0-2])$/, 'Expiry date must be in YYYY-MM format')
+    .optional()
+    .or(z.literal('')),
+  description: z.string().optional(),
+  skills: z.string().optional(),
+  url: z.string().url('Verification URL').or(z.literal('')).optional(),
+});
+export type CertificationForm = z.infer<typeof certificationSchema>;
+
+// Project-specific schema
+export const projectSchema = z.object({
+  type: z.literal('project'),
+  title: z.string().min(1, 'Project title is required'),
+  organization: z.string().optional(),
+  startDate: z.string().regex(/^\d{4}-(0[1-9]|1[0-2])$/, 'Start date must be in YYYY-MM format'),
+  endDate: z
+    .string()
+    .regex(/^\d{4}-(0[1-9]|1[0-2])$/, 'End date must be in YYYY-MM format')
+    .optional()
+    .or(z.literal('')),
+  description: z.string().optional(),
+  skills: z.string().optional(),
+  url: z.string().url('Project URL').or(z.literal('')).optional(),
+});
+export type ProjectForm = z.infer<typeof projectSchema>;
+
+// Volunteering-specific schema
+export const volunteeringSchema = z.object({
+  type: z.literal('volunteering'),
+  title: z.string().min(1, 'Role is required'),
+  organization: z.string().min(1, 'Organization is required'),
+  startDate: z.string().regex(/^\d{4}-(0[1-9]|1[0-2])$/, 'Start date must be in YYYY-MM format'),
+  endDate: z
+    .string()
+    .regex(/^\d{4}-(0[1-9]|1[0-2])$/, 'End date must be in YYYY-MM format')
+    .optional()
+    .or(z.literal('')),
+  isCurrent: z.boolean().optional(),
+  description: z.string().optional(),
+  skills: z.string().optional(),
+  url: z.string().url('Invalid URL').or(z.literal('')).optional(),
+});
+export type VolunteeringForm = z.infer<typeof volunteeringSchema>;
+
 export const companyProfileSchema = z.object({
   companyName: z.string().min(1, 'Company name is required'),
   website: z.string().url('Invalid URL').or(z.literal('')),
