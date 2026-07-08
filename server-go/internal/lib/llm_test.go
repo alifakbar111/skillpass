@@ -14,14 +14,20 @@ func TestMockLLMClient(t *testing.T) {
 	client := NewMockLLMClient()
 
 	var result struct {
-		OverallScore int `json:"overallScore"`
+		Skills []struct {
+			Skill      string  `json:"skill"`
+			TotalYears float64 `json:"totalYears"`
+		} `json:"skills"`
 	}
 	err := client.Chat(context.Background(), "system", "user", &result)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
-	if result.OverallScore != 75 {
-		t.Fatalf("expected 75, got %d", result.OverallScore)
+	if len(result.Skills) == 0 {
+		t.Fatal("expected at least one skill")
+	}
+	if result.Skills[0].TotalYears <= 0 {
+		t.Fatal("expected positive TotalYears")
 	}
 }
 
