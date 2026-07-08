@@ -121,12 +121,12 @@ func TestComputeSkillCount_EducationPoints(t *testing.T) {
 		level    EducationLevel
 		expected int
 	}{
-		{"none", EduNone, 10},
-		{"hs", EduHS, 15},
-		{"diploma", EduDiploma, 25},
-		{"bachelor", EduBachelor, 40},
-		{"master", EduMaster, 55},
-		{"phd", EduPhD, 75},
+		{"none", EduNone, 0},
+		{"hs", EduHS, 5},
+		{"diploma", EduDiploma, 15},
+		{"bachelor", EduBachelor, 30},
+		{"master", EduMaster, 45},
+		{"phd", EduPhD, 65},
 	}
 
 	for _, tt := range tests {
@@ -136,8 +136,8 @@ func TestComputeSkillCount_EducationPoints(t *testing.T) {
 				EducationLevel: tt.level,
 			}
 			result := ComputeSkillCount(facts)
-			if result.Count != tt.expected {
-				t.Errorf("EducationLevel=%s: expected Count=%d, got %d", tt.level, tt.expected, result.Count)
+			if result.EducationPoints != tt.expected {
+				t.Errorf("EducationLevel=%s: expected EducationPoints=%d, got %d", tt.level, tt.expected, result.EducationPoints)
 			}
 		})
 	}

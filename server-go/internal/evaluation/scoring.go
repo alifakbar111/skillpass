@@ -1,5 +1,7 @@
 package evaluation
 
+import "math"
+
 // RoleWeight represents the seniority bucket for a skill.
 type RoleWeight string
 
@@ -68,13 +70,15 @@ type SkillCountResult struct {
 
 // ComputeSkillCount calculates the deterministic Count for one skill.
 func ComputeSkillCount(facts SkillFacts) SkillCountResult {
-	yearsPoints := int(facts.TotalYears*10 + 0.5)
+	yearsPoints := int(math.Round(facts.TotalYears * 10))
 	rolesPoints := facts.NumRoles * 15
 	rwPoints := roleWeightPoints[facts.RoleWeight]
+	// Fallback to entry (10) for unknown/empty RoleWeight — the LLM
+	// should always return a valid value, but if not, default to minimum.
 	if rwPoints == 0 {
 		rwPoints = 10
 	}
-	ep := eduPoints[facts.EducationLevel]
+	educationPoints := eduPoints[facts.EducationLevel]
 	certPoints := facts.NumCertifications*10 + facts.NumLicenses*20
 	projectPoints := facts.NumProjects * 10
 	orgPoints := 0
@@ -86,7 +90,7 @@ func ComputeSkillCount(facts SkillFacts) SkillCountResult {
 		urlPoints = 10
 	}
 
-	total := yearsPoints + rolesPoints + rwPoints + ep + certPoints + projectPoints + orgPoints + urlPoints
+	total := yearsPoints + rolesPoints + rwPoints + educationPoints + certPoints + projectPoints + orgPoints + urlPoints
 
 	return SkillCountResult{
 		Skill:               facts.Skill,
@@ -94,7 +98,7 @@ func ComputeSkillCount(facts SkillFacts) SkillCountResult {
 		YearsPoints:         yearsPoints,
 		RolesPoints:         rolesPoints,
 		RoleWeightPoints:    rwPoints,
-		EducationPoints:     ep,
+		EducationPoints:     educationPoints,
 		CertificationPoints: certPoints,
 		ProjectPoints:       projectPoints,
 		DiversityPoints:     orgPoints,
