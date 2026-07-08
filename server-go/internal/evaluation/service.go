@@ -67,21 +67,34 @@ func (s *Service) Evaluate(ctx context.Context, profileID string) (*EvaluationRe
 		return nil, fmt.Errorf("load profile: %w", err)
 	}
 
-	// 2. Build the LLM prompt
-	systemPrompt := `You are a career assessment AI. Evaluate the jobseeker's profile and return a JSON object with:
-- overallScore (integer, cumulative — every skill, experience, and strength adds points, no upper limit)
+	// 2. Build the LLM prompt for fact extraction
+	systemPrompt := `You are a career assessment data extractor. For each skill found in the profile, extract the following structured facts. Do NOT calculate scores — just extract facts.
+
+For EACH skill, extract:
+1. totalYears — Total calendar years the skill was actively used. If multiple roles overlapped in time, do NOT double-count — use the actual calendar duration.
+2. numRoles — Number of distinct roles/experiences that mention this skill
+3. roleWeight — Highest role weight bucket across all roles:
+   - "entry": Junior/Intern/Associate titles, basic or routine tasks, IC scope
+   - "skilled": Mid-level, independent work, moderate complexity
+   - "senior": Senior/Lead/Supervisor/Head, complex non-routine work, leads others
+   - "expert": Manager/Director/VP/C-level, org-wide/strategic impact
+4. educationLevel — Highest education level studied for this skill:
+   - "none", "hs" (high school), "diploma", "bachelor", "master", "phd"
+5. numCertifications — Count of standard certification entries matching this skill (third-party, company, org)
+6. numLicenses — Count of professional license entries matching this skill (RN, CPA, PE, etc.)
+7. numProjects — Number of project/portfolio entries using this skill
+8. numOrganizations — Number of distinct organizations where this skill was used
+9. hasUrl — Does any experience entry have a URL showing work with this skill?
+
+Also generate:
 - strengths (array of {skill: string, score: int, note: string})
 - weaknesses (array of {skill: string, score: int, note: string})
 - suggestions (array of {area: string, tip: string})
-- skillScores (array of {skill: string, category: string, score: int})
 
-Scoring principles:
-- Every skill, year of experience, job entry, and identified strength adds points.
-- Weaknesses identify gaps but do NOT subtract from the score.
-- No upper limit — encourage honest, complete profiles.
-- Categories for skillScores: "backend", "frontend", "devops", "data", "design", "management", "communication", "domain", "tooling"`
+Do NOT return an overallScore or skillScores array. This is fact extraction only.
+Return ONLY valid JSON.`
 
-	userPrompt := fmt.Sprintf(`Evaluate this jobseeker profile:
+	userPrompt := fmt.Sprintf(`Extract skill facts from this jobseeker profile:
 
 Name: %s
 Headline: %s
@@ -93,7 +106,7 @@ Experience entries:
 
 Skills mentioned across experiences: %s
 
-Return the evaluation as a JSON object following the schema defined in the system prompt.`,
+Return the extracted facts as JSON per the system prompt schema.`,
 		profileData.Name,
 		nullStr(profileData.Headline),
 		nullStr(profileData.About),
@@ -101,35 +114,59 @@ Return the evaluation as a JSON object following the schema defined in the syste
 		formatExperiences(profileData.Experiences),
 		strings.Join(profileData.AllSkills, ", "))
 
-	// 3. Call LLM
+	// 3. Call LLM — expect facts, not scores
 	var llmResult struct {
-		OverallScore int             `json:"overallScore"`
-		Strengths    []SkillNote     `json:"strengths"`
-		Weaknesses   []SkillNote     `json:"weaknesses"`
-		Suggestions  []Suggestion    `json:"suggestions"`
-		SkillScores  []SkillScoreItem `json:"skillScores"`
+		Skills      []SkillFacts `json:"skills"`
+		Strengths   []SkillNote  `json:"strengths"`
+		Weaknesses  []SkillNote  `json:"weaknesses"`
+		Suggestions []Suggestion `json:"suggestions"`
 	}
 
 	if err := s.llm.Chat(ctx, systemPrompt, userPrompt, &llmResult); err != nil {
 		return nil, fmt.Errorf("llm evaluation: %w", err)
 	}
 
-	// 4. Marshal the structured parts to JSONB
-	strengthsJSON, _ := json.Marshal(llmResult.Strengths)
-	weaknessesJSON, _ := json.Marshal(llmResult.Weaknesses)
-	suggestionsJSON, _ := json.Marshal(llmResult.Suggestions)
-	skillScoresJSON, _ := json.Marshal(llmResult.SkillScores)
+	// 4. Compute Counts server-side from extracted facts
+	skillCounts := make([]SkillCountResult, 0, len(llmResult.Skills))
+	skillScores := make([]SkillScoreItem, 0, len(llmResult.Skills))
+	for _, facts := range llmResult.Skills {
+		result := ComputeSkillCount(facts)
+		skillCounts = append(skillCounts, result)
+		skillScores = append(skillScores, SkillScoreItem{
+			Skill: result.Skill,
+			Score: result.Count,
+		})
+	}
 
-	rawAnalysis := fmt.Sprintf("system: %s\n\nuser: %s", systemPrompt, userPrompt)
+	totalCount := ComputeTotalCount(skillCounts)
 
-	// 5. Delete old evaluations for this profile, then insert new one
+	// 5. Marshal to JSONB
+	strengthsJSON, err := json.Marshal(llmResult.Strengths)
+	if err != nil {
+		return nil, fmt.Errorf("marshal strengths: %w", err)
+	}
+	weaknessesJSON, err := json.Marshal(llmResult.Weaknesses)
+	if err != nil {
+		return nil, fmt.Errorf("marshal weaknesses: %w", err)
+	}
+	suggestionsJSON, err := json.Marshal(llmResult.Suggestions)
+	if err != nil {
+		return nil, fmt.Errorf("marshal suggestions: %w", err)
+	}
+	skillScoresJSON, err := json.Marshal(skillScores)
+	if err != nil {
+		return nil, fmt.Errorf("marshal skillScores: %w", err)
+	}
+	rawAnalysis := fmt.Sprintf("system: %s\n\nuser: %s\n\nllm_facts: %s",
+		systemPrompt, userPrompt, mustMarshal(llmResult.Skills))
+
+	// 6. Insert evaluation (DELETE old, insert new — will upgrade in Phase 4)
 	tx, err := s.db.BeginTx(ctx, nil)
 	if err != nil {
 		return nil, fmt.Errorf("begin tx: %w", err)
 	}
 	defer tx.Rollback()
 
-	// Delete previous evaluations
 	delStmt := gen.AiEvaluations.DELETE().WHERE(
 		gen.AiEvaluations.ProfileID.EQ(UUID(profileUUID)),
 	)
@@ -137,7 +174,6 @@ Return the evaluation as a JSON object following the schema defined in the syste
 		return nil, fmt.Errorf("delete old evaluations: %w", err)
 	}
 
-	// Insert new evaluation
 	newID := uuid.New()
 	insStmt := gen.AiEvaluations.INSERT(
 		gen.AiEvaluations.ID,
@@ -151,7 +187,7 @@ Return the evaluation as a JSON object following the schema defined in the syste
 	).VALUES(
 		newID,
 		profileUUID,
-		Int(int64(llmResult.OverallScore)),
+		Int(int64(totalCount)),
 		StringExp(CAST(String(string(strengthsJSON))).AS("jsonb")),
 		StringExp(CAST(String(string(weaknessesJSON))).AS("jsonb")),
 		StringExp(CAST(String(string(suggestionsJSON))).AS("jsonb")),
@@ -169,14 +205,23 @@ Return the evaluation as a JSON object following the schema defined in the syste
 
 	return &EvaluationResult{
 		ID:           newID.String(),
-		OverallScore: llmResult.OverallScore,
+		OverallScore: totalCount,
 		Strengths:    llmResult.Strengths,
 		Weaknesses:   llmResult.Weaknesses,
 		Suggestion:   llmResult.Suggestions,
-		SkillScores:  llmResult.SkillScores,
+		SkillScores:  skillScores,
 		CreatedAt:    time.Now().UTC().Format(time.RFC3339),
 		RawAnalysis:  rawAnalysis,
 	}, nil
+}
+
+// mustMarshal is a helper that returns JSON string or "{}" on error.
+func mustMarshal(v interface{}) string {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return "{}"
+	}
+	return string(b)
 }
 
 type fullProfile struct {
@@ -386,7 +431,11 @@ func (s *Service) CareerPath(ctx context.Context, profileID string) (*CareerPath
 
 	skillSummary := make([]string, 0, len(eval.SkillScores))
 	for _, ss := range eval.SkillScores {
-		skillSummary = append(skillSummary, fmt.Sprintf("%s (%s, %d)", ss.Skill, ss.Category, ss.Score))
+		if ss.Category != "" {
+			skillSummary = append(skillSummary, fmt.Sprintf("%s (%s, %d)", ss.Skill, ss.Category, ss.Score))
+		} else {
+			skillSummary = append(skillSummary, fmt.Sprintf("%s (%d)", ss.Skill, ss.Score))
+		}
 	}
 
 	systemPrompt := `You are a career advisor AI. Based on the candidate's profile and skill evaluation, return a JSON object with:
