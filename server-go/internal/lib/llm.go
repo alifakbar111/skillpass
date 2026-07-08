@@ -404,11 +404,41 @@ func NewMockLLMClient() *MockLLMClient {
 	return &MockLLMClient{
 		ResponseFunc: func(systemPrompt, userPrompt string) interface{} {
 			return map[string]interface{}{
-				"overallScore": 75,
-				"strengths":    []map[string]interface{}{{"skill": "Go", "score": 90, "note": "Strong backend skills"}},
-				"weaknesses":   []map[string]interface{}{{"skill": "React", "score": 40, "note": "Limited frontend experience"}},
-				"suggestions":  []map[string]interface{}{{"area": "Frontend", "tip": "Build a React project"}},
-				"skillScores":  []map[string]interface{}{{"skill": "Go", "category": "backend", "score": 90}},
+				"skills": []map[string]interface{}{
+					{
+						"skill":              "Go",
+						"totalYears":         3.0,
+						"numRoles":           2,
+						"roleWeight":         "senior",
+						"educationLevel":     "none",
+						"numCertifications":  1,
+						"numLicenses":        0,
+						"numProjects":        1,
+						"numOrganizations":   2,
+						"hasUrl":             true,
+					},
+					{
+						"skill":              "React",
+						"totalYears":         1.5,
+						"numRoles":           1,
+						"roleWeight":         "skilled",
+						"educationLevel":     "none",
+						"numCertifications":  0,
+						"numLicenses":        0,
+						"numProjects":        1,
+						"numOrganizations":   1,
+						"hasUrl":             false,
+					},
+				},
+				"strengths": []map[string]interface{}{
+					{"skill": "Go", "score": 90, "note": "Strong backend skills"},
+				},
+				"weaknesses": []map[string]interface{}{
+					{"skill": "React", "score": 40, "note": "Limited frontend experience"},
+				},
+				"suggestions": []map[string]interface{}{
+					{"area": "Frontend", "tip": "Build a React project"},
+				},
 			}
 		},
 	}

@@ -105,8 +105,8 @@ func TestPostEvaluate(t *testing.T) {
 		}
 		var resp EvaluationResponse
 		json.Unmarshal(w.Body.Bytes(), &resp)
-		if resp.OverallScore != 75 {
-			t.Fatalf("expected 75, got %d", resp.OverallScore)
+		if resp.OverallScore != 245 {
+			t.Fatalf("expected 245 (computed Count), got %d", resp.OverallScore)
 		}
 	})
 
