@@ -114,6 +114,7 @@ func main() {
 	resumeHandler := resume.NewHandler(resumeService, cfg.MarkItDownURL)
 
 	appService := application.NewService(database)
+	appService.SetEvalService(evalService)
 	appHandler := application.NewHandler(appService)
 
 	notifService := notification.NewService(database)
@@ -222,6 +223,7 @@ func main() {
 	evalGroup.Use(middleware.AuthRequired(cfg.JWTSecret), middleware.RequireRole("jobseeker"))
 	evalGroup.POST("/me", evalHandler.PostEvaluate)
 	evalGroup.GET("/me/results", evalHandler.GetLatestEvaluation)
+	evalGroup.GET("/me/history", evalHandler.GetEvaluationHistory)
 	evalGroup.POST("/me/career-path", evalHandler.PostCareerPath)
 
 	// ── Application routes (jobseeker applies) ──

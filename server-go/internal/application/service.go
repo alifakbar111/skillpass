@@ -5,12 +5,14 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"log/slog"
 	"time"
 
 	. "github.com/go-jet/jet/v2/postgres"
 	"github.com/google/uuid"
 
 	"skillpass-server-go/.gen/skillpass/public/model"
+	"skillpass-server-go/internal/evaluation"
 	"skillpass-server-go/internal/gen"
 	"skillpass-server-go/internal/lib"
 )
@@ -36,11 +38,16 @@ var allowedTransitions = map[string][]string{
 }
 
 type Service struct {
-	db *sql.DB
+	db          *sql.DB
+	evalService *evaluation.Service
 }
 
 func NewService(db *sql.DB) *Service {
 	return &Service{db: db}
+}
+
+func (s *Service) SetEvalService(ev *evaluation.Service) {
+	s.evalService = ev
 }
 
 type ApplicationResult struct {
@@ -124,6 +131,22 @@ func (s *Service) Apply(ctx context.Context, jobseekerID, jobPostingID string) (
 	}
 	if len(dups) > 0 {
 		return nil, ErrDuplicate
+	}
+
+	// Check if evaluation is expired — auto-trigger if so
+	if s.evalService != nil {
+		latestEval, err := s.evalService.GetLatest(ctx, jobseekerID)
+		if err == nil {
+			createdAt, parseErr := time.Parse(time.RFC3339, latestEval.CreatedAt)
+			if parseErr == nil && evaluation.IsExpired(createdAt) {
+				slog.Info("auto-triggering evaluation for expired evaluation", "profileID", jobseekerID)
+				if _, evalErr := s.evalService.Evaluate(ctx, jobseekerID); evalErr != nil {
+					slog.Warn("auto-trigger evaluation failed, continuing with application", "error", evalErr)
+				}
+			}
+		} else if errors.Is(err, sql.ErrNoRows) {
+			slog.Info("no evaluation found for profile, allowing application without auto-trigger", "profileID", jobseekerID)
+		}
 	}
 
 	// Insert with RETURNING
