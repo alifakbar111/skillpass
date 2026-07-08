@@ -5,6 +5,7 @@ import (
 	"errors"
 	"log/slog"
 	"net/http"
+	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
@@ -29,6 +30,7 @@ type EvaluationResponse struct {
 	SkillScores  []SkillScoreItem    `json:"skillScores,omitempty"`
 	SkillCounts  []SkillCountResult  `json:"skillCounts,omitempty"`
 	CreatedAt    string              `json:"createdAt"`
+	IsExpired    bool                `json:"isExpired"`
 } //@name EvaluationResponse
 
 // PostEvaluate		godoc
@@ -111,6 +113,50 @@ func (h *Handler) GetLatestEvaluation(c *gin.Context) {
 	c.JSON(http.StatusOK, toResponse(result))
 }
 
+// GetEvaluationHistory	godoc
+// @Summary		Get all evaluations
+// @Description	Get all AI evaluations for the authenticated jobseeker (history)
+// @Tags		evaluation
+// @Produce		json
+// @Security	BearerAuth
+// @Success		200 {array} EvaluationResponse
+// @Failure		401 {object} map[string]string
+// @Router		/evaluate/me/history [get]
+func (h *Handler) GetEvaluationHistory(c *gin.Context) {
+	userID, err := getUserID(c)
+	if err != nil {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": err.Error()})
+		return
+	}
+
+	profileID, err := h.lookupProfileID(c, userID)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			c.JSON(http.StatusNotFound, gin.H{"error": "Jobseeker profile not found"})
+			return
+		}
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to lookup profile"})
+		return
+	}
+
+	history, err := h.service.GetHistory(c.Request.Context(), profileID)
+	if err != nil {
+		slog.Error("failed to get evaluation history", "profileID", profileID, "error", err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to get evaluation history"})
+		return
+	}
+
+	results := make([]EvaluationResponse, 0, len(history))
+	for _, eval := range history {
+		results = append(results, toResponse(eval))
+	}
+	if results == nil {
+		results = []EvaluationResponse{}
+	}
+
+	c.JSON(http.StatusOK, results)
+}
+
 // PostCareerPath	godoc
 // @Summary		Career path recommendations
 // @Description	Generate AI career path recommendations from the authenticated jobseeker's profile and latest evaluation
@@ -177,6 +223,7 @@ func getUserID(c *gin.Context) (string, error) {
 }
 
 func toResponse(eval *EvaluationResult) EvaluationResponse {
+	createdAt, _ := time.Parse(time.RFC3339, eval.CreatedAt)
 	return EvaluationResponse{
 		ID:           eval.ID,
 		OverallScore: eval.OverallScore,
@@ -186,5 +233,6 @@ func toResponse(eval *EvaluationResult) EvaluationResponse {
 		SkillScores:  eval.SkillScores,
 		SkillCounts:  eval.SkillCounts,
 		CreatedAt:    eval.CreatedAt,
+		IsExpired:    IsExpired(createdAt),
 	}
 }

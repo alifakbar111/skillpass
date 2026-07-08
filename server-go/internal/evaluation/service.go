@@ -16,6 +16,15 @@ import (
 	"skillpass-server-go/internal/lib"
 )
 
+const (
+	EvaluationValidDuration = 3 * 30 * 24 * time.Hour // ~3 months
+)
+
+// IsExpired returns true if the evaluation was created more than 3 months ago.
+func IsExpired(createdAt time.Time) bool {
+	return time.Since(createdAt) > EvaluationValidDuration
+}
+
 // Service handles AI evaluation business logic.
 type Service struct {
 	db  *sql.DB
@@ -161,20 +170,26 @@ Return the extracted facts as JSON per the system prompt schema.`,
 	rawAnalysis := fmt.Sprintf("system: %s\n\nuser: %s\n\nllm_facts: %s",
 		systemPrompt, userPrompt, mustMarshal(llmResult.Skills))
 
-	// 6. Insert evaluation (DELETE old, insert new — will upgrade in Phase 4)
+	// 6. Insert evaluation with is_current lifecycle management
 	tx, err := s.db.BeginTx(ctx, nil)
 	if err != nil {
 		return nil, fmt.Errorf("begin tx: %w", err)
 	}
 	defer tx.Rollback()
 
-	delStmt := gen.AiEvaluations.DELETE().WHERE(
-		gen.AiEvaluations.ProfileID.EQ(UUID(profileUUID)),
-	)
-	if _, err := delStmt.ExecContext(ctx, tx); err != nil {
-		return nil, fmt.Errorf("delete old evaluations: %w", err)
+	// Flag all existing current evaluations as not current
+	updateStmt := gen.AiEvaluations.
+		UPDATE(gen.AiEvaluations.IsCurrent).
+		SET(Bool(false)).
+		WHERE(
+			gen.AiEvaluations.ProfileID.EQ(UUID(profileUUID)).
+				AND(gen.AiEvaluations.IsCurrent.EQ(Bool(true))),
+		)
+	if _, err := updateStmt.ExecContext(ctx, tx); err != nil {
+		return nil, fmt.Errorf("flag old evaluations: %w", err)
 	}
 
+	// Insert new evaluation with is_current = true
 	newID := uuid.New()
 	insStmt := gen.AiEvaluations.INSERT(
 		gen.AiEvaluations.ID,
@@ -185,6 +200,7 @@ Return the extracted facts as JSON per the system prompt schema.`,
 		gen.AiEvaluations.Suggestions,
 		gen.AiEvaluations.SkillScores,
 		gen.AiEvaluations.RawAnalysis,
+		gen.AiEvaluations.IsCurrent,
 	).VALUES(
 		newID,
 		profileUUID,
@@ -194,6 +210,7 @@ Return the extracted facts as JSON per the system prompt schema.`,
 		StringExp(CAST(String(string(suggestionsJSON))).AS("jsonb")),
 		StringExp(CAST(String(string(skillScoresJSON))).AS("jsonb")),
 		String(rawAnalysis),
+		Bool(true),
 	)
 
 	if _, err := insStmt.ExecContext(ctx, tx); err != nil {
@@ -341,8 +358,34 @@ func formatExperiences(exps []model.JobExperiences) string {
 	return strings.Join(lines, "\n")
 }
 
-// GetLatest returns the most recent evaluation for a profile.
+// GetLatest returns the most recent current evaluation for a profile.
 func (s *Service) GetLatest(ctx context.Context, profileID string) (*EvaluationResult, error) {
+	profileUUID, err := lib.ParseUUID(profileID)
+	if err != nil {
+		return nil, fmt.Errorf("invalid profile ID: %w", err)
+	}
+
+	stmt := SELECT(
+		gen.AiEvaluations.AllColumns,
+	).FROM(
+		gen.AiEvaluations,
+	).WHERE(
+		gen.AiEvaluations.ProfileID.EQ(UUID(profileUUID)).
+			AND(gen.AiEvaluations.IsCurrent.EQ(Bool(true))),
+	).LIMIT(1)
+
+	var evals []model.AiEvaluations
+	if err := stmt.QueryContext(ctx, s.db, &evals); err != nil {
+		return nil, err
+	}
+	if len(evals) == 0 {
+		return nil, sql.ErrNoRows
+	}
+	return evalToResult(evals[0]), nil
+}
+
+// GetHistory returns all evaluations for a profile, ordered by newest first.
+func (s *Service) GetHistory(ctx context.Context, profileID string) ([]*EvaluationResult, error) {
 	profileUUID, err := lib.ParseUUID(profileID)
 	if err != nil {
 		return nil, fmt.Errorf("invalid profile ID: %w", err)
@@ -356,34 +399,41 @@ func (s *Service) GetLatest(ctx context.Context, profileID string) (*EvaluationR
 		gen.AiEvaluations.ProfileID.EQ(UUID(profileUUID)),
 	).ORDER_BY(
 		gen.AiEvaluations.CreatedAt.DESC(),
-	).LIMIT(1)
+	)
 
 	var evals []model.AiEvaluations
-	err = stmt.QueryContext(ctx, s.db, &evals)
-	if err != nil {
+	if err := stmt.QueryContext(ctx, s.db, &evals); err != nil {
 		return nil, err
 	}
-	if len(evals) == 0 {
-		return nil, sql.ErrNoRows
-	}
-	eval := evals[0]
 
+	results := make([]*EvaluationResult, 0, len(evals))
+	for _, eval := range evals {
+		result := evalToResult(eval)
+		if result != nil {
+			results = append(results, result)
+		}
+	}
+	return results, nil
+}
+
+// evalToResult converts a model.AiEvaluations row to EvaluationResult.
+func evalToResult(eval model.AiEvaluations) *EvaluationResult {
 	var strengths []SkillNote
 	var weaknesses []SkillNote
 	var suggestions []Suggestion
 	var skillScores []SkillScoreItem
 
 	if err := json.Unmarshal([]byte(eval.Strengths), &strengths); err != nil {
-		return nil, fmt.Errorf("unmarshal strengths: %w", err)
+		return nil
 	}
 	if err := json.Unmarshal([]byte(eval.Weaknesses), &weaknesses); err != nil {
-		return nil, fmt.Errorf("unmarshal weaknesses: %w", err)
+		return nil
 	}
 	if err := json.Unmarshal([]byte(eval.Suggestions), &suggestions); err != nil {
-		return nil, fmt.Errorf("unmarshal suggestions: %w", err)
+		return nil
 	}
 	if err := json.Unmarshal([]byte(eval.SkillScores), &skillScores); err != nil {
-		return nil, fmt.Errorf("unmarshal skillScores: %w", err)
+		return nil
 	}
 
 	return &EvaluationResult{
@@ -395,7 +445,7 @@ func (s *Service) GetLatest(ctx context.Context, profileID string) (*EvaluationR
 		SkillScores:  skillScores,
 		CreatedAt:    eval.CreatedAt.Format(time.RFC3339),
 		RawAnalysis:  eval.RawAnalysis,
-	}, nil
+	}
 }
 
 // SuggestedRole is one career path recommendation.
