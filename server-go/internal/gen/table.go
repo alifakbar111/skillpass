@@ -18,4 +18,6 @@ var (
 	AiEvaluations      = table.AiEvaluations
 	Applications       = table.Applications
 	Skills             = table.Skills
+	SkillCategories    = table.SkillCategories
+	JobCategoryWeights = table.JobCategoryWeights
 )

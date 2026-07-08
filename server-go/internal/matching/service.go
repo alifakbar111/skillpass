@@ -20,7 +20,12 @@ import (
 )
 
 type Service struct {
-	db *sql.DB
+	db              *sql.DB
+	categoryService *CategoryService
+}
+
+func (s *Service) SetCategoryService(cs *CategoryService) {
+	s.categoryService = cs
 }
 
 func NewService(db *sql.DB) *Service {
@@ -122,7 +127,7 @@ func (s *Service) MatchJobs(ctx context.Context, profileID string) ([]JobMatch, 
 	var scoredJobs []scored
 
 	for _, row := range rows {
-		score := computeMatchScoreWithMap(candidateMap, []string(row.RequiredSkills))
+		score := s.computeJobMatchScore(ctx, candidateMap, []string(row.RequiredSkills), row.ID.String())
 		if score > 0 {
 			scoredJobs = append(scoredJobs, scored{row: row, score: score})
 		}
@@ -241,7 +246,7 @@ func (s *Service) MatchCandidates(ctx context.Context, jobPostingID string) ([]C
 			candidateSkills = append(candidateSkills, strings.ToLower(ss.Skill))
 		}
 		// Source = candidate skills (what % of job requirements do they meet)
-		score := computeMatchScore(candidateSkills, jobSkills)
+		score := s.computeCandidateMatchScore(ctx, candidateSkills, jobSkills, jobPostingID)
 		if score > 0 {
 			scoredCandidates = append(scoredCandidates, scoredCandidate{candidateEval: c, score: score})
 		}
@@ -455,6 +460,48 @@ func computeMatchScoreWithMap(sourceMap map[string]bool, targetSkills []string) 
 
 	score := (overlap*0.6 + relevance*0.4) * 100
 	return score
+}
+
+// computeJobMatchScore uses weighted scoring when categoryService is available.
+func (s *Service) computeJobMatchScore(ctx context.Context, candidateMap map[string]bool, targetSkills []string, jobPostingID string) float64 {
+	if s.categoryService != nil {
+		var matched []SkillCountEntry
+		for _, t := range targetSkills {
+			if candidateMap[normalizeSkill(t)] {
+				matched = append(matched, SkillCountEntry{Skill: t, Count: 1})
+			}
+		}
+		if len(matched) > 0 {
+			score, err := s.categoryService.ComputeWeightedMatchScore(ctx, matched, jobPostingID)
+			if err == nil {
+				return score
+			}
+		}
+	}
+	return computeMatchScoreWithMap(candidateMap, targetSkills)
+}
+
+// computeCandidateMatchScore uses weighted scoring when categoryService is available.
+func (s *Service) computeCandidateMatchScore(ctx context.Context, candidateSkills, jobSkills []string, jobPostingID string) float64 {
+	if s.categoryService != nil {
+		candidateSet := make(map[string]bool, len(candidateSkills))
+		for _, sk := range candidateSkills {
+			candidateSet[normalizeSkill(sk)] = true
+		}
+		var matched []SkillCountEntry
+		for _, js := range jobSkills {
+			if candidateSet[normalizeSkill(js)] {
+				matched = append(matched, SkillCountEntry{Skill: js, Count: 1})
+			}
+		}
+		if len(matched) > 0 {
+			score, err := s.categoryService.ComputeWeightedMatchScore(ctx, matched, jobPostingID)
+			if err == nil {
+				return score
+			}
+		}
+	}
+	return computeMatchScore(candidateSkills, jobSkills)
 }
 
 func computeReason(score float64) string {

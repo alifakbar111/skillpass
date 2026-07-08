@@ -129,7 +129,9 @@ func main() {
 	analyticsService := analytics.NewService(database)
 	analyticsHandler := analytics.NewHandler(database, analyticsService)
 
+	categoryService := matching.NewCategoryService(database)
 	matchService := matching.NewService(database)
+	matchService.SetCategoryService(categoryService)
 	matchHandler := matching.NewHandler(matchService)
 
 	// Phase 3: Feedback & Career Growth
