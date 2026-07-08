@@ -3665,6 +3665,12 @@ const docTemplate = `{
                 "overallScore": {
                     "type": "integer"
                 },
+                "skillCounts": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/internal_evaluation.SkillCountResult"
+                    }
+                },
                 "skillScores": {
                     "type": "array",
                     "items": {
@@ -4749,6 +4755,41 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "reviewCount": {
+                    "type": "integer"
+                }
+            }
+        },
+        "internal_evaluation.SkillCountResult": {
+            "type": "object",
+            "properties": {
+                "certificationPoints": {
+                    "type": "integer"
+                },
+                "count": {
+                    "type": "integer"
+                },
+                "diversityPoints": {
+                    "type": "integer"
+                },
+                "educationPoints": {
+                    "type": "integer"
+                },
+                "projectPoints": {
+                    "type": "integer"
+                },
+                "roleWeightPoints": {
+                    "type": "integer"
+                },
+                "rolesPoints": {
+                    "type": "integer"
+                },
+                "skill": {
+                    "type": "string"
+                },
+                "urlPoints": {
+                    "type": "integer"
+                },
+                "yearsPoints": {
                     "type": "integer"
                 }
             }

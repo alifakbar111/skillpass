@@ -21,13 +21,14 @@ func NewHandler(db *sql.DB, service *Service) *Handler {
 
 // EvaluationResponse is the public shape returned to the frontend.
 type EvaluationResponse struct {
-	ID           string           `json:"id"`
-	OverallScore int              `json:"overallScore"`
-	Strengths    []SkillNote      `json:"strengths,omitempty"`
-	Weaknesses   []SkillNote      `json:"weaknesses,omitempty"`
-	Suggestions  []Suggestion     `json:"suggestions,omitempty"`
-	SkillScores  []SkillScoreItem `json:"skillScores,omitempty"`
-	CreatedAt    string           `json:"createdAt"`
+	ID           string              `json:"id"`
+	OverallScore int                 `json:"overallScore"`
+	Strengths    []SkillNote         `json:"strengths,omitempty"`
+	Weaknesses   []SkillNote         `json:"weaknesses,omitempty"`
+	Suggestions  []Suggestion        `json:"suggestions,omitempty"`
+	SkillScores  []SkillScoreItem    `json:"skillScores,omitempty"`
+	SkillCounts  []SkillCountResult  `json:"skillCounts,omitempty"`
+	CreatedAt    string              `json:"createdAt"`
 } //@name EvaluationResponse
 
 // PostEvaluate		godoc
@@ -183,6 +184,7 @@ func toResponse(eval *EvaluationResult) EvaluationResponse {
 		Weaknesses:   eval.Weaknesses,
 		Suggestions:  eval.Suggestion,
 		SkillScores:  eval.SkillScores,
+		SkillCounts:  eval.SkillCounts,
 		CreatedAt:    eval.CreatedAt,
 	}
 }

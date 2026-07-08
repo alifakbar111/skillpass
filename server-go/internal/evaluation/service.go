@@ -34,6 +34,7 @@ type EvaluationResult struct {
 	Weaknesses   []SkillNote
 	Suggestion   []Suggestion
 	SkillScores  []SkillScoreItem
+	SkillCounts  []SkillCountResult
 	CreatedAt    string
 	RawAnalysis  string
 }
@@ -210,6 +211,7 @@ Return the extracted facts as JSON per the system prompt schema.`,
 		Weaknesses:   llmResult.Weaknesses,
 		Suggestion:   llmResult.Suggestions,
 		SkillScores:  skillScores,
+		SkillCounts:  skillCounts,
 		CreatedAt:    time.Now().UTC().Format(time.RFC3339),
 		RawAnalysis:  rawAnalysis,
 	}, nil

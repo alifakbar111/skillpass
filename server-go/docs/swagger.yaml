@@ -221,6 +221,10 @@ definitions:
         type: string
       overallScore:
         type: integer
+      skillCounts:
+        items:
+          $ref: '#/definitions/internal_evaluation.SkillCountResult'
+        type: array
       skillScores:
         items:
           $ref: '#/definitions/SkillScoreItem'
@@ -940,6 +944,29 @@ definitions:
       companyId:
         type: string
       reviewCount:
+        type: integer
+    type: object
+  internal_evaluation.SkillCountResult:
+    properties:
+      certificationPoints:
+        type: integer
+      count:
+        type: integer
+      diversityPoints:
+        type: integer
+      educationPoints:
+        type: integer
+      projectPoints:
+        type: integer
+      roleWeightPoints:
+        type: integer
+      rolesPoints:
+        type: integer
+      skill:
+        type: string
+      urlPoints:
+        type: integer
+      yearsPoints:
         type: integer
     type: object
   internal_matching.SkillsGap:

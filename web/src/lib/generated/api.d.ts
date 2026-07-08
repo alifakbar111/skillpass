@@ -4093,6 +4093,7 @@ export interface components {
             createdAt?: string;
             id?: string;
             overallScore?: number;
+            skillCounts?: components["schemas"]["internal_evaluation.SkillCountResult"][];
             skillScores?: components["schemas"]["SkillScoreItem"][];
             strengths?: components["schemas"]["SkillNote"][];
             suggestions?: components["schemas"]["Suggestion"][];
@@ -4427,6 +4428,18 @@ export interface components {
             averageRate?: number;
             companyId?: string;
             reviewCount?: number;
+        };
+        "internal_evaluation.SkillCountResult": {
+            certificationPoints?: number;
+            count?: number;
+            diversityPoints?: number;
+            educationPoints?: number;
+            projectPoints?: number;
+            roleWeightPoints?: number;
+            rolesPoints?: number;
+            skill?: string;
+            urlPoints?: number;
+            yearsPoints?: number;
         };
         "internal_matching.SkillsGap": {
             hasEvaluation?: boolean;
