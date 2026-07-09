@@ -47,6 +47,7 @@ type JobMatch struct {
 type CandidateMatch struct {
 	ProfileID    string   `json:"profileId"`
 	Name         string   `json:"name"`
+	Username     string   `json:"username"`
 	Headline     *string  `json:"headline,omitempty"`
 	OverallScore int32    `json:"overallScore"`
 	TopSkills    []string `json:"topSkills,omitempty"`
@@ -183,6 +184,7 @@ func (s *Service) MatchCandidates(ctx context.Context, jobPostingID string) ([]C
 		gen.AiEvaluations.SkillScores,
 		gen.JobseekerProfiles.Headline,
 		gen.Users.Name,
+		gen.Users.Username,
 	).FROM(
 		gen.AiEvaluations.
 			INNER_JOIN(gen.JobseekerProfiles, gen.JobseekerProfiles.ID.EQ(gen.AiEvaluations.ProfileID)).
@@ -197,6 +199,7 @@ func (s *Service) MatchCandidates(ctx context.Context, jobPostingID string) ([]C
 		SkillScores  string    `alias:"ai_evaluations.skill_scores"`
 		Headline     *string   `alias:"jobseeker_profiles.headline"`
 		Name         string    `alias:"users.name"`
+		Username     string    `alias:"users.username"`
 	}
 	if err := stmt.QueryContext(ctx, s.db, &rows); err != nil {
 		return nil, err
@@ -206,6 +209,7 @@ func (s *Service) MatchCandidates(ctx context.Context, jobPostingID string) ([]C
 	type candidateEval struct {
 		ProfileID    string
 		Name         string
+		Username     string
 		Headline     *string
 		OverallScore int32
 		SkillScores  []skillScoreData
@@ -228,6 +232,7 @@ func (s *Service) MatchCandidates(ctx context.Context, jobPostingID string) ([]C
 		candidates = append(candidates, candidateEval{
 			ProfileID:    pid,
 			Name:         row.Name,
+			Username:     row.Username,
 			Headline:     row.Headline,
 			OverallScore: row.OverallScore,
 			SkillScores:  skills,
@@ -272,6 +277,7 @@ func (s *Service) MatchCandidates(ctx context.Context, jobPostingID string) ([]C
 		results[i] = CandidateMatch{
 			ProfileID:    sc.ProfileID,
 			Name:         sc.Name,
+			Username:     sc.Username,
 			Headline:     sc.Headline,
 			OverallScore: sc.OverallScore,
 			TopSkills:    topSkills,

@@ -18,6 +18,8 @@ export const JobSchema = z.object({
   createdAt: z.string().optional(),
   requiredSkills: z.array(z.string()).optional(),
   tags: z.array(z.string()).optional(),
+  benefits: z.string().optional(),
+  updatedAt: z.string().optional(),
 });
 
 export type Job = z.infer<typeof JobSchema>;

@@ -1,5 +1,5 @@
 import { useQuery } from '@tanstack/react-query';
-import { ExternalLink, Eye } from 'lucide-react';
+import { Award, Briefcase, Code, ExternalLink, Eye, GraduationCap, Heart } from 'lucide-react';
 import { useRef } from 'react';
 import { useParams } from 'react-router-dom';
 import { SharePassport } from '@/components/passport/SharePassport';
@@ -67,40 +67,179 @@ export function PublicPassport() {
           {data.about && <p className="text-muted-strong mb-4">{data.about}</p>}
         </div>
 
+        {/* Work History - employment + gig */}
         <div className="card bg-base-200 p-4">
-          <h2 className="font-semibold mb-3">Experience</h2>
-          <div className="space-y-2">
-            {(data.experiences ?? []).map((exp, i) => (
-              // biome-ignore lint/suspicious/noArrayIndexKey: experiences array has no stable id in this view
-              <div key={i} className="p-3 bg-base-100 rounded-box">
-                <p className="font-medium">{exp.title}</p>
-                <p className="text-sm opacity-70">
-                  {exp.organization} · {exp.startDate}{' '}
-                  {exp.isCurrent ? '- Present' : exp.endDate ? `- ${exp.endDate}` : ''}
-                </p>
-                {exp.description && <p className="text-sm mt-1 opacity-60">{exp.description}</p>}
-                {exp.skillsUsed && exp.skillsUsed.length > 0 && (
-                  <div className="flex flex-wrap gap-1 mt-1">
-                    {exp.skillsUsed.map((s) => (
-                      <span key={s} className="badge badge-sm">
-                        {s}
-                      </span>
-                    ))}
-                  </div>
-                )}
-                {exp.url && (
-                  <a
-                    href={exp.url}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="link link-primary text-xs inline-flex items-center gap-1 mt-2"
-                  >
-                    <ExternalLink size={12} aria-hidden="true" /> View evidence
-                  </a>
-                )}
-              </div>
-            ))}
+          <div className="flex justify-between items-center mb-3">
+            <h2 className="font-semibold flex items-center gap-2">
+              <Briefcase size={18} aria-hidden="true" /> Work History
+            </h2>
           </div>
+          {(data.experiences ?? []).filter((e) => e.type === 'employment' || e.type === 'gig').length === 0 ? (
+            <p className="text-sm opacity-60 py-4 text-center">No work history listed.</p>
+          ) : (
+            <div className="space-y-2">
+              {(data.experiences ?? [])
+                .filter((e) => e.type === 'employment' || e.type === 'gig')
+                .map((exp) => (
+                  <div key={exp.id} className="p-3 bg-base-100 rounded-box">
+                    <p className="font-medium">{exp.title}</p>
+                    <p className="text-sm opacity-70">
+                      {exp.organization} · {exp.startDate}
+                      {exp.isCurrent ? ' - Present' : exp.endDate ? ` - ${exp.endDate}` : ''}
+                    </p>
+                    {exp.industry && <p className="text-xs opacity-50 mt-1">{exp.industry}</p>}
+                    {exp.description && <p className="text-sm mt-1 opacity-60">{exp.description}</p>}
+                    {exp.skillsUsed && exp.skillsUsed.length > 0 && (
+                      <div className="flex flex-wrap gap-1 mt-1">
+                        {exp.skillsUsed.map((s) => (
+                          <span key={s} className="badge badge-sm">
+                            {s}
+                          </span>
+                        ))}
+                      </div>
+                    )}
+                    {exp.url && (
+                      <a
+                        href={exp.url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="link link-primary text-xs inline-flex items-center gap-1 mt-2"
+                      >
+                        <ExternalLink size={12} aria-hidden="true" /> View evidence
+                      </a>
+                    )}
+                  </div>
+                ))}
+            </div>
+          )}
+        </div>
+
+        {/* Education */}
+        <div className="card bg-base-200 p-4">
+          <div className="flex justify-between items-center mb-3">
+            <h2 className="font-semibold flex items-center gap-2">
+              <GraduationCap size={18} aria-hidden="true" /> Education
+            </h2>
+          </div>
+          {(data.experiences ?? []).filter((e) => e.type === 'education').length === 0 ? (
+            <p className="text-sm opacity-60 py-4 text-center">No education listed.</p>
+          ) : (
+            <div className="space-y-2">
+              {(data.experiences ?? [])
+                .filter((e) => e.type === 'education')
+                .map((exp) => (
+                  <div key={exp.id} className="p-3 bg-base-100 rounded-box">
+                    <p className="font-medium">{exp.title}</p>
+                    <p className="text-sm opacity-70">
+                      {exp.organization} · {exp.startDate}
+                      {exp.isCurrent ? ' - Present' : exp.endDate ? ` - ${exp.endDate}` : ''}
+                    </p>
+                    {exp.description && <p className="text-sm mt-1 opacity-60">{exp.description}</p>}
+                    {exp.url && (
+                      <a
+                        href={exp.url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="link link-primary text-xs inline-flex items-center gap-1 mt-2"
+                      >
+                        <ExternalLink size={12} aria-hidden="true" /> View evidence
+                      </a>
+                    )}
+                  </div>
+                ))}
+            </div>
+          )}
+        </div>
+
+        {/* Certifications & Licenses */}
+        <div className="card bg-base-200 p-4">
+          <div className="flex justify-between items-center mb-3">
+            <h2 className="font-semibold flex items-center gap-2">
+              <Award size={18} aria-hidden="true" /> Certifications & Licenses
+            </h2>
+          </div>
+          {(data.experiences ?? []).filter((e) => e.type === 'certification').length === 0 ? (
+            <p className="text-sm opacity-60 py-4 text-center">No certifications or licenses listed.</p>
+          ) : (
+            <div className="space-y-2">
+              {(data.experiences ?? [])
+                .filter((e) => e.type === 'certification')
+                .map((exp) => (
+                  <div key={exp.id} className="p-3 bg-base-100 rounded-box">
+                    <p className="font-medium">{exp.title}</p>
+                    <p className="text-sm opacity-70">{exp.organization}</p>
+                    {exp.description && <p className="text-sm mt-1 opacity-60">{exp.description}</p>}
+                    {exp.url && (
+                      <a
+                        href={exp.url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="link link-primary text-xs inline-flex items-center gap-1 mt-2"
+                      >
+                        <ExternalLink size={12} aria-hidden="true" /> Verify credential
+                      </a>
+                    )}
+                  </div>
+                ))}
+            </div>
+          )}
+        </div>
+
+        {/* Projects & Portfolio */}
+        <div className="card bg-base-200 p-4">
+          <div className="flex justify-between items-center mb-3">
+            <h2 className="font-semibold flex items-center gap-2">
+              <Code size={18} aria-hidden="true" /> Projects & Portfolio
+            </h2>
+          </div>
+          {(data.experiences ?? []).filter((e) => e.type === 'project').length === 0 ? (
+            <p className="text-sm opacity-60 py-4 text-center">No projects or portfolio items listed.</p>
+          ) : (
+            <div className="space-y-2">
+              {(data.experiences ?? [])
+                .filter((e) => e.type === 'project')
+                .map((exp) => (
+                  <div key={exp.id} className="p-3 bg-base-100 rounded-box">
+                    <p className="font-medium">{exp.title}</p>
+                    {exp.description && <p className="text-sm mt-1 opacity-60">{exp.description}</p>}
+                    {exp.url && (
+                      <a
+                        href={exp.url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="link link-primary text-xs inline-flex items-center gap-1 mt-2"
+                      >
+                        <ExternalLink size={12} aria-hidden="true" /> View project
+                      </a>
+                    )}
+                  </div>
+                ))}
+            </div>
+          )}
+        </div>
+
+        {/* Volunteering */}
+        <div className="card bg-base-200 p-4">
+          <div className="flex justify-between items-center mb-3">
+            <h2 className="font-semibold flex items-center gap-2">
+              <Heart size={18} aria-hidden="true" /> Volunteering
+            </h2>
+          </div>
+          {(data.experiences ?? []).filter((e) => e.type === 'volunteering').length === 0 ? (
+            <p className="text-sm opacity-60 py-4 text-center">No volunteering experience listed.</p>
+          ) : (
+            <div className="space-y-2">
+              {(data.experiences ?? [])
+                .filter((e) => e.type === 'volunteering')
+                .map((exp) => (
+                  <div key={exp.id} className="p-3 bg-base-100 rounded-box">
+                    <p className="font-medium">{exp.title}</p>
+                    <p className="text-sm opacity-70">{exp.organization}</p>
+                    {exp.description && <p className="text-sm mt-1 opacity-60">{exp.description}</p>}
+                  </div>
+                ))}
+            </div>
+          )}
         </div>
       </div>
     </div>

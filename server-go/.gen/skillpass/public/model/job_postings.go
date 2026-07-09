@@ -26,7 +26,9 @@ type JobPostings struct {
 	SalaryRange         *string
 	Status              JobStatus
 	CreatedAt           time.Time
+	UpdatedAt           time.Time
 	Requirements        *string
+	Benefits            *string
 	YearsExperienceMin  *int32
 	YearsExperienceMax  *int32
 	IsFreshGradFriendly bool

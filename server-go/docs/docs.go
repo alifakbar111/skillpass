@@ -3459,6 +3459,9 @@ const docTemplate = `{
                     "items": {
                         "type": "string"
                     }
+                },
+                "username": {
+                    "type": "string"
                 }
             }
         },
@@ -3629,6 +3632,9 @@ const docTemplate = `{
                 "title"
             ],
             "properties": {
+                "benefits": {
+                    "type": "string"
+                },
                 "description": {
                     "type": "string"
                 },
@@ -3862,6 +3868,9 @@ const docTemplate = `{
         "JobResponse": {
             "type": "object",
             "properties": {
+                "benefits": {
+                    "type": "string"
+                },
                 "companyId": {
                     "type": "string"
                 },
@@ -3908,6 +3917,9 @@ const docTemplate = `{
                     }
                 },
                 "title": {
+                    "type": "string"
+                },
+                "updatedAt": {
                     "type": "string"
                 },
                 "yearsExperienceMax": {
@@ -4310,6 +4322,9 @@ const docTemplate = `{
         "UpdateJobRequest": {
             "type": "object",
             "properties": {
+                "benefits": {
+                    "type": "string"
+                },
                 "description": {
                     "type": "string",
                     "minLength": 1

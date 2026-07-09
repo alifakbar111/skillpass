@@ -261,6 +261,7 @@ func main() {
 	notifGroup.Use(middleware.AuthRequired(cfg.JWTSecret))
 	notifGroup.GET("/me", notifHandler.ListMine)
 	notifGroup.PUT("/read-all", notifHandler.MarkAllRead)
+	notifGroup.DELETE("", notifHandler.ClearAll)
 	notifGroup.PUT("/:id/read", notifHandler.MarkRead)
 
 	// ── Matching routes ──

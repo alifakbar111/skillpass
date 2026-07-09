@@ -4073,6 +4073,7 @@ export interface components {
             overallScore?: number;
             profileId?: string;
             topSkills?: string[];
+            username?: string;
         };
         CandidateResult: {
             about?: string;
@@ -4121,6 +4122,7 @@ export interface components {
             ratingAreas?: components["schemas"]["RatingArea"][];
         };
         CreateJobRequest: {
+            benefits?: string;
             description: string;
             /** @enum {string} */
             experienceLevel?: "entry" | "mid" | "senior" | "lead";
@@ -4190,6 +4192,7 @@ export interface components {
             title?: string;
         };
         JobResponse: {
+            benefits?: string;
             companyId?: string;
             createdAt?: string;
             description?: string;
@@ -4204,6 +4207,7 @@ export interface components {
             status?: string;
             tags?: string[];
             title?: string;
+            updatedAt?: string;
             yearsExperienceMax?: number;
             yearsExperienceMin?: number;
         };
@@ -4331,6 +4335,7 @@ export interface components {
             url?: string;
         };
         UpdateJobRequest: {
+            benefits?: string;
             description?: string;
             /** @enum {string} */
             experienceLevel?: "entry" | "mid" | "senior" | "lead";

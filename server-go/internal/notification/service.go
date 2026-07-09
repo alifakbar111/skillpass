@@ -253,3 +253,14 @@ func (s *Service) MarkAllRead(ctx context.Context, userID string) error {
 	}
 	return nil
 }
+
+func (s *Service) ClearAll(ctx context.Context, userID string) error {
+	_, err := s.db.ExecContext(ctx,
+		`DELETE FROM notifications WHERE user_id = $1`,
+		userID,
+	)
+	if err != nil {
+		return fmt.Errorf("clear all notifications: %w", err)
+	}
+	return nil
+}

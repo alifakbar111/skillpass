@@ -73,6 +73,8 @@ export function ResumeImport({ onExperienceAdded, open, onToggle }: Props) {
       });
       onExperienceAdded(added);
       setAddedIdx((prev) => new Set(prev).add(idx));
+      // Reload page to refresh all profile sections with the new data
+      window.location.reload();
     } catch (err) {
       setError(err instanceof ApiError ? (err.serverMessage ?? err.message) : 'Failed to add entry');
     } finally {
@@ -100,6 +102,8 @@ export function ResumeImport({ onExperienceAdded, open, onToggle }: Props) {
         await addOne(parsed.experiences[i], i);
       }
     }
+    // Reload page to refresh all profile sections
+    window.location.reload();
   }
 
   return (

@@ -11,6 +11,7 @@ import { FormInput } from '@/components/ui/FormInput';
 import { FormNumberInput } from '@/components/ui/FormNumberInput';
 import { FormSelect } from '@/components/ui/FormSelect';
 import { FormTextarea } from '@/components/ui/FormTextarea';
+import { SkillsAutocomplete } from '@/components/ui/SkillsAutocomplete';
 import { LoadingSpinner } from '@/components/ui/LoadingFallback';
 import { useIndustries } from '@/hooks/useIndustries';
 import { ApiError, api, apiWithSchema } from '@/lib/api';
@@ -68,6 +69,7 @@ export function CompanyJobs() {
       isFreshGradFriendly: false,
       location: '',
       salaryRange: '',
+      benefits: '',
     },
   });
 
@@ -137,6 +139,7 @@ export function CompanyJobs() {
       isFreshGradFriendly: false,
       location: '',
       salaryRange: '',
+      benefits: '',
     });
     setEditingJobId(null);
     setShowForm(true);
@@ -156,6 +159,7 @@ export function CompanyJobs() {
       isFreshGradFriendly: job.isFreshGradFriendly ?? false,
       location: job.location ?? '',
       salaryRange: job.salaryRange ?? '',
+      benefits: job.benefits ?? '',
     });
     setEditingJobId(job.id ?? null);
     setShowForm(true);
@@ -226,6 +230,12 @@ export function CompanyJobs() {
             placeholder="e.g. 5+ years of React, Bachelor's degree in CS"
             rows={3}
           />
+          <FormTextarea
+            label="Benefits"
+            name="benefits"
+            placeholder="e.g. Health insurance, remote work, stock options, 401k matching"
+            rows={3}
+          />
           <FormSelect
             label="Industry"
             name="industry"
@@ -246,10 +256,11 @@ export function CompanyJobs() {
             <span className="label-text">Fresh Graduate Friendly</span>
           </label>
           <FormInput label="Tags (comma-separated)" name="tags" placeholder="e.g. remote, full-time" />
-          <FormInput
-            label="Required Skills (comma-separated)"
-            name="requiredSkills"
-            placeholder="e.g. React, TypeScript"
+          <SkillsAutocomplete
+            value={methods.watch('requiredSkills') ?? ''}
+            onChange={(val) => methods.setValue('requiredSkills', val, { shouldDirty: false })}
+            label="Required Skills"
+            placeholder="Type a skill and press Enter"
           />
           <div className="flex gap-2">
             <FormInput label="Location" name="location" placeholder="Location" />
@@ -289,6 +300,11 @@ export function CompanyJobs() {
                     {job.status}
                   </span>
                 </div>
+                {(job.updatedAt || job.createdAt) && (
+                  <p className="text-xs text-muted mt-1">
+                    Last updated: {(job.updatedAt ?? job.createdAt)!.slice(0, 10)}
+                  </p>
+                )}
                 {job.requirements && (
                   <details className="collapse collapse-arrow mt-2">
                     <summary className="collapse-title text-sm font-medium p-0 min-h-0">Requirements</summary>

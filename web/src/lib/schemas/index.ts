@@ -204,6 +204,7 @@ export const jobSchema = z.object({
   isFreshGradFriendly: z.boolean().optional(),
   location: z.string().optional(),
   salaryRange: z.string().optional(),
+  benefits: z.string().optional(),
 });
 export type JobForm = z.infer<typeof jobSchema>;
 

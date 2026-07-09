@@ -113,3 +113,28 @@ func (h *Handler) MarkAllRead(c *gin.Context) {
 
 	c.JSON(http.StatusOK, gin.H{"message": "All marked read"})
 }
+
+// ClearAll	godoc
+// @Summary		Clear all notifications
+// @Description	Delete all notifications for the authenticated user
+// @Tags		notifications
+// @Produce		json
+// @Security	BearerAuth
+// @Success		200 {object} map[string]string
+// @Failure		401 {object} map[string]string
+// @Router		/notifications [delete]
+func (h *Handler) ClearAll(c *gin.Context) {
+	userID, ok := getUserID(c)
+	if !ok {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "Unauthorized"})
+		return
+	}
+
+	if err := h.service.ClearAll(c.Request.Context(), userID); err != nil {
+		slog.Error("failed to clear all notifications", "error", err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to clear notifications"})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"message": "All cleared"})
+}

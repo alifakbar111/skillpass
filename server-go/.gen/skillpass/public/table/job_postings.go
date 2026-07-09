@@ -29,7 +29,9 @@ type jobPostingsTable struct {
 	SalaryRange         postgres.ColumnString
 	Status              postgres.ColumnString
 	CreatedAt           postgres.ColumnTimestampz
+	UpdatedAt           postgres.ColumnTimestampz
 	Requirements        postgres.ColumnString
+	Benefits            postgres.ColumnString
 	YearsExperienceMin  postgres.ColumnInteger
 	YearsExperienceMax  postgres.ColumnInteger
 	IsFreshGradFriendly postgres.ColumnBool
@@ -86,13 +88,15 @@ func newJobPostingsTableImpl(schemaName, tableName, alias string) jobPostingsTab
 		SalaryRangeColumn         = postgres.StringColumn("salary_range")
 		StatusColumn              = postgres.StringColumn("status")
 		CreatedAtColumn           = postgres.TimestampzColumn("created_at")
+		UpdatedAtColumn           = postgres.TimestampzColumn("updated_at")
 		RequirementsColumn        = postgres.StringColumn("requirements")
+		BenefitsColumn            = postgres.StringColumn("benefits")
 		YearsExperienceMinColumn  = postgres.IntegerColumn("years_experience_min")
 		YearsExperienceMaxColumn  = postgres.IntegerColumn("years_experience_max")
 		IsFreshGradFriendlyColumn = postgres.BoolColumn("is_fresh_grad_friendly")
-		allColumns                = postgres.ColumnList{IDColumn, CompanyIDColumn, TitleColumn, DescriptionColumn, IndustryColumn, TagsColumn, RequiredSkillsColumn, ExperienceLevelColumn, LocationColumn, SalaryRangeColumn, StatusColumn, CreatedAtColumn, RequirementsColumn, YearsExperienceMinColumn, YearsExperienceMaxColumn, IsFreshGradFriendlyColumn}
-		mutableColumns            = postgres.ColumnList{CompanyIDColumn, TitleColumn, DescriptionColumn, IndustryColumn, TagsColumn, RequiredSkillsColumn, ExperienceLevelColumn, LocationColumn, SalaryRangeColumn, StatusColumn, CreatedAtColumn, RequirementsColumn, YearsExperienceMinColumn, YearsExperienceMaxColumn, IsFreshGradFriendlyColumn}
-		defaultColumns            = postgres.ColumnList{IDColumn, StatusColumn, CreatedAtColumn, IsFreshGradFriendlyColumn}
+		allColumns                = postgres.ColumnList{IDColumn, CompanyIDColumn, TitleColumn, DescriptionColumn, IndustryColumn, TagsColumn, RequiredSkillsColumn, ExperienceLevelColumn, LocationColumn, SalaryRangeColumn, StatusColumn, CreatedAtColumn, UpdatedAtColumn, RequirementsColumn, BenefitsColumn, YearsExperienceMinColumn, YearsExperienceMaxColumn, IsFreshGradFriendlyColumn}
+		mutableColumns            = postgres.ColumnList{CompanyIDColumn, TitleColumn, DescriptionColumn, IndustryColumn, TagsColumn, RequiredSkillsColumn, ExperienceLevelColumn, LocationColumn, SalaryRangeColumn, StatusColumn, CreatedAtColumn, UpdatedAtColumn, RequirementsColumn, BenefitsColumn, YearsExperienceMinColumn, YearsExperienceMaxColumn, IsFreshGradFriendlyColumn}
+		defaultColumns            = postgres.ColumnList{IDColumn, StatusColumn, CreatedAtColumn, UpdatedAtColumn, IsFreshGradFriendlyColumn}
 	)
 
 	return jobPostingsTable{
@@ -111,7 +115,9 @@ func newJobPostingsTableImpl(schemaName, tableName, alias string) jobPostingsTab
 		SalaryRange:         SalaryRangeColumn,
 		Status:              StatusColumn,
 		CreatedAt:           CreatedAtColumn,
+		UpdatedAt:           UpdatedAtColumn,
 		Requirements:        RequirementsColumn,
+		Benefits:            BenefitsColumn,
 		YearsExperienceMin:  YearsExperienceMinColumn,
 		YearsExperienceMax:  YearsExperienceMaxColumn,
 		IsFreshGradFriendly: IsFreshGradFriendlyColumn,

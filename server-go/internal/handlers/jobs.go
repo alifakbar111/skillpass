@@ -42,22 +42,24 @@ var jobStatusMap = map[string]StringExpression{
 }
 
 type JobResponse struct {
-	ID                string    `json:"id"`
-	CompanyID         string    `json:"companyId"`
-	Title             string    `json:"title"`
-	Description       string    `json:"description"`
-	Industry          string    `json:"industry"`
-	Tags              []string  `json:"tags,omitempty"`
-	RequiredSkills    []string  `json:"requiredSkills,omitempty"`
-	ExperienceLevel   *string   `json:"experienceLevel,omitempty"`
-	Location          *string   `json:"location,omitempty"`
-	SalaryRange       *string   `json:"salaryRange,omitempty"`
-	Requirements      *string   `json:"requirements,omitempty"`
-	YearsExperienceMin *int     `json:"yearsExperienceMin,omitempty"`
-	YearsExperienceMax *int     `json:"yearsExperienceMax,omitempty"`
-	Status              string    `json:"status"`
-	IsFreshGradFriendly bool      `json:"isFreshGradFriendly"`
-	CreatedAt           time.Time `json:"createdAt"`
+	ID                 string    `json:"id"`
+	CompanyID          string    `json:"companyId"`
+	Title              string    `json:"title"`
+	Description        string    `json:"description"`
+	Industry           string    `json:"industry"`
+	Tags               []string  `json:"tags,omitempty"`
+	RequiredSkills     []string  `json:"requiredSkills,omitempty"`
+	ExperienceLevel    *string   `json:"experienceLevel,omitempty"`
+	Location           *string   `json:"location,omitempty"`
+	SalaryRange        *string   `json:"salaryRange,omitempty"`
+	Requirements       *string   `json:"requirements,omitempty"`
+	Benefits           *string   `json:"benefits,omitempty"`
+	YearsExperienceMin *int      `json:"yearsExperienceMin,omitempty"`
+	YearsExperienceMax *int      `json:"yearsExperienceMax,omitempty"`
+	Status             string    `json:"status"`
+	IsFreshGradFriendly bool     `json:"isFreshGradFriendly"`
+	CreatedAt          time.Time `json:"createdAt"`
+	UpdatedAt          time.Time `json:"updatedAt"`
 } //@name JobResponse
 
 type CreateJobRequest struct {
@@ -70,6 +72,7 @@ type CreateJobRequest struct {
 	Location           *string  `json:"location,omitempty"`
 	SalaryRange        *string  `json:"salaryRange,omitempty"`
 	Requirements       *string  `json:"requirements,omitempty"`
+	Benefits           *string  `json:"benefits,omitempty"`
 	YearsExperienceMin   *int  `json:"yearsExperienceMin,omitempty"`
 	YearsExperienceMax   *int  `json:"yearsExperienceMax,omitempty"`
 	IsFreshGradFriendly  bool  `json:"isFreshGradFriendly"`
@@ -85,6 +88,7 @@ type UpdateJobRequest struct {
 	Location           *string  `json:"location"`
 	SalaryRange        *string  `json:"salaryRange"`
 	Requirements       *string  `json:"requirements"`
+	Benefits           *string  `json:"benefits"`
 	YearsExperienceMin   *int    `json:"yearsExperienceMin"`
 	YearsExperienceMax   *int    `json:"yearsExperienceMax"`
 	IsFreshGradFriendly  *bool   `json:"isFreshGradFriendly"`
@@ -135,11 +139,13 @@ func jobFromModel(j model.JobPostings) JobResponse {
 		Location:            j.Location,
 		SalaryRange:         j.SalaryRange,
 		Requirements:        j.Requirements,
+		Benefits:            j.Benefits,
 		YearsExperienceMin:  yearsExpMin,
 		YearsExperienceMax:  yearsExpMax,
 		IsFreshGradFriendly: bool(j.IsFreshGradFriendly),
 		Status:              string(j.Status),
 		CreatedAt:           j.CreatedAt,
+		UpdatedAt:           j.UpdatedAt,
 	}
 }
 
@@ -335,6 +341,7 @@ func (h *JobHandler) CreateJob(c *gin.Context) {
 		gen.JobPostings.Industry, gen.JobPostings.Tags, gen.JobPostings.RequiredSkills,
 		gen.JobPostings.ExperienceLevel, gen.JobPostings.Location, gen.JobPostings.SalaryRange,
 		gen.JobPostings.Requirements,
+		gen.JobPostings.Benefits,
 		gen.JobPostings.YearsExperienceMin,
 		gen.JobPostings.YearsExperienceMax,
 		gen.JobPostings.IsFreshGradFriendly,
@@ -343,6 +350,7 @@ func (h *JobHandler) CreateJob(c *gin.Context) {
 		StringArray(req.Tags...), StringArray(req.RequiredSkills...),
 		req.ExperienceLevel, req.Location, req.SalaryRange,
 		req.Requirements,
+		req.Benefits,
 		req.YearsExperienceMin,
 		req.YearsExperienceMax,
 		req.IsFreshGradFriendly,
@@ -435,6 +443,11 @@ func (h *JobHandler) UpdateJob(c *gin.Context) {
 	if req.Requirements != nil {
 		setVals = append(setVals, gen.JobPostings.Requirements.SET(String(*req.Requirements)))
 	}
+	if req.Benefits != nil {
+		setVals = append(setVals, gen.JobPostings.Benefits.SET(String(*req.Benefits)))
+	}
+	// Always update updated_at on any update
+	setVals = append(setVals, gen.JobPostings.UpdatedAt.SET(RawTimestampz("NOW()")))
 	if req.YearsExperienceMin != nil {
 		setVals = append(setVals, gen.JobPostings.YearsExperienceMin.SET(Int64(int64(*req.YearsExperienceMin))))
 	}

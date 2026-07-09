@@ -3,6 +3,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { CheckCircle, X } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { useForm } from 'react-hook-form';
+import { FormDialog } from '@/components/ui/FormDialog';
 import { AIEvaluationSection } from '@/components/jobseeker/AIEvaluationSection';
 import { AvatarUploader } from '@/components/jobseeker/AvatarUploader';
 import { CertificationSection } from '@/components/jobseeker/CertificationSection';
@@ -32,7 +33,7 @@ export function JobseekerProfile() {
     queryClient.invalidateQueries({ queryKey: ['profile', 'me'] });
     queryClient.invalidateQueries({ queryKey: ['passport', user?.username] });
   };
-  const [showExpForm, setShowExpForm] = useState(false);
+  const [showFormType, setShowFormType] = useState<string | null>(null);
   const [importOpen, setImportOpen] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -111,7 +112,7 @@ export function JobseekerProfile() {
     onMutate: () => setError(null),
     onSuccess: () => {
       invalidateProfileViews();
-      setShowExpForm(false);
+      setShowFormType(null);
       expForm.reset({
         type: 'employment',
         title: '',
@@ -165,7 +166,7 @@ export function JobseekerProfile() {
     onSuccess: () => {
       invalidateProfileViews();
       setEditingId(null);
-      setShowExpForm(false);
+      setShowFormType(null);
       expForm.reset({
         type: 'employment',
         title: '',
@@ -193,6 +194,23 @@ export function JobseekerProfile() {
     }
   };
   const deleteExperience = (id: string) => deleteExperienceMutation.mutate(id);
+
+  const cancelForm = () => {
+    setShowFormType(null);
+    setEditingId(null);
+    expForm.reset({
+      type: 'employment',
+      title: '',
+      organization: '',
+      startDate: '',
+      endDate: '',
+      isCurrent: false,
+      description: '',
+      industry: '',
+      skills: '',
+      url: '',
+    });
+  };
 
   if (loading) return <LoadingFallback text="Loading profile" />;
 
@@ -266,60 +284,6 @@ export function JobseekerProfile() {
         }}
       />
 
-      {showExpForm && (
-        <Form methods={expForm} onSubmit={submitExperience} className="card bg-base-200 p-4 space-y-3">
-          <FormInput label="Title" name="title" />
-          <FormInput label="Organization" name="organization" />
-          <div className="grid grid-cols-2 gap-2">
-            <FormInput label="Start Date" name="startDate" type="month" />
-            <FormInput label="End Date" name="endDate" type="month" disabled={expForm.watch('isCurrent')} />
-          </div>
-          <label className="flex items-center gap-2 cursor-pointer">
-            <input type="checkbox" className="checkbox checkbox-sm" {...expForm.register('isCurrent')} />
-            <span className="label-text">I currently work here</span>
-          </label>
-          <FormTextarea label="Description" name="description" rows={3} />
-          <SkillsAutocomplete
-            value={expForm.watch('skills') ?? ''}
-            onChange={(val) => expForm.setValue('skills', val, { shouldDirty: false })}
-            label="Skills"
-            placeholder="Type a skill and press Enter"
-          />
-          <FormInput
-            label="Evidence URL (optional)"
-            name="url"
-            placeholder="https://github.com/you/project or certificate link"
-          />
-          <div className="flex gap-2">
-            <button type="submit" className="btn btn-primary btn-sm">
-              {editingId ? 'Update Experience' : 'Add Experience'}
-            </button>
-            <button
-              type="button"
-              className="btn btn-ghost btn-sm"
-              onClick={() => {
-                setShowExpForm(false);
-                setEditingId(null);
-                expForm.reset({
-                  type: 'employment',
-                  title: '',
-                  organization: '',
-                  startDate: '',
-                  endDate: '',
-                  isCurrent: false,
-                  description: '',
-                  industry: '',
-                  skills: '',
-                  url: '',
-                });
-              }}
-            >
-              Cancel
-            </button>
-          </div>
-        </Form>
-      )}
-
       {/* Work History — employment + gig */}
       <WorkHistorySection
         experiences={(profile?.experiences ?? []).filter((e) => e.type === 'employment' || e.type === 'gig')}
@@ -336,7 +300,7 @@ export function JobseekerProfile() {
             skills: '',
             url: '',
           });
-          setShowExpForm(true);
+          setShowFormType('work');
         }}
         onEdit={(id) => {
           const exp = (profile?.experiences ?? []).find((e) => e.id === id);
@@ -354,10 +318,42 @@ export function JobseekerProfile() {
             skills: (exp.skillsUsed ?? []).join(', '),
             url: exp.url ?? '',
           });
-          setShowExpForm(true);
+          setShowFormType('work');
         }}
         onDelete={(id) => deleteExperience(id)}
       />
+      <FormDialog
+        open={showFormType === 'work'}
+        title={editingId ? 'Edit Work' : 'Add Work'}
+        onClose={cancelForm}
+        actions={
+          <button type="submit" form="work-form" className="btn btn-primary btn-sm">
+            {editingId ? 'Update Work' : 'Add Work'}
+          </button>
+        }
+      >
+        <Form id="work-form" methods={expForm} onSubmit={submitExperience} className="space-y-3">
+          <FormInput label="Title" name="title" />
+          <FormInput label="Organization" name="organization" />
+          <div className="grid grid-cols-2 gap-2">
+            <FormInput label="Start Date" name="startDate" type="month" />
+            <FormInput label="End Date" name="endDate" type="month" disabled={expForm.watch('isCurrent')} />
+          </div>
+          <label className="flex items-center gap-2 cursor-pointer">
+            <input type="checkbox" className="checkbox checkbox-sm" {...expForm.register('isCurrent')} />
+            <span className="label-text">I currently work here</span>
+          </label>
+          <FormTextarea label="Description" name="description" rows={3} />
+          <FormInput label="Industry" name="industry" placeholder="e.g. Technology" />
+          <SkillsAutocomplete
+            value={expForm.watch('skills') ?? ''}
+            onChange={(val) => expForm.setValue('skills', val, { shouldDirty: false })}
+            label="Skills"
+            placeholder="Type a skill and press Enter"
+          />
+          <FormInput label="Evidence URL (optional)" name="url" placeholder="https://..." />
+        </Form>
+      </FormDialog>
 
       {/* Education */}
       <EducationSection
@@ -375,7 +371,7 @@ export function JobseekerProfile() {
             skills: '',
             url: '',
           });
-          setShowExpForm(true);
+          setShowFormType('education');
         }}
         onEdit={(id) => {
           const exp = (profile?.experiences ?? []).find((e) => e.id === id);
@@ -393,10 +389,37 @@ export function JobseekerProfile() {
             skills: (exp.skillsUsed ?? []).join(', '),
             url: exp.url ?? '',
           });
-          setShowExpForm(true);
+          setShowFormType('education');
         }}
         onDelete={(id) => deleteExperience(id)}
       />
+      <FormDialog
+        open={showFormType === 'education'}
+        title={editingId ? 'Edit Education' : 'Add Education'}
+        onClose={cancelForm}
+        actions={
+          <button type="submit" form="education-form" className="btn btn-primary btn-sm">
+            {editingId ? 'Update Education' : 'Add Education'}
+          </button>
+        }
+      >
+        <Form id="education-form" methods={expForm} onSubmit={submitExperience} className="space-y-3">
+          <FormInput label="Degree/Diploma" name="title" />
+          <FormInput label="Organization" name="organization" />
+          <div className="grid grid-cols-2 gap-2">
+            <FormInput label="Start Date" name="startDate" type="month" />
+            <FormInput label="End Date" name="endDate" type="month" />
+          </div>
+          <FormTextarea label="Description" name="description" rows={3} />
+          <SkillsAutocomplete
+            value={expForm.watch('skills') ?? ''}
+            onChange={(val) => expForm.setValue('skills', val, { shouldDirty: false })}
+            label="Skills"
+            placeholder="Type a skill and press Enter"
+          />
+          <FormInput label="URL (optional)" name="url" placeholder="https://..." />
+        </Form>
+      </FormDialog>
 
       {/* Certifications & Licenses */}
       <CertificationSection
@@ -413,7 +436,7 @@ export function JobseekerProfile() {
             skills: '',
             url: '',
           });
-          setShowExpForm(true);
+          setShowFormType('certification');
         }}
         onEdit={(id) => {
           const exp = (profile?.experiences ?? []).find((e) => e.id === id);
@@ -431,10 +454,37 @@ export function JobseekerProfile() {
             skills: (exp.skillsUsed ?? []).join(', '),
             url: exp.url ?? '',
           });
-          setShowExpForm(true);
+          setShowFormType('certification');
         }}
         onDelete={(id) => deleteExperience(id)}
       />
+      <FormDialog
+        open={showFormType === 'certification'}
+        title={editingId ? 'Edit Certification' : 'Add Certification'}
+        onClose={cancelForm}
+        actions={
+          <button type="submit" form="certification-form" className="btn btn-primary btn-sm">
+            {editingId ? 'Update Certification' : 'Add Certification'}
+          </button>
+        }
+      >
+        <Form id="certification-form" methods={expForm} onSubmit={submitExperience} className="space-y-3">
+          <FormInput label="Title" name="title" />
+          <FormInput label="Issuer" name="organization" />
+          <div className="grid grid-cols-2 gap-2">
+            <FormInput label="Issue Date" name="startDate" type="month" />
+            <FormInput label="Expiry Date" name="endDate" type="month" />
+          </div>
+          <FormTextarea label="Description" name="description" rows={3} />
+          <SkillsAutocomplete
+            value={expForm.watch('skills') ?? ''}
+            onChange={(val) => expForm.setValue('skills', val, { shouldDirty: false })}
+            label="Skills"
+            placeholder="Type a skill and press Enter"
+          />
+          <FormInput label="Verification URL (optional)" name="url" placeholder="https://..." />
+        </Form>
+      </FormDialog>
 
       {/* Projects & Portfolio */}
       <ProjectSection
@@ -451,7 +501,7 @@ export function JobseekerProfile() {
             skills: '',
             url: '',
           });
-          setShowExpForm(true);
+          setShowFormType('project');
         }}
         onEdit={(id) => {
           const exp = (profile?.experiences ?? []).find((e) => e.id === id);
@@ -469,10 +519,37 @@ export function JobseekerProfile() {
             skills: (exp.skillsUsed ?? []).join(', '),
             url: exp.url ?? '',
           });
-          setShowExpForm(true);
+          setShowFormType('project');
         }}
         onDelete={(id) => deleteExperience(id)}
       />
+      <FormDialog
+        open={showFormType === 'project'}
+        title={editingId ? 'Edit Project' : 'Add Project'}
+        onClose={cancelForm}
+        actions={
+          <button type="submit" form="project-form" className="btn btn-primary btn-sm">
+            {editingId ? 'Update Project' : 'Add Project'}
+          </button>
+        }
+      >
+        <Form id="project-form" methods={expForm} onSubmit={submitExperience} className="space-y-3">
+          <FormInput label="Title" name="title" />
+          <FormInput label="Organization (optional)" name="organization" />
+          <div className="grid grid-cols-2 gap-2">
+            <FormInput label="Start Date" name="startDate" type="month" />
+            <FormInput label="End Date" name="endDate" type="month" />
+          </div>
+          <FormTextarea label="Description" name="description" rows={3} />
+          <SkillsAutocomplete
+            value={expForm.watch('skills') ?? ''}
+            onChange={(val) => expForm.setValue('skills', val, { shouldDirty: false })}
+            label="Skills"
+            placeholder="Type a skill and press Enter"
+          />
+          <FormInput label="Project URL (optional)" name="url" placeholder="https://..." />
+        </Form>
+      </FormDialog>
 
       {/* Volunteering */}
       <VolunteeringSection
@@ -490,7 +567,7 @@ export function JobseekerProfile() {
             skills: '',
             url: '',
           });
-          setShowExpForm(true);
+          setShowFormType('volunteering');
         }}
         onEdit={(id) => {
           const exp = (profile?.experiences ?? []).find((e) => e.id === id);
@@ -508,10 +585,41 @@ export function JobseekerProfile() {
             skills: (exp.skillsUsed ?? []).join(', '),
             url: exp.url ?? '',
           });
-          setShowExpForm(true);
+          setShowFormType('volunteering');
         }}
         onDelete={(id) => deleteExperience(id)}
       />
+      <FormDialog
+        open={showFormType === 'volunteering'}
+        title={editingId ? 'Edit Volunteering' : 'Add Volunteering'}
+        onClose={cancelForm}
+        actions={
+          <button type="submit" form="volunteering-form" className="btn btn-primary btn-sm">
+            {editingId ? 'Update Volunteering' : 'Add Volunteering'}
+          </button>
+        }
+      >
+        <Form id="volunteering-form" methods={expForm} onSubmit={submitExperience} className="space-y-3">
+          <FormInput label="Title" name="title" />
+          <FormInput label="Organization" name="organization" />
+          <div className="grid grid-cols-2 gap-2">
+            <FormInput label="Start Date" name="startDate" type="month" />
+            <FormInput label="End Date" name="endDate" type="month" disabled={expForm.watch('isCurrent')} />
+          </div>
+          <label className="flex items-center gap-2 cursor-pointer">
+            <input type="checkbox" className="checkbox checkbox-sm" {...expForm.register('isCurrent')} />
+            <span className="label-text">I currently volunteer here</span>
+          </label>
+          <FormTextarea label="Description" name="description" rows={3} />
+          <SkillsAutocomplete
+            value={expForm.watch('skills') ?? ''}
+            onChange={(val) => expForm.setValue('skills', val, { shouldDirty: false })}
+            label="Skills"
+            placeholder="Type a skill and press Enter"
+          />
+          <FormInput label="URL (optional)" name="url" placeholder="https://..." />
+        </Form>
+      </FormDialog>
 
       <AIEvaluationSection />
     </div>

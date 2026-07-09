@@ -15,6 +15,7 @@ export interface JobMatch {
 export interface CandidateMatch {
   profileId: string;
   name: string;
+  username?: string;
   headline: string | null;
   overallScore: number;
   topSkills: string[];

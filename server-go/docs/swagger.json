@@ -3453,6 +3453,9 @@
                     "items": {
                         "type": "string"
                     }
+                },
+                "username": {
+                    "type": "string"
                 }
             }
         },
@@ -3623,6 +3626,9 @@
                 "title"
             ],
             "properties": {
+                "benefits": {
+                    "type": "string"
+                },
                 "description": {
                     "type": "string"
                 },
@@ -3856,6 +3862,9 @@
         "JobResponse": {
             "type": "object",
             "properties": {
+                "benefits": {
+                    "type": "string"
+                },
                 "companyId": {
                     "type": "string"
                 },
@@ -3902,6 +3911,9 @@
                     }
                 },
                 "title": {
+                    "type": "string"
+                },
+                "updatedAt": {
                     "type": "string"
                 },
                 "yearsExperienceMax": {
@@ -4304,6 +4316,9 @@
         "UpdateJobRequest": {
             "type": "object",
             "properties": {
+                "benefits": {
+                    "type": "string"
+                },
                 "description": {
                     "type": "string",
                     "minLength": 1

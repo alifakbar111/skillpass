@@ -58,6 +58,8 @@ definitions:
         items:
           type: string
         type: array
+      username:
+        type: string
     type: object
   CandidateResult:
     properties:
@@ -168,6 +170,8 @@ definitions:
     type: object
   CreateJobRequest:
     properties:
+      benefits:
+        type: string
       description:
         type: string
       experienceLevel:
@@ -326,6 +330,8 @@ definitions:
     type: object
   JobResponse:
     properties:
+      benefits:
+        type: string
       companyId:
         type: string
       createdAt:
@@ -357,6 +363,8 @@ definitions:
           type: string
         type: array
       title:
+        type: string
+      updatedAt:
         type: string
       yearsExperienceMax:
         type: integer
@@ -624,6 +632,8 @@ definitions:
     type: object
   UpdateJobRequest:
     properties:
+      benefits:
+        type: string
       description:
         minLength: 1
         type: string

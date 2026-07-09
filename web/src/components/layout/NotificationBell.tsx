@@ -2,6 +2,7 @@ import { Bell } from 'lucide-react';
 import { useCallback, useEffect, useId, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
+  clearAllNotifications,
   getNotifications,
   markAllNotificationsRead,
   markNotificationRead,
@@ -69,6 +70,19 @@ export function NotificationBell() {
     }
   }
 
+  async function handleClearAll() {
+    try {
+      await clearAllNotifications();
+      setNotifications([]);
+      setUnread(0);
+      setOpen(false);
+      // Refresh from server to confirm empty state
+      await load();
+    } catch {
+      // ignore
+    }
+  }
+
   return (
     <div className="dropdown dropdown-end" ref={ref}>
       <button
@@ -92,11 +106,18 @@ export function NotificationBell() {
         <div id={menuId} className="dropdown-content bg-base-100 rounded-box z-50 mt-3 w-80 p-2 shadow-md">
           <div className="flex justify-between items-center px-2 py-1">
             <span className="font-semibold text-sm">Notifications</span>
-            {unread > 0 && (
-              <button type="button" className="btn btn-ghost btn-xs" onClick={handleMarkAll}>
-                Mark all read
-              </button>
-            )}
+            <div className="flex gap-1">
+              {unread > 0 && (
+                <button type="button" className="btn btn-ghost btn-xs" onClick={handleMarkAll}>
+                  Read all
+                </button>
+              )}
+              {notifications.length > 0 && (
+                <button type="button" className="btn btn-ghost btn-xs text-error" onClick={handleClearAll}>
+                  Clear all
+                </button>
+              )}
+            </div>
           </div>
           <div className="divider my-0" />
           {notifications.length === 0 ? (

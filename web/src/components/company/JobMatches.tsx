@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { Link } from 'react-router-dom';
 import { LoadingSpinner } from '@/components/ui/LoadingFallback';
 import { ApiError } from '@/lib/api';
 import { type CandidateMatch, getCandidateMatches } from '@/lib/matching';
@@ -57,8 +58,10 @@ export function JobMatches({ jobId }: { jobId: string }) {
       {matches.map((c) => (
         <div key={c.profileId} className="flex justify-between items-start gap-3 bg-base-100 rounded-lg p-3">
           <div>
-            <div className="font-medium">{c.name}</div>
-            {c.headline && <div className="text-xs opacity-60">{c.headline}</div>}
+            <Link to={`/profiles/${c.username ?? c.profileId}`} className="hover:underline">
+              <div className="font-medium">{c.name}</div>
+              {c.headline && <div className="text-xs opacity-60">{c.headline}</div>}
+            </Link>
             <div className="flex flex-wrap gap-1 mt-1">
               {c.topSkills.map((s) => (
                 <span key={s} className="badge badge-xs badge-ghost">

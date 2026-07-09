@@ -27,3 +27,7 @@ export async function markNotificationRead(id: string): Promise<void> {
 export async function markAllNotificationsRead(): Promise<void> {
   await api('/notifications/read-all', { method: 'PUT' });
 }
+
+export async function clearAllNotifications(): Promise<void> {
+  await api('/notifications', { method: 'DELETE' });
+}
