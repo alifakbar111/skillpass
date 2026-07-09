@@ -59,7 +59,7 @@ import (
 )
 
 func main() {
-	_ = godotenv.Load(".env", "../.env", "server-go/.env")
+	_ = godotenv.Load("server-go/.env", ".env", "../.env")
 
 	cfg := config.Load()
 
@@ -117,8 +117,10 @@ func main() {
 	appService.SetEvalService(evalService)
 	appHandler := application.NewHandler(appService)
 
+	notifBroker := notification.NewBroker()
 	notifService := notification.NewService(database)
 	notifService.SetEmailer(emailSender)
+	notifService.SetBroker(notifBroker)
 	notifHandler := notification.NewHandler(notifService)
 	appHandler.SetNotifier(notifService)
 
@@ -260,6 +262,7 @@ func main() {
 	notifGroup := api.Group("/notifications")
 	notifGroup.Use(middleware.AuthRequired(cfg.JWTSecret))
 	notifGroup.GET("/me", notifHandler.ListMine)
+	notifGroup.GET("/stream", notifHandler.StreamNotifications)
 	notifGroup.PUT("/read-all", notifHandler.MarkAllRead)
 	notifGroup.DELETE("", notifHandler.ClearAll)
 	notifGroup.PUT("/:id/read", notifHandler.MarkRead)
