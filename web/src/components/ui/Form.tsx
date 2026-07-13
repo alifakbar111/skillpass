@@ -1,6 +1,7 @@
 import { type FieldValues, FormProvider, type UseFormReturn } from 'react-hook-form';
 
 interface FormProps<T extends FieldValues> {
+  id?: string;
   methods: UseFormReturn<T>;
   onSubmit: (data: T) => void | Promise<void>;
   children: React.ReactNode;
@@ -9,6 +10,7 @@ interface FormProps<T extends FieldValues> {
 }
 
 export function Form<T extends FieldValues>({
+  id,
   methods,
   onSubmit,
   children,
@@ -17,7 +19,7 @@ export function Form<T extends FieldValues>({
 }: FormProps<T>) {
   return (
     <FormProvider {...methods}>
-      <form onSubmit={methods.handleSubmit(onSubmit)} className={className} aria-label={ariaLabel}>
+      <form id={id} onSubmit={methods.handleSubmit(onSubmit)} className={className} aria-label={ariaLabel}>
         {children}
       </form>
     </FormProvider>

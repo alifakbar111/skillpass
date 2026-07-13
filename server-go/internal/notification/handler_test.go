@@ -113,6 +113,7 @@ func TestNotificationHandler(t *testing.T) {
 	tok := testutil.GenerateToken(uID.String(), "jobseeker", 15*time.Minute)
 
 	svc := NewService(db)
+	svc.SetBroker(NewBroker())
 	_ = svc.Create(context.Background(), uID.String(), "test", "Hello", "World", "/x")
 
 	h := NewHandler(svc)

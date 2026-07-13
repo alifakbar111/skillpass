@@ -1,6 +1,9 @@
 package notification
 
 import (
+	"encoding/json"
+	"fmt"
+	"io"
 	"log/slog"
 	"net/http"
 
@@ -14,6 +17,64 @@ type Handler struct {
 
 func NewHandler(service *Service) *Handler {
 	return &Handler{service: service}
+}
+
+// StreamNotifications godoc
+// @Summary		Stream notifications via SSE
+// @Description	Server-Sent Events stream for real-time notifications
+// @Tags		notifications
+// @Produce		text/event-stream
+// @Security	BearerAuth
+// @Success		200 {string} string
+// @Failure		401 {object} map[string]string
+// @Router		/notifications/stream [get]
+func (h *Handler) StreamNotifications(c *gin.Context) {
+	userID, ok := getUserID(c)
+	if !ok {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "Unauthorized"})
+		return
+	}
+
+	c.Header("Content-Type", "text/event-stream")
+	c.Header("Cache-Control", "no-cache")
+	c.Header("Connection", "keep-alive")
+	c.Header("X-Accel-Buffering", "no") // disable nginx buffering
+
+	flusher, ok := c.Writer.(http.Flusher)
+	if !ok {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Streaming not supported"})
+		return
+	}
+
+	// Send initial snapshot
+	result, err := h.service.ListForUser(c.Request.Context(), userID, 50)
+	if err == nil {
+		data, _ := json.Marshal(SSEEvent{Type: "init", Data: result})
+		_, _ = fmt.Fprintf(c.Writer, "event: notification\ndata: %s\n\n", data)
+		flusher.Flush()
+	}
+
+	// Subscribe to incremental updates
+	ch := h.service.Subscribe(userID)
+	defer h.service.Unsubscribe(userID, ch)
+
+	c.Stream(func(w io.Writer) bool {
+		select {
+		case evt, ok := <-ch:
+			if !ok {
+				return false
+			}
+			data, err := json.Marshal(evt)
+			if err != nil {
+				slog.Error("sse marshal error", "error", err)
+				return true
+			}
+			_, _ = fmt.Fprintf(w, "event: notification\ndata: %s\n\n", data)
+			return true
+		case <-c.Request.Context().Done():
+			return false
+		}
+	})
 }
 
 func getUserID(c *gin.Context) (string, bool) {

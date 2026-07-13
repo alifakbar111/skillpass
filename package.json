@@ -2,7 +2,7 @@
   "name": "skillpass",
   "private": true,
   "scripts": {
-    "setup": "docker compose up db -d --wait && bun run db:migrate && bun run db:seed && echo '✓ Setup complete. Run `bun run dev` to start.'",
+    "setup:local": "docker compose up db -d --wait && bun run db:migrate && bun run db:seed && echo '✓ Setup complete. Run `bun run dev` to start.'",
     "dev": "concurrently -n markitdown,server,web -c yellow,cyan,green \"bun run dev:markitdown\" \"bun run dev:server\" \"bun --cwd web dev\"",
     "dev:markitdown": "cd markitdown-service && python -m pip install -q -r requirements.txt && python -m uvicorn app:app --host 0.0.0.0 --port 8000 --reload",
     "dev:server": "cd server-go && air -c .air.toml",

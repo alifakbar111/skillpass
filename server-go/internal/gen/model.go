@@ -4,7 +4,7 @@ import (
 	"skillpass-server-go/.gen/skillpass/public/model"
 )
 
-//go:generate jet -dsn=postgres://postgres:postgres@localhost:5432/skillpass?sslmode=disable -schema=public -path=../../.gen -ignore-tables=__drizzle_migrations
+//go:generate jet -source=postgres -dsn="postgres://postgres:postgres@localhost:5432/skillpass?sslmode=disable" -schema=public -path=../../.gen -ignore-tables=__drizzle_migrations
 
 // Model type aliases for query result mapping.
 type (

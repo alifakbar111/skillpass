@@ -19,13 +19,10 @@ describe('WorkHistorySection', () => {
             title: 'Senior Dev',
             organization: 'Co',
             startDate: '2020-01',
-            endDate: null,
             isCurrent: true,
             type: 'employment',
-            description: null,
             industry: 'Tech',
             skillsUsed: ['Go'],
-            url: null,
           },
         ]}
         onAdd={vi.fn()}

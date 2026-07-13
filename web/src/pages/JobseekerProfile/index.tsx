@@ -3,7 +3,6 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { CheckCircle, X } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { useForm } from 'react-hook-form';
-import { FormDialog } from '@/components/ui/FormDialog';
 import { AIEvaluationSection } from '@/components/jobseeker/AIEvaluationSection';
 import { AvatarUploader } from '@/components/jobseeker/AvatarUploader';
 import { CertificationSection } from '@/components/jobseeker/CertificationSection';
@@ -13,6 +12,7 @@ import { VolunteeringSection } from '@/components/jobseeker/VolunteeringSection'
 import { WorkHistorySection } from '@/components/jobseeker/WorkHistorySection';
 import { JobseekerOnboarding } from '@/components/onboarding/JobseekerOnboarding';
 import { Form } from '@/components/ui/Form';
+import { FormDialog } from '@/components/ui/FormDialog';
 import { FormInput } from '@/components/ui/FormInput';
 import { FormNumberInput } from '@/components/ui/FormNumberInput';
 import { FormTextarea } from '@/components/ui/FormTextarea';

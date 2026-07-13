@@ -1,5 +1,5 @@
 import { render, screen } from '@testing-library/react';
-import { describe, it, expect } from 'vitest';
+import { describe, expect, it } from 'vitest';
 import { CountGrowthTimeline } from '@/components/jobseeker/CountGrowthTimeline';
 
 function getByTextContent(text: string) {

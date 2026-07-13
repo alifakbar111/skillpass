@@ -7,9 +7,8 @@ import {
   markAllNotificationsRead,
   markNotificationRead,
   type Notification,
+  subscribeToNotifications,
 } from '@/lib/notifications';
-
-const POLL_INTERVAL_MS = 60_000;
 
 export function NotificationBell() {
   const navigate = useNavigate();
@@ -31,8 +30,22 @@ export function NotificationBell() {
 
   useEffect(() => {
     load();
-    const interval = setInterval(load, POLL_INTERVAL_MS);
-    return () => clearInterval(interval);
+
+    const es = subscribeToNotifications((event: MessageEvent) => {
+      try {
+        const parsed = JSON.parse(event.data);
+        if (parsed.type === 'init' && parsed.data) {
+          setNotifications(parsed.data.notifications);
+          setUnread(parsed.data.unreadCount);
+        } else if (parsed.type === 'refresh') {
+          load();
+        }
+      } catch {
+        // Ignore malformed SSE events.
+      }
+    });
+
+    return () => es.close();
   }, [load]);
 
   useEffect(() => {

@@ -20,9 +20,9 @@ func main() {
 	_ = godotenv.Load(".env", "../.env")
 
 	databaseURL := os.Getenv("DATABASE_URL")
-	if databaseURL == "" {
-		databaseURL = "postgres://postgres:postgres@localhost:5432/skillpass"
-	}
+	// if databaseURL == "" {
+	// 	databaseURL = "postgres://postgres:postgres@localhost:5432/skillpass"
+	// }
 
 	ctx := context.Background()
 

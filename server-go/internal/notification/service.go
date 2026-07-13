@@ -18,6 +18,7 @@ import (
 type Service struct {
 	db      *sql.DB
 	emailer email.Sender
+	broker  *Broker
 }
 
 func NewService(db *sql.DB) *Service {
@@ -28,6 +29,30 @@ func NewService(db *sql.DB) *Service {
 // user's inbox. Optional — when nil, notifications stay in-app only.
 func (s *Service) SetEmailer(e email.Sender) {
 	s.emailer = e
+}
+
+// SetBroker attaches an SSE broker for real-time push. Optional — when nil,
+// mutations will not publish SSE events (safe for tests).
+func (s *Service) SetBroker(b *Broker) {
+	s.broker = b
+}
+
+// Subscribe delegates to the broker. Panics if broker is nil (caller must
+// SetBroker before using SSE).
+func (s *Service) Subscribe(userID string) chan SSEEvent {
+	return s.broker.Subscribe(userID)
+}
+
+// Unsubscribe delegates to the broker.
+func (s *Service) Unsubscribe(userID string, ch chan SSEEvent) {
+	s.broker.Unsubscribe(userID, ch)
+}
+
+// publishRefresh sends a "refresh" SSE event for the user if a broker is set.
+func (s *Service) publishRefresh(userID string) {
+	if s.broker != nil {
+		s.broker.Publish(userID, SSEEvent{Type: "refresh"})
+	}
 }
 
 // sendEmail delivers msg to the user's email address, best-effort: lookup or
@@ -74,6 +99,7 @@ func (s *Service) Create(ctx context.Context, userID, notifType, title, body, li
 	if err != nil {
 		return fmt.Errorf("insert notification: %w", err)
 	}
+	s.publishRefresh(userID)
 	return nil
 }
 
@@ -239,6 +265,9 @@ func (s *Service) MarkRead(ctx context.Context, notificationID, userID string) (
 		return false, fmt.Errorf("mark read: %w", err)
 	}
 	ra, _ := res.RowsAffected()
+	if ra > 0 {
+		s.publishRefresh(userID)
+	}
 	return ra > 0, nil
 }
 
@@ -251,6 +280,7 @@ func (s *Service) MarkAllRead(ctx context.Context, userID string) error {
 	if err != nil {
 		return fmt.Errorf("mark all read: %w", err)
 	}
+	s.publishRefresh(userID)
 	return nil
 }
 
@@ -262,5 +292,6 @@ func (s *Service) ClearAll(ctx context.Context, userID string) error {
 	if err != nil {
 		return fmt.Errorf("clear all notifications: %w", err)
 	}
+	s.publishRefresh(userID)
 	return nil
 }

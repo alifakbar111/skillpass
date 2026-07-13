@@ -22,14 +22,17 @@ export function TableSkeleton({ rows = 5, cols = 6 }: { rows?: number; cols?: nu
       {/* Header */}
       <div className="flex gap-4">
         {Array.from({ length: cols }).map((_, i) => (
+          // biome-ignore lint/suspicious/noArrayIndexKey: skeleton arrays are static and never reorder
           <Line key={`h-${i}`} height="h-4" width={`${Math.max(60, 100 / cols)}%`} className="opacity-60" />
         ))}
       </div>
       <div className="divider my-0" />
       {/* Rows */}
       {Array.from({ length: rows }).map((_, r) => (
+        // biome-ignore lint/suspicious/noArrayIndexKey: skeleton arrays are static and never reorder
         <div key={`r-${r}`} className="flex gap-4">
           {Array.from({ length: cols }).map((_, c) => (
+            // biome-ignore lint/suspicious/noArrayIndexKey: skeleton arrays are static and never reorder
             <Line key={`c-${r}-${c}`} height="h-3" width={`${Math.max(40, 100 / cols)}%`} className="opacity-30" />
           ))}
         </div>
@@ -45,6 +48,7 @@ export function CardGridSkeleton({ count = 3 }: { count?: number }) {
   return (
     <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
       {Array.from({ length: count }).map((_, i) => (
+        // biome-ignore lint/suspicious/noArrayIndexKey: skeleton arrays are static and never reorder
         <div key={i} className="card bg-base-100 border border-base-300 p-6 space-y-3">
           <Line height="h-3" width="w-1/3" className="opacity-40" />
           <Line height="h-8" width="w-1/2" />
@@ -66,6 +70,7 @@ export function DetailSkeleton() {
         <div key={i} className="card bg-base-200 p-6 space-y-3">
           <Line height="h-5" width="w-1/3" className="opacity-50" />
           {Array.from({ length: 4 }).map((_, j) => (
+            // biome-ignore lint/suspicious/noArrayIndexKey: skeleton arrays are static and never reorder
             <div key={j} className="space-y-1">
               <Line height="h-2" width="w-1/4" className="opacity-30" />
               <Line height="h-8" width="w-full" className="opacity-20" />

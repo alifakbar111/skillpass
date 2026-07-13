@@ -1,0 +1,10 @@
+node_modules
+.git
+.env
+.env.example
+*.md
+dist
+tmp
+uploads
+server-go/server
+skillpass

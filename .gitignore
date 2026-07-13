@@ -27,6 +27,9 @@ web/src/**/*.js.map
 server-go/uploads/
 uploads/
 
+# Accidental go-jet generation from non-local DB
+server-go/.gen/neondb/
+
 # MarkItDown exports (generated markdown files)
 markitdown-service/export-pdf/*
 !markitdown-service/export-pdf/.gitkeep

@@ -11,8 +11,8 @@ import { FormInput } from '@/components/ui/FormInput';
 import { FormNumberInput } from '@/components/ui/FormNumberInput';
 import { FormSelect } from '@/components/ui/FormSelect';
 import { FormTextarea } from '@/components/ui/FormTextarea';
-import { SkillsAutocomplete } from '@/components/ui/SkillsAutocomplete';
 import { LoadingSpinner } from '@/components/ui/LoadingFallback';
+import { SkillsAutocomplete } from '@/components/ui/SkillsAutocomplete';
 import { useIndustries } from '@/hooks/useIndustries';
 import { ApiError, api, apiWithSchema } from '@/lib/api';
 import { type JobForm, jobSchema } from '@/lib/schemas';
@@ -302,7 +302,7 @@ export function CompanyJobs() {
                 </div>
                 {(job.updatedAt || job.createdAt) && (
                   <p className="text-xs text-muted mt-1">
-                    Last updated: {(job.updatedAt ?? job.createdAt)!.slice(0, 10)}
+                    Last updated: {(job.updatedAt ?? job.createdAt)?.slice(0, 10)}
                   </p>
                 )}
                 {job.requirements && (

@@ -14,15 +14,43 @@ services:
       timeout: 5s
       retries: 5
 
-  server:
+  migrate:
     build:
-      context: ./server-go
-      dockerfile: Dockerfile
-    ports:
-      - "1234:1234"
+      context: .
+      dockerfile: server-go/Dockerfile
     depends_on:
       db:
         condition: service_healthy
+    environment:
+      DATABASE_URL: postgres://postgres:postgres@db:5432/skillpass
+    command: ["./skillpass-migrate"]
+    restart: "no"
+
+  seed:
+    build:
+      context: .
+      dockerfile: server-go/Dockerfile
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+    environment:
+      DATABASE_URL: postgres://postgres:postgres@db:5432/skillpass
+      ADMIN_EMAIL: admin@skillpass.com
+      ADMIN_PASSWORD: pass123!
+      APP_URL: http://localhost:4200
+      JWT_SECRET: skillpass-dev-secret
+    command: ["./skillpass-seed"]
+    restart: "no"
+
+  server:
+    build:
+      context: .
+      dockerfile: server-go/Dockerfile
+    ports:
+      - "1234:1234"
+    depends_on:
+      seed:
+        condition: service_completed_successfully
       markitdown:
         condition: service_healthy
     environment:

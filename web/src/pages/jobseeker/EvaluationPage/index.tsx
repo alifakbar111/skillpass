@@ -1,15 +1,15 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Sparkles, X } from 'lucide-react';
 import { useState } from 'react';
+import { CountGrowthTimeline } from '@/components/jobseeker/CountGrowthTimeline';
 import { EvaluationExpiryBanner } from '@/components/jobseeker/EvaluationExpiryBanner';
 import { EvaluationScoreBadge } from '@/components/jobseeker/EvaluationScoreBadge';
 import { SkillScoresChart } from '@/components/jobseeker/SkillScoresChart';
 import { LoadingFallback } from '@/components/ui/LoadingFallback';
 import { useAuth } from '@/hooks/useAuth';
 import { ApiError } from '@/lib/api';
-import { getLatestEvaluation, getEvaluationHistory, triggerEvaluation } from '@/lib/evaluation';
+import { getEvaluationHistory, getLatestEvaluation, triggerEvaluation } from '@/lib/evaluation';
 import { CareerPathSection } from '@/pages/jobseeker/EvaluationPage/CareerPathSection';
-import { CountGrowthTimeline } from '@/components/jobseeker/CountGrowthTimeline';
 
 export function EvaluationPage() {
   const { user } = useAuth();

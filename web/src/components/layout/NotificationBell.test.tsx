@@ -7,6 +7,11 @@ vi.mock('@/lib/notifications', () => ({
   getNotifications: vi.fn().mockResolvedValue({ notifications: [], unreadCount: 0 }),
   markNotificationRead: vi.fn(),
   markAllNotificationsRead: vi.fn(),
+  clearAllNotifications: vi.fn(),
+  subscribeToNotifications: vi.fn(() => ({
+    close: vi.fn(),
+    addEventListener: vi.fn(),
+  })),
 }));
 
 function wrapper({ children }: { children: React.ReactNode }) {
