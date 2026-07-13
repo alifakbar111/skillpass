@@ -2758,6 +2758,48 @@
                 ]
             }
         },
+        "/notifications": {
+            "delete": {
+                "description": "Delete all notifications for the authenticated user",
+                "tags": [
+                    "notifications"
+                ],
+                "summary": "Clear all notifications",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "additionalProperties": {
+                                        "type": "string"
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "additionalProperties": {
+                                        "type": "string"
+                                    }
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ]
+            }
+        },
         "/notifications/me": {
             "get": {
                 "description": "Get recent notifications and unread count for the authenticated user",
@@ -2822,6 +2864,45 @@
                         "description": "Unauthorized",
                         "content": {
                             "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "additionalProperties": {
+                                        "type": "string"
+                                    }
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/notifications/stream": {
+            "get": {
+                "description": "Server-Sent Events stream for real-time notifications",
+                "tags": [
+                    "notifications"
+                ],
+                "summary": "Stream notifications via SSE",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "content": {
+                            "text/event-stream": {
+                                "schema": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "content": {
+                            "text/event-stream": {
                                 "schema": {
                                     "type": "object",
                                     "additionalProperties": {

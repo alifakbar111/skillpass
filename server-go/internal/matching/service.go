@@ -293,8 +293,8 @@ func (s *Service) MatchCandidates(ctx context.Context, jobPostingID string) ([]C
 type SkillsGap struct {
 	JobPostingID  string   `json:"jobPostingId"`
 	JobTitle      string   `json:"jobTitle"`
-	MatchedSkills []string `json:"matchedSkills"`
-	MissingSkills []string `json:"missingSkills"`
+	MatchedSkills []string `json:"matchedSkills,omitempty"`
+	MissingSkills []string `json:"missingSkills,omitempty"`
 	MatchPercent  float64  `json:"matchPercent"`
 	HasEvaluation bool     `json:"hasEvaluation"`
 }

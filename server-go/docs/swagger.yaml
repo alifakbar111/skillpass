@@ -2619,6 +2619,29 @@ paths:
       summary: List company's job postings
       tags:
       - jobs
+  /notifications:
+    delete:
+      description: Delete all notifications for the authenticated user
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Clear all notifications
+      tags:
+      - notifications
   /notifications/{id}/read:
     put:
       description: Mark a single notification as read
@@ -2697,6 +2720,27 @@ paths:
       security:
       - BearerAuth: []
       summary: Mark all notifications read
+      tags:
+      - notifications
+  /notifications/stream:
+    get:
+      description: Server-Sent Events stream for real-time notifications
+      produces:
+      - text/event-stream
+      responses:
+        "200":
+          description: OK
+          schema:
+            type: string
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Stream notifications via SSE
       tags:
       - notifications
   /p/{username}:

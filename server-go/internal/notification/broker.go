@@ -9,7 +9,7 @@ import (
 // SSEEvent is published through the broker to SSE subscribers.
 type SSEEvent struct {
 	Type string      `json:"type"`
-	Data interface{} `json:"data"`
+	Data interface{} `json:"data,omitempty"`
 }
 
 // MarshalJSON serializes the event for SSE transmission.
