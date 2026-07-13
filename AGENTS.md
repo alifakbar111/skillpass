@@ -13,6 +13,12 @@
 - Rules: `.agents/rules/`  · Skills: `.agents/skills/`  · Agents: `.agents/agents/`
 - Deterministic checks: git hooks (`lefthook.yml`)
 - Docs output: specs go to `docs/specs/`, plans go to `docs/plans/`
+- Audit output: security findings → `docs/security_issue/SECURITY_REVIEW_YYYY-MM-DD.md`,
+  bug findings → `docs/bug_finding/BUG_REVIEW_YYYY-MM-DD.md`,
+  code review → `docs/code_review/CODE_REVIEW_YYYY-MM-DD.md`
+- Plan files: `docs/plans/YYYY-MM-DD-<kebab-description>.md`
+- Spec files: `docs/specs/YYYY-MM-DD-<kebab-description>.md`
+- Research files: `docs/research/<kebab-description>-YYYY-MM-DD.md`
 
 ### MiMo Orchestrator
 
