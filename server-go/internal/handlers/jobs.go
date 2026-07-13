@@ -446,8 +446,6 @@ func (h *JobHandler) UpdateJob(c *gin.Context) {
 	if req.Benefits != nil {
 		setVals = append(setVals, gen.JobPostings.Benefits.SET(String(*req.Benefits)))
 	}
-	// Always update updated_at on any update
-	setVals = append(setVals, gen.JobPostings.UpdatedAt.SET(RawTimestampz("NOW()")))
 	if req.YearsExperienceMin != nil {
 		setVals = append(setVals, gen.JobPostings.YearsExperienceMin.SET(Int64(int64(*req.YearsExperienceMin))))
 	}
@@ -470,6 +468,9 @@ func (h *JobHandler) UpdateJob(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "No fields to update"})
 		return
 	}
+
+	// Always update updated_at on any actual update
+	setVals = append(setVals, gen.JobPostings.UpdatedAt.SET(RawTimestampz("NOW()")))
 
 	stmt := gen.JobPostings.UPDATE().SET(setVals[0], setVals[1:]...	).WHERE(
 		gen.JobPostings.ID.EQ(UUID(jobUUID)).AND(
