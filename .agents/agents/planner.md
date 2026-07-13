@@ -19,7 +19,7 @@ Every plan MUST start with this header:
 ```markdown
 # [Feature Name] Implementation Plan
 
-> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task.
+> **For agentic workers:** This plan MUST be executed by delegating each task to the appropriate agent(s) via the agent-manager. Do NOT implement tasks directly — route to existing agents (go-scaffolder, test-runner, bug-hunter, etc.) or the agent-manager for orchestration.
 
 **Goal:** [One sentence describing what this builds]
 
@@ -52,8 +52,7 @@ After writing the complete plan:
 ### Execution Handoff
 
 After saving the plan, offer execution choice:
-- **Delegate Agents** — Route and delegate to the right agent(s) — single dispatch or multi-step workflow
-- **Subagent-Driven** — dispatch a fresh subagent per task, review between tasks
+- **Agent-Driven (recommended)** — Route each task to the appropriate agent via agent-manager or direct dispatch. One agent per task, review between tasks.
 - **Inline Execution** — execute tasks in this session with batch checkpoints
 
 ## Return

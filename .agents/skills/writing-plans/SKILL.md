@@ -49,7 +49,7 @@ This structure informs the task decomposition. Each task should produce self-con
 ```markdown
 # [Feature Name] Implementation Plan
 
-> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
+> **For agentic workers:** This plan MUST be executed by delegating each task to the appropriate agent(s) via the agent-manager. Do NOT implement tasks directly — route to existing agents (go-scaffolder, test-runner, bug-hunter, etc.) or the agent-manager for orchestration. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** [One sentence describing what this builds]
 
@@ -137,16 +137,15 @@ After saving the plan, offer execution choice:
 
 **"Plan complete and saved to `docs/plans/<filename>.md`. Two execution options:**
 
-**1. Subagent-Driven (recommended)** - I dispatch a fresh subagent per task, review between tasks, fast iteration
+**1. Agent-Driven (recommended)** - Route each task to the appropriate agent via agent-manager or direct dispatch. One agent per task, I review between tasks.
 
-**2. Inline Execution** - Execute tasks in this session using executing-plans, batch execution with checkpoints
+**2. Inline Execution** - Execute tasks in this session, batch execution with checkpoints.
 
 **Which approach?"**
 
-**If Subagent-Driven chosen:**
-- **REQUIRED SUB-SKILL:** Use superpowers:subagent-driven-development
-- Fresh subagent per task + two-stage review
+**If Agent-Driven chosen:**
+- **REQUIRED:** Use the agent-manager to delegate each task to the right agent (go-scaffolder, test-runner, bug-hunter, etc.) from the agent registry.
+- One agent per task + two-stage review.
 
 **If Inline Execution chosen:**
-- **REQUIRED SUB-SKILL:** Use superpowers:executing-plans
-- Batch execution with checkpoints for review
+- Execute sequentially in the current session with periodic checkpoints for review.
