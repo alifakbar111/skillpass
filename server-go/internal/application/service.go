@@ -10,6 +10,7 @@ import (
 
 	. "github.com/go-jet/jet/v2/postgres"
 	"github.com/google/uuid"
+	"github.com/uptrace/bun"
 
 	"skillpass-server-go/.gen/skillpass/public/model"
 	"skillpass-server-go/internal/evaluation"
@@ -39,11 +40,12 @@ var allowedTransitions = map[string][]string{
 
 type Service struct {
 	db          *sql.DB
+	bun         bun.IDB
 	evalService *evaluation.Service
 }
 
-func NewService(db *sql.DB) *Service {
-	return &Service{db: db}
+func NewService(db *sql.DB, bun bun.IDB) *Service {
+	return &Service{db: db, bun: bun}
 }
 
 func (s *Service) SetEvalService(ev *evaluation.Service) {

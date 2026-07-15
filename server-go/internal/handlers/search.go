@@ -8,6 +8,7 @@ import (
 	"strings"
 
 	"github.com/gin-gonic/gin"
+	"github.com/uptrace/bun"
 )
 
 type CandidateResult struct {
@@ -22,11 +23,12 @@ type CandidateResult struct {
 } //@name CandidateResult
 
 type SearchHandler struct {
-	db *sql.DB
+	db    *sql.DB
+	bunDB *bun.DB
 }
 
-func NewSearchHandler(db *sql.DB) *SearchHandler {
-	return &SearchHandler{db: db}
+func NewSearchHandler(db *sql.DB, bunDB *bun.DB) *SearchHandler {
+	return &SearchHandler{db: db, bunDB: bunDB}
 }
 
 const (

@@ -8,16 +8,18 @@ import (
 
 	. "github.com/go-jet/jet/v2/postgres"
 	"github.com/google/uuid"
+	"github.com/uptrace/bun"
 
 	"skillpass-server-go/internal/gen"
 )
 
 type CategoryService struct {
-	db *sql.DB
+	db  *sql.DB
+	bun bun.IDB
 }
 
-func NewCategoryService(db *sql.DB) *CategoryService {
-	return &CategoryService{db: db}
+func NewCategoryService(db *sql.DB, bun bun.IDB) *CategoryService {
+	return &CategoryService{db: db, bun: bun}
 }
 
 func (s *CategoryService) GetJobCategoryWeights(ctx context.Context, jobPostingID string) (map[string]int, error) {

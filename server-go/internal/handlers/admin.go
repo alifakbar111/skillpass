@@ -11,6 +11,7 @@ import (
 	"github.com/gin-gonic/gin"
 	. "github.com/go-jet/jet/v2/postgres"
 	"github.com/google/uuid"
+	"github.com/uptrace/bun"
 
 	"skillpass-server-go/.gen/skillpass/public/model"
 	"skillpass-server-go/internal/gen"
@@ -38,11 +39,12 @@ type VerificationActionRequest struct {
 } //@name VerificationActionRequest
 
 type AdminHandler struct {
-	db *sql.DB
+	db    *sql.DB
+	bunDB *bun.DB
 }
 
-func NewAdminHandler(db *sql.DB) *AdminHandler {
-	return &AdminHandler{db: db}
+func NewAdminHandler(db *sql.DB, bunDB *bun.DB) *AdminHandler {
+	return &AdminHandler{db: db, bunDB: bunDB}
 }
 
 func pendingCompanyFromModel(c model.Companies) PendingCompany {

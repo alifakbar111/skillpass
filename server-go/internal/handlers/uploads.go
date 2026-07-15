@@ -9,6 +9,7 @@ import (
 	"strings"
 
 	"github.com/gin-gonic/gin"
+	"github.com/uptrace/bun"
 
 	"skillpass-server-go/internal/storage"
 )
@@ -25,11 +26,12 @@ var avatarExtensions = map[string]string{
 // UploadHandler stores user-submitted files (currently avatars).
 type UploadHandler struct {
 	db    *sql.DB
+	bunDB *bun.DB
 	store storage.Store
 }
 
-func NewUploadHandler(db *sql.DB, store storage.Store) *UploadHandler {
-	return &UploadHandler{db: db, store: store}
+func NewUploadHandler(db *sql.DB, store storage.Store, bunDB *bun.DB) *UploadHandler {
+	return &UploadHandler{db: db, bunDB: bunDB, store: store}
 }
 
 // UploadAvatar	godoc

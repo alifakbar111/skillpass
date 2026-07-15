@@ -7,16 +7,18 @@ import (
 	"github.com/gin-gonic/gin"
 	. "github.com/go-jet/jet/v2/postgres"
 	"github.com/google/uuid"
+	"github.com/uptrace/bun"
 
 	"skillpass-server-go/internal/gen"
 )
 
 type SkillsHandler struct {
-	db *sql.DB
+	db    *sql.DB
+	bunDB *bun.DB
 }
 
-func NewSkillsHandler(db *sql.DB) *SkillsHandler {
-	return &SkillsHandler{db: db}
+func NewSkillsHandler(db *sql.DB, bunDB *bun.DB) *SkillsHandler {
+	return &SkillsHandler{db: db, bunDB: bunDB}
 }
 
 // SkillResponse is the camelCase JSON shape for a skill.

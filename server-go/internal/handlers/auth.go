@@ -15,6 +15,7 @@ import (
 	. "github.com/go-jet/jet/v2/postgres"
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/google/uuid"
+	"github.com/uptrace/bun"
 
 	"skillpass-server-go/.gen/skillpass/public/model"
 	"skillpass-server-go/internal/authtoken"
@@ -64,13 +65,14 @@ type LoginResponse struct {
 
 type AuthHandler struct {
 	db        *sql.DB
+	bunDB     *bun.DB
 	jwtSecret string
 	emailer   email.Sender
 	tokens    *authtoken.Service
 }
 
-func NewAuthHandler(db *sql.DB, jwtSecret string) *AuthHandler {
-	return &AuthHandler{db: db, jwtSecret: jwtSecret}
+func NewAuthHandler(db *sql.DB, jwtSecret string, bunDB *bun.DB) *AuthHandler {
+	return &AuthHandler{db: db, bunDB: bunDB, jwtSecret: jwtSecret}
 }
 
 // SetEmailer attaches an email sender for verification/reset mail.

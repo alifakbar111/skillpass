@@ -7,16 +7,18 @@ import (
 	"github.com/gin-gonic/gin"
 	. "github.com/go-jet/jet/v2/postgres"
 	"github.com/google/uuid"
+	"github.com/uptrace/bun"
 
 	"skillpass-server-go/internal/gen"
 )
 
 type ReferenceHandler struct {
-	db *sql.DB
+	db    *sql.DB
+	bunDB *bun.DB
 }
 
-func NewReferenceHandler(db *sql.DB) *ReferenceHandler {
-	return &ReferenceHandler{db: db}
+func NewReferenceHandler(db *sql.DB, bunDB *bun.DB) *ReferenceHandler {
+	return &ReferenceHandler{db: db, bunDB: bunDB}
 }
 
 // IndustryResponse is the camelCase JSON shape for an industry category.

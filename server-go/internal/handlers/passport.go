@@ -7,6 +7,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 	. "github.com/go-jet/jet/v2/postgres"
+	"github.com/uptrace/bun"
 
 	"skillpass-server-go/.gen/skillpass/public/model"
 	"skillpass-server-go/internal/gen"
@@ -23,11 +24,12 @@ type PublicProfileResponse struct {
 } //@name PublicProfileResponse
 
 type PassportHandler struct {
-	db *sql.DB
+	db    *sql.DB
+	bunDB *bun.DB
 }
 
-func NewPassportHandler(db *sql.DB) *PassportHandler {
-	return &PassportHandler{db: db}
+func NewPassportHandler(db *sql.DB, bunDB *bun.DB) *PassportHandler {
+	return &PassportHandler{db: db, bunDB: bunDB}
 }
 
 // GetProfile		godoc

@@ -11,6 +11,7 @@ import (
 	"github.com/gin-gonic/gin"
 	. "github.com/go-jet/jet/v2/postgres"
 	"github.com/go-jet/jet/v2/qrm"
+	"github.com/uptrace/bun"
 	"log/slog"
 
 	"skillpass-server-go/.gen/skillpass/public/model"
@@ -48,11 +49,12 @@ type VerificationRequest struct {
 } //@name VerificationRequest
 
 type CompanyHandler struct {
-	db *sql.DB
+	db    *sql.DB
+	bunDB *bun.DB
 }
 
-func NewCompanyHandler(db *sql.DB) *CompanyHandler {
-	return &CompanyHandler{db: db}
+func NewCompanyHandler(db *sql.DB, bunDB *bun.DB) *CompanyHandler {
+	return &CompanyHandler{db: db, bunDB: bunDB}
 }
 
 func companyFromModel(c model.Companies) CompanyResponse {

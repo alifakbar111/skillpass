@@ -10,6 +10,7 @@ import (
 
 	. "github.com/go-jet/jet/v2/postgres"
 	"github.com/google/uuid"
+	"github.com/uptrace/bun"
 
 	"skillpass-server-go/.gen/skillpass/public/model"
 	"skillpass-server-go/internal/gen"
@@ -28,11 +29,12 @@ func IsExpired(createdAt time.Time) bool {
 // Service handles AI evaluation business logic.
 type Service struct {
 	db  *sql.DB
+	bun bun.IDB
 	llm lib.LLMClient
 }
 
-func NewService(db *sql.DB, llm lib.LLMClient) *Service {
-	return &Service{db: db, llm: llm}
+func NewService(db *sql.DB, llm lib.LLMClient, bun bun.IDB) *Service {
+	return &Service{db: db, bun: bun, llm: llm}
 }
 
 // EvaluationResult is the internal result shape.

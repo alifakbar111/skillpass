@@ -12,6 +12,7 @@ import (
 	. "github.com/go-jet/jet/v2/postgres"
 	"github.com/go-jet/jet/v2/qrm"
 	"github.com/jackc/pgx/v5/pgconn"
+	"github.com/uptrace/bun"
 
 	"skillpass-server-go/.gen/skillpass/public/model"
 	"skillpass-server-go/internal/gen"
@@ -91,11 +92,12 @@ type ProfileResponse struct {
 } //@name ProfileResponse
 
 type ProfileHandler struct {
-	db *sql.DB
+	db    *sql.DB
+	bunDB *bun.DB
 }
 
-func NewProfileHandler(db *sql.DB) *ProfileHandler {
-	return &ProfileHandler{db: db}
+func NewProfileHandler(db *sql.DB, bunDB *bun.DB) *ProfileHandler {
+	return &ProfileHandler{db: db, bunDB: bunDB}
 }
 
 func mapExperience(exp model.JobExperiences) Experience {

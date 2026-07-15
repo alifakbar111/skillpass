@@ -11,6 +11,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 	. "github.com/go-jet/jet/v2/postgres"
+	"github.com/uptrace/bun"
 
 	"skillpass-server-go/.gen/skillpass/public/model"
 	"skillpass-server-go/internal/gen"
@@ -96,11 +97,12 @@ type UpdateJobRequest struct {
 } //@name UpdateJobRequest
 
 type JobHandler struct {
-	db *sql.DB
+	db    *sql.DB
+	bunDB *bun.DB
 }
 
-func NewJobHandler(db *sql.DB) *JobHandler {
-	return &JobHandler{db: db}
+func NewJobHandler(db *sql.DB, bunDB *bun.DB) *JobHandler {
+	return &JobHandler{db: db, bunDB: bunDB}
 }
 
 func jobFromModel(j model.JobPostings) JobResponse {

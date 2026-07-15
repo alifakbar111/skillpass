@@ -87,14 +87,14 @@ func main() {
 
 	api := r.Group("/api/v1")
 
-	ref := handlers.NewReferenceHandler(database)
-	jobs := handlers.NewJobHandler(database)
-	auth := handlers.NewAuthHandler(database, cfg.JWTSecret)
-	profiles := handlers.NewProfileHandler(database)
-	passport := handlers.NewPassportHandler(database)
-	companies := handlers.NewCompanyHandler(database)
-	search := handlers.NewSearchHandler(database)
-	admin := handlers.NewAdminHandler(database)
+	ref := handlers.NewReferenceHandler(database, bunDB)
+	jobs := handlers.NewJobHandler(database, bunDB)
+	auth := handlers.NewAuthHandler(database, cfg.JWTSecret, bunDB)
+	profiles := handlers.NewProfileHandler(database, bunDB)
+	passport := handlers.NewPassportHandler(database, bunDB)
+	companies := handlers.NewCompanyHandler(database, bunDB)
+	search := handlers.NewSearchHandler(database, bunDB)
+	admin := handlers.NewAdminHandler(database, bunDB)
 
 	// Phase 4: email delivery + auth tokens + file storage
 	emailSender := email.NewSender()
@@ -103,20 +103,20 @@ func main() {
 	auth.SetTokenService(tokenService)
 
 	store := storage.NewStore()
-	uploads := handlers.NewUploadHandler(database, store)
+	uploads := handlers.NewUploadHandler(database, store, bunDB)
 	if ls, ok := store.(*storage.LocalStore); ok {
 		r.Static("/uploads", ls.Dir())
 	}
 
 	// Phase 2: AI Evaluation & Matching
 	llmClient := lib.NewLLMClient()
-	evalService := evaluation.NewService(database, llmClient)
+	evalService := evaluation.NewService(database, llmClient, bunDB)
 	evalHandler := evaluation.NewHandler(database, evalService)
 
 	resumeService := resume.NewService(llmClient)
 	resumeHandler := resume.NewHandler(resumeService, cfg.MarkItDownURL)
 
-	appService := application.NewService(database)
+	appService := application.NewService(database, bunDB)
 	appService.SetEvalService(evalService)
 	appHandler := application.NewHandler(appService)
 
@@ -134,8 +134,8 @@ func main() {
 	analyticsService := analytics.NewService(database)
 	analyticsHandler := analytics.NewHandler(database, analyticsService)
 
-	categoryService := matching.NewCategoryService(database)
-	matchService := matching.NewService(database)
+	categoryService := matching.NewCategoryService(database, bunDB)
+	matchService := matching.NewService(database, bunDB)
 	matchService.SetCategoryService(categoryService)
 	matchHandler := matching.NewHandler(matchService)
 
@@ -157,7 +157,7 @@ func main() {
 	api.GET("/industries", ref.GetIndustries)
 	api.GET("/tags", ref.GetTags)
 
-	skillsHandler := handlers.NewSkillsHandler(database)
+	skillsHandler := handlers.NewSkillsHandler(database, bunDB)
 	api.GET("/skills", skillsHandler.SearchSkills)
 
 	api.GET("/jobs", jobs.ListJobs)
