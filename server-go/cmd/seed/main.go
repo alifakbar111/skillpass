@@ -6,35 +6,36 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"time"
 
-	. "github.com/go-jet/jet/v2/postgres"
 	_ "github.com/jackc/pgx/v5/stdlib"
 	"github.com/joho/godotenv"
+	"github.com/uptrace/bun"
+	"github.com/uptrace/bun/dialect/pgdialect"
 	"golang.org/x/crypto/bcrypt"
 
-	"skillpass-server-go/.gen/skillpass/public/model"
-	"skillpass-server-go/internal/gen"
+	"skillpass-server-go/internal/models"
 )
 
 func main() {
 	_ = godotenv.Load(".env", "../.env")
 
 	databaseURL := os.Getenv("DATABASE_URL")
-	// if databaseURL == "" {
-	// 	databaseURL = "postgres://postgres:postgres@localhost:5432/skillpass"
-	// }
 
 	ctx := context.Background()
 
-	db, err := sql.Open("pgx", databaseURL)
+	sqlDB, err := sql.Open("pgx", databaseURL)
 	if err != nil {
 		log.Fatalf("Failed to connect: %v", err)
 	}
-	defer db.Close()
+	defer sqlDB.Close()
 
-	if err := db.PingContext(ctx); err != nil {
+	if err := sqlDB.PingContext(ctx); err != nil {
 		log.Fatalf("Failed to ping DB: %v", err)
 	}
+
+	bunDB := bun.NewDB(sqlDB, pgdialect.New())
+	defer bunDB.Close()
 
 	fmt.Println("Seeding database...")
 
@@ -56,25 +57,20 @@ func main() {
 		{"Energy", "Oil, gas, renewable energy"},
 	}
 
-	count := 0
-	for _, ind := range industries {
-		stmt := gen.IndustryCategories.INSERT(
-			gen.IndustryCategories.Name, gen.IndustryCategories.Description,
-		).VALUES(ind.Name, ind.Description).
-			ON_CONFLICT(gen.IndustryCategories.Name).DO_NOTHING()
-
-		_, err := stmt.ExecContext(ctx, db)
-		if err != nil {
-			log.Printf("  Warning: failed to insert industry %s: %v", ind.Name, err)
-			continue
-		}
-		count++
+	industryModels := make([]models.IndustryCategory, len(industries))
+	for i, ind := range industries {
+		desc := ind.Description
+		industryModels[i] = models.IndustryCategory{Name: ind.Name, Description: &desc}
 	}
-	fmt.Printf("Seeded %d industry categories\n", count)
+	res, err := bunDB.NewInsert().Model(&industryModels).On("CONFLICT (name) DO NOTHING").Exec(ctx)
+	if err != nil {
+		log.Printf("  Warning: failed to insert industries: %v", err)
+	} else {
+		n, _ := res.RowsAffected()
+		fmt.Printf("Seeded %d industry categories\n", n)
+	}
 
-	// Seed skills across multiple industries
 	skillNames := []string{
-		// Technology
 		"Go", "TypeScript", "JavaScript", "Python", "Java", "Rust",
 		"React", "Vue.js", "Angular", "Next.js", "Node.js", "Express",
 		"PostgreSQL", "MySQL", "MongoDB", "Redis", "SQLite",
@@ -93,58 +89,50 @@ func main() {
 		"Figma", "Sketch", "Adobe XD", "UI Design", "UX Design",
 		"Agile", "Scrum", "Project Management", "Leadership",
 		"Testing", "TDD", "Cypress", "Vitest", "Jest", "Playwright",
-		// Healthcare
 		"Patient Care", "Medical Records", "HIPAA Compliance", "Clinical Research",
 		"EHR Systems", "Medical Coding", "Phlebotomy", "Vital Signs Monitoring",
 		"Infection Control", "Radiology", "Pharmacology", "Patient Assessment",
 		"Care Coordination", "ICD-10", "Telemedicine", "EMR Systems",
-		// Finance & Accounting
 		"Financial Analysis", "Budgeting", "Forecasting", "QuickBooks",
 		"Tax Preparation", "Auditing", "Risk Management", "GAAP",
 		"Financial Reporting", "Payroll", "Internal Controls", "ERP Systems",
 		"Accounts Payable", "Accounts Receivable", "Reconciliation", "SAP",
-		// Marketing & Sales
 		"SEO", "Content Marketing", "Social Media", "Google Analytics",
 		"CRM", "Sales Strategy", "Lead Generation", "Email Marketing",
 		"PPC Advertising", "Brand Management", "Market Research", "Copywriting",
 		"HubSpot", "Salesforce", "Public Relations", "Digital Marketing",
-		// Manufacturing & Engineering
 		"Lean Manufacturing", "Six Sigma", "CAD", "SolidWorks",
 		"Supply Chain Management", "PLC Programming", "Quality Assurance",
 		"Process Improvement", "CNC Operation", "OSHA Compliance",
 		"Inventory Management", "AutoCAD", "Root Cause Analysis", "Kaizen",
-		// Education
 		"Curriculum Development", "Classroom Management", "Lesson Planning",
 		"Student Assessment", "Educational Technology", "Special Education",
 		"ESL Instruction", "Online Teaching", "Learning Management Systems",
 		"Academic Advising", "Early Childhood Education", "Grant Writing",
-		// Legal
 		"Legal Research", "Contract Review", "Case Management", "Litigation Support",
 		"Legal Writing", "Discovery", "Compliance", "Intellectual Property",
 		"Corporate Law", "Due Diligence", "Regulatory Affairs", "Mediation",
-		// Hospitality
 		"Customer Service", "Event Planning", "Food Safety", "Front Desk Operations",
 		"Housekeeping Management", "Reservation Systems", "Banquet Management",
 		"Menu Planning", "POS Systems", "Concierge Services", "Travel Coordination",
-		// General Business
 		"Strategic Planning", "Data Analysis", "Communication", "Negotiation",
 		"Problem Solving", "Team Building", "Time Management",
 		"Microsoft Excel", "Microsoft PowerPoint", "Microsoft Word", "Public Speaking",
 		"Business Development", "Operations Management", "Vendor Management",
 	}
 
-	skillCount := 0
-	for _, name := range skillNames {
-		stmt := gen.Skills.INSERT(gen.Skills.Name).VALUES(name).
-			ON_CONFLICT(gen.Skills.Name).DO_NOTHING()
-		_, err := stmt.ExecContext(ctx, db)
-		if err != nil {
-			log.Printf("  Warning: failed to insert skill %s: %v", name, err)
-			continue
-		}
-		skillCount++
+	now := time.Now()
+	skillModels := make([]models.Skill, len(skillNames))
+	for i, name := range skillNames {
+		skillModels[i] = models.Skill{Name: name, CreatedAt: now}
 	}
-	fmt.Printf("Seeded %d skills\n", skillCount)
+	res, err = bunDB.NewInsert().Model(&skillModels).On("CONFLICT (name) DO NOTHING").Exec(ctx)
+	if err != nil {
+		log.Printf("  Warning: failed to insert skills: %v", err)
+	} else {
+		n, _ := res.RowsAffected()
+		fmt.Printf("Seeded %d skills\n", n)
+	}
 
 	adminEmail := os.Getenv("ADMIN_EMAIL")
 	adminPassword := os.Getenv("ADMIN_PASSWORD")
@@ -157,16 +145,8 @@ func main() {
 		log.Fatal("Both ADMIN_EMAIL and ADMIN_PASSWORD must be set to seed an admin user")
 	}
 
-	checkStmt := SELECT(
-		gen.Users.ID,
-	).FROM(
-		gen.Users,
-	).WHERE(
-		gen.Users.Email.EQ(String(adminEmail)),
-	)
-
-	var existing model.Users
-	err = checkStmt.QueryContext(ctx, db, &existing)
+	existing := new(models.User)
+	err = bunDB.NewSelect().Model(existing).Where("email = ?", adminEmail).Scan(ctx)
 	if err == nil {
 		fmt.Println("Admin user already exists, skipping")
 		return
@@ -177,14 +157,15 @@ func main() {
 		log.Fatalf("Failed to hash password: %v", err)
 	}
 
-	insertStmt := gen.Users.INSERT(
-		gen.Users.Email, gen.Users.Username, gen.Users.PasswordHash,
-		gen.Users.Name, gen.Users.Role,
-	).VALUES(
-		adminEmail, "admin", string(passwordHash), "Admin", "admin",
-	)
-
-	_, err = insertStmt.ExecContext(ctx, db)
+	admin := &models.User{
+		Email:        adminEmail,
+		Username:     "admin",
+		PasswordHash: string(passwordHash),
+		Name:         "Admin",
+		Role:         "admin",
+		CreatedAt:    time.Now(),
+	}
+	_, err = bunDB.NewInsert().Model(admin).Exec(ctx)
 	if err != nil {
 		log.Fatalf("Failed to create admin: %v", err)
 	}
