@@ -25,7 +25,7 @@ func TestListJobs(t *testing.T) {
 	testutil.CreateJob(sqlDB, cID, "Doctor", "Healthcare", false)
 
 	router := gin.New()
-	h := NewJobHandler(sqlDB, bunDB)
+	h := NewJobHandler(bunDB)
 	router.GET("/api/v1/jobs", h.ListJobs)
 
 	t.Run("list only open", func(t *testing.T) {
@@ -168,7 +168,7 @@ func TestGetJob(t *testing.T) {
 	jID, _ := testutil.CreateJob(sqlDB, cID, "Backend Engineer", "Technology", true)
 
 	router := gin.New()
-	h := NewJobHandler(sqlDB, bunDB)
+	h := NewJobHandler(bunDB)
 	router.GET("/api/v1/jobs/:id", h.GetJob)
 
 	t.Run("by id", func(t *testing.T) {
@@ -228,7 +228,7 @@ func TestListMyJobs(t *testing.T) {
 	tokJobseeker := testutil.GenerateToken(jsUID.String(), "jobseeker", 15*time.Minute)
 
 	router := gin.New()
-	h := NewJobHandler(sqlDB, bunDB)
+	h := NewJobHandler(bunDB)
 	g := router.Group("/api/v1/jobs")
 	g.Use(middleware.AuthRequired(testutil.TestJWTSecret), middleware.RequireRole("company"), middleware.RequireVerifiedCompany(bunDB))
 	g.GET("/me", h.ListMyJobs)
@@ -293,7 +293,7 @@ func TestCreateJob(t *testing.T) {
 	tokUnverified := testutil.GenerateToken(uIDUnv.String(), "company", 15*time.Minute)
 
 	router := gin.New()
-	h := NewJobHandler(sqlDB, bunDB)
+	h := NewJobHandler(bunDB)
 	g := router.Group("/api/v1/jobs")
 	g.Use(middleware.AuthRequired(testutil.TestJWTSecret), middleware.RequireRole("company"), middleware.RequireVerifiedCompany(bunDB))
 	g.POST("", h.CreateJob)
@@ -395,7 +395,7 @@ func TestUpdateJob(t *testing.T) {
 	tokOther := testutil.GenerateToken(uID2.String(), "company", 15*time.Minute)
 
 	router := gin.New()
-	h := NewJobHandler(sqlDB, bunDB)
+	h := NewJobHandler(bunDB)
 	g := router.Group("/api/v1/jobs")
 	g.Use(middleware.AuthRequired(testutil.TestJWTSecret), middleware.RequireRole("company"), middleware.RequireVerifiedCompany(bunDB))
 	g.PUT("/:id", h.UpdateJob)
@@ -499,7 +499,7 @@ func TestDeleteJob(t *testing.T) {
 	tokJobseeker := testutil.GenerateToken(jsUID.String(), "jobseeker", 15*time.Minute)
 
 	router := gin.New()
-	h := NewJobHandler(sqlDB, bunDB)
+	h := NewJobHandler(bunDB)
 	g := router.Group("/api/v1/jobs")
 	g.Use(middleware.AuthRequired(testutil.TestJWTSecret), middleware.RequireRole("company"), middleware.RequireVerifiedCompany(bunDB))
 	g.DELETE("/:id", h.DeleteJob)

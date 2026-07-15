@@ -2,7 +2,6 @@ package handlers
 
 import (
 	"database/sql"
-	"errors"
 	"fmt"
 	"net/http"
 	"regexp"
@@ -10,12 +9,11 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
-	. "github.com/go-jet/jet/v2/postgres"
+	"github.com/lib/pq"
 	"github.com/uptrace/bun"
 
-	"skillpass-server-go/.gen/skillpass/public/model"
-	"skillpass-server-go/internal/gen"
 	"skillpass-server-go/internal/lib"
+	"skillpass-server-go/internal/models"
 )
 
 const dateFormat = "2006-01"
@@ -28,18 +26,6 @@ func isValidDate(s string) bool {
 	}
 	_, err := time.Parse(dateFormat, s)
 	return err == nil
-}
-
-var experienceLevelMap = map[string]StringExpression{
-	"entry":  gen.ExperienceLevelEntry,
-	"mid":    gen.ExperienceLevelMid,
-	"senior": gen.ExperienceLevelSenior,
-	"lead":   gen.ExperienceLevelLead,
-}
-
-var jobStatusMap = map[string]StringExpression{
-	"open":   gen.JobStatusOpen,
-	"closed": gen.JobStatusClosed,
 }
 
 type JobResponse struct {
@@ -74,9 +60,9 @@ type CreateJobRequest struct {
 	SalaryRange        *string  `json:"salaryRange,omitempty"`
 	Requirements       *string  `json:"requirements,omitempty"`
 	Benefits           *string  `json:"benefits,omitempty"`
-	YearsExperienceMin   *int  `json:"yearsExperienceMin,omitempty"`
-	YearsExperienceMax   *int  `json:"yearsExperienceMax,omitempty"`
-	IsFreshGradFriendly  bool  `json:"isFreshGradFriendly"`
+	YearsExperienceMin *int     `json:"yearsExperienceMin,omitempty"`
+	YearsExperienceMax *int     `json:"yearsExperienceMax,omitempty"`
+	IsFreshGradFriendly bool    `json:"isFreshGradFriendly"`
 } //@name CreateJobRequest
 
 type UpdateJobRequest struct {
@@ -90,22 +76,21 @@ type UpdateJobRequest struct {
 	SalaryRange        *string  `json:"salaryRange"`
 	Requirements       *string  `json:"requirements"`
 	Benefits           *string  `json:"benefits"`
-	YearsExperienceMin   *int    `json:"yearsExperienceMin"`
-	YearsExperienceMax   *int    `json:"yearsExperienceMax"`
-	IsFreshGradFriendly  *bool   `json:"isFreshGradFriendly"`
-	Status               *string `json:"status" binding:"omitempty,oneof=open closed"`
+	YearsExperienceMin *int     `json:"yearsExperienceMin"`
+	YearsExperienceMax *int     `json:"yearsExperienceMax"`
+	IsFreshGradFriendly *bool   `json:"isFreshGradFriendly"`
+	Status             *string  `json:"status" binding:"omitempty,oneof=open closed"`
 } //@name UpdateJobRequest
 
 type JobHandler struct {
-	db    *sql.DB
 	bunDB *bun.DB
 }
 
-func NewJobHandler(db *sql.DB, bunDB *bun.DB) *JobHandler {
-	return &JobHandler{db: db, bunDB: bunDB}
+func NewJobHandler(bunDB *bun.DB) *JobHandler {
+	return &JobHandler{bunDB: bunDB}
 }
 
-func jobFromModel(j model.JobPostings) JobResponse {
+func jobFromModel(j models.JobPosting) JobResponse {
 	var tags []string
 	if j.Tags != nil {
 		tags = []string(*j.Tags)
@@ -113,11 +98,6 @@ func jobFromModel(j model.JobPostings) JobResponse {
 	var requiredSkills []string
 	if j.RequiredSkills != nil {
 		requiredSkills = []string(*j.RequiredSkills)
-	}
-	var expLevel *string
-	if j.ExperienceLevel != nil {
-		v := string(*j.ExperienceLevel)
-		expLevel = &v
 	}
 	var yearsExpMin *int
 	if j.YearsExperienceMin != nil {
@@ -137,15 +117,15 @@ func jobFromModel(j model.JobPostings) JobResponse {
 		Industry:            j.Industry,
 		Tags:                tags,
 		RequiredSkills:      requiredSkills,
-		ExperienceLevel:     expLevel,
+		ExperienceLevel:     j.ExperienceLevel,
 		Location:            j.Location,
 		SalaryRange:         j.SalaryRange,
 		Requirements:        j.Requirements,
 		Benefits:            j.Benefits,
 		YearsExperienceMin:  yearsExpMin,
 		YearsExperienceMax:  yearsExpMax,
-		IsFreshGradFriendly: bool(j.IsFreshGradFriendly),
-		Status:              string(j.Status),
+		IsFreshGradFriendly: j.IsFreshGradFriendly,
+		Status:              j.Status,
 		CreatedAt:           j.CreatedAt,
 		UpdatedAt:           j.UpdatedAt,
 	}
@@ -170,6 +150,22 @@ func parseJobOffset(c *gin.Context) int64 {
 	return offset
 }
 
+func int32Ptr(v *int) *int32 {
+	if v == nil {
+		return nil
+	}
+	val := int32(*v)
+	return &val
+}
+
+func pqToStringArray(s []string) *pq.StringArray {
+	if s == nil {
+		return nil
+	}
+	v := pq.StringArray(s)
+	return &v
+}
+
 // ListJobs		godoc
 // @Summary		List open job postings
 // @Description	Get all open job postings with optional filters
@@ -182,33 +178,19 @@ func parseJobOffset(c *gin.Context) int64 {
 // @Success		200 {array} JobResponse
 // @Router		/jobs [get]
 func (h *JobHandler) ListJobs(c *gin.Context) {
-	var whereCond BoolExpression = gen.JobPostings.Status.EQ(gen.JobStatusOpen)
+	var jobs []models.JobPosting
+	query := h.bunDB.NewSelect().Model(&jobs).Where("status = ?", "open")
 
 	if industry := c.Query("industry"); industry != "" {
-		whereCond = whereCond.AND(gen.JobPostings.Industry.EQ(String(industry)))
+		query = query.Where("industry = ?", industry)
 	}
 	if expLevel := c.Query("experience_level"); expLevel != "" {
-		if expr, ok := experienceLevelMap[expLevel]; ok {
-			whereCond = whereCond.AND(gen.JobPostings.ExperienceLevel.EQ(expr))
-		}
+		query = query.Where("experience_level = ?", expLevel)
 	}
 
-	stmt := SELECT(
-		gen.JobPostings.AllColumns,
-	).FROM(
-		gen.JobPostings,
-	).WHERE(
-		whereCond,
-	).ORDER_BY(
-		gen.JobPostings.CreatedAt.DESC(),
-	).LIMIT(parseJobLimit(c)).OFFSET(parseJobOffset(c))
+	query = query.Order("created_at DESC").Limit(int(parseJobLimit(c))).Offset(int(parseJobOffset(c)))
 
-	var jobs []model.JobPostings
-	if err := stmt.QueryContext(c.Request.Context(), h.db, &jobs); err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
-			c.JSON(http.StatusOK, []JobResponse{})
-			return
-		}
+	if err := query.Scan(c.Request.Context()); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to query jobs"})
 		return
 	}
@@ -238,25 +220,18 @@ func (h *JobHandler) GetJob(c *gin.Context) {
 		return
 	}
 
-	stmt := SELECT(
-		gen.JobPostings.AllColumns,
-	).FROM(
-		gen.JobPostings,
-	).WHERE(
-		gen.JobPostings.ID.EQ(UUID(jobUUID)),
-	)
-
-	var jobs []model.JobPostings
-	if err := stmt.QueryContext(c.Request.Context(), h.db, &jobs); err != nil {
+	var job models.JobPosting
+	err = h.bunDB.NewSelect().Model(&job).Where("id = ?", jobUUID).Scan(c.Request.Context())
+	if err != nil {
+		if err == sql.ErrNoRows {
+			c.JSON(http.StatusNotFound, gin.H{"error": "Job not found"})
+			return
+		}
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to query job"})
 		return
 	}
-	if len(jobs) == 0 {
-		c.JSON(http.StatusNotFound, gin.H{"error": "Job not found"})
-		return
-	}
 
-	c.JSON(http.StatusOK, jobFromModel(jobs[0]))
+	c.JSON(http.StatusOK, jobFromModel(job))
 }
 
 // ListMyJobs	godoc
@@ -285,18 +260,12 @@ func (h *JobHandler) ListMyJobs(c *gin.Context) {
 		return
 	}
 
-	stmt := SELECT(
-		gen.JobPostings.AllColumns,
-	).FROM(
-		gen.JobPostings,
-	).WHERE(
-		gen.JobPostings.CompanyID.EQ(UUID(companyUUID)),
-	).ORDER_BY(
-		gen.JobPostings.CreatedAt.DESC(),
-	)
-
-	var jobs []model.JobPostings
-	if err := stmt.QueryContext(c.Request.Context(), h.db, &jobs); err != nil {
+	var jobs []models.JobPosting
+	err = h.bunDB.NewSelect().Model(&jobs).
+		Where("company_id = ?", companyUUID).
+		Order("created_at DESC").
+		Scan(c.Request.Context())
+	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to query jobs"})
 		return
 	}
@@ -332,41 +301,42 @@ func (h *JobHandler) CreateJob(c *gin.Context) {
 		return
 	}
 
+	companyUUID, err := lib.ParseUUID(companyIDStr)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": fmt.Sprintf("Invalid company ID: %v", err)})
+		return
+	}
+
 	var req CreateJobRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request body"})
 		return
 	}
 
-	stmt := gen.JobPostings.INSERT(
-		gen.JobPostings.CompanyID, gen.JobPostings.Title, gen.JobPostings.Description,
-		gen.JobPostings.Industry, gen.JobPostings.Tags, gen.JobPostings.RequiredSkills,
-		gen.JobPostings.ExperienceLevel, gen.JobPostings.Location, gen.JobPostings.SalaryRange,
-		gen.JobPostings.Requirements,
-		gen.JobPostings.Benefits,
-		gen.JobPostings.YearsExperienceMin,
-		gen.JobPostings.YearsExperienceMax,
-		gen.JobPostings.IsFreshGradFriendly,
-	).VALUES(
-		companyIDStr, req.Title, req.Description, req.Industry,
-		StringArray(req.Tags...), StringArray(req.RequiredSkills...),
-		req.ExperienceLevel, req.Location, req.SalaryRange,
-		req.Requirements,
-		req.Benefits,
-		req.YearsExperienceMin,
-		req.YearsExperienceMax,
-		req.IsFreshGradFriendly,
-	).RETURNING(
-		gen.JobPostings.AllColumns,
-	)
+	job := &models.JobPosting{
+		CompanyID:           companyUUID,
+		Title:               req.Title,
+		Description:         req.Description,
+		Industry:            req.Industry,
+		Tags:                pqToStringArray(req.Tags),
+		RequiredSkills:      pqToStringArray(req.RequiredSkills),
+		ExperienceLevel:     req.ExperienceLevel,
+		Location:            req.Location,
+		SalaryRange:         req.SalaryRange,
+		Requirements:        req.Requirements,
+		Benefits:            req.Benefits,
+		YearsExperienceMin:  int32Ptr(req.YearsExperienceMin),
+		YearsExperienceMax:  int32Ptr(req.YearsExperienceMax),
+		IsFreshGradFriendly: req.IsFreshGradFriendly,
+	}
 
-	var job model.JobPostings
-	if err := stmt.QueryContext(c.Request.Context(), h.db, &job); err != nil {
+	err = h.bunDB.NewInsert().Model(job).Returning("*").Scan(c.Request.Context())
+	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to create job"})
 		return
 	}
 
-	c.JSON(http.StatusCreated, jobFromModel(job))
+	c.JSON(http.StatusCreated, jobFromModel(*job))
 }
 
 // UpdateJob	godoc
@@ -412,78 +382,79 @@ func (h *JobHandler) UpdateJob(c *gin.Context) {
 		return
 	}
 
-	var setVals []interface{}
+	query := h.bunDB.NewUpdate().Model((*models.JobPosting)(nil))
+	hasUpdates := false
+
 	if req.Title != nil {
-		setVals = append(setVals, gen.JobPostings.Title.SET(String(*req.Title)))
+		query = query.Set("title = ?", *req.Title)
+		hasUpdates = true
 	}
 	if req.Description != nil {
-		setVals = append(setVals, gen.JobPostings.Description.SET(String(*req.Description)))
+		query = query.Set("description = ?", *req.Description)
+		hasUpdates = true
 	}
 	if req.Industry != nil {
-		setVals = append(setVals, gen.JobPostings.Industry.SET(String(*req.Industry)))
+		query = query.Set("industry = ?", *req.Industry)
+		hasUpdates = true
 	}
 	if req.Tags != nil {
-		setVals = append(setVals, gen.JobPostings.Tags.SET(StringArray(req.Tags...)))
+		query = query.Set("tags = ?", pq.StringArray(req.Tags))
+		hasUpdates = true
 	}
 	if req.RequiredSkills != nil {
-		setVals = append(setVals, gen.JobPostings.RequiredSkills.SET(StringArray(req.RequiredSkills...)))
+		query = query.Set("required_skills = ?", pq.StringArray(req.RequiredSkills))
+		hasUpdates = true
 	}
 	if req.ExperienceLevel != nil {
-		if expr, ok := experienceLevelMap[*req.ExperienceLevel]; ok {
-			setVals = append(setVals, gen.JobPostings.ExperienceLevel.SET(expr))
-		} else {
-			c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid experience level"})
-			return
-		}
+		query = query.Set("experience_level = ?", *req.ExperienceLevel)
+		hasUpdates = true
 	}
 	if req.Location != nil {
-		setVals = append(setVals, gen.JobPostings.Location.SET(String(*req.Location)))
+		query = query.Set("location = ?", *req.Location)
+		hasUpdates = true
 	}
 	if req.SalaryRange != nil {
-		setVals = append(setVals, gen.JobPostings.SalaryRange.SET(String(*req.SalaryRange)))
+		query = query.Set("salary_range = ?", *req.SalaryRange)
+		hasUpdates = true
 	}
 	if req.Requirements != nil {
-		setVals = append(setVals, gen.JobPostings.Requirements.SET(String(*req.Requirements)))
+		query = query.Set("requirements = ?", *req.Requirements)
+		hasUpdates = true
 	}
 	if req.Benefits != nil {
-		setVals = append(setVals, gen.JobPostings.Benefits.SET(String(*req.Benefits)))
+		query = query.Set("benefits = ?", *req.Benefits)
+		hasUpdates = true
 	}
 	if req.YearsExperienceMin != nil {
-		setVals = append(setVals, gen.JobPostings.YearsExperienceMin.SET(Int64(int64(*req.YearsExperienceMin))))
+		query = query.Set("years_experience_min = ?", *req.YearsExperienceMin)
+		hasUpdates = true
 	}
 	if req.YearsExperienceMax != nil {
-		setVals = append(setVals, gen.JobPostings.YearsExperienceMax.SET(Int64(int64(*req.YearsExperienceMax))))
+		query = query.Set("years_experience_max = ?", *req.YearsExperienceMax)
+		hasUpdates = true
 	}
 	if req.IsFreshGradFriendly != nil {
-		setVals = append(setVals, gen.JobPostings.IsFreshGradFriendly.SET(Bool(*req.IsFreshGradFriendly)))
+		query = query.Set("is_fresh_grad_friendly = ?", *req.IsFreshGradFriendly)
+		hasUpdates = true
 	}
 	if req.Status != nil {
-		if expr, ok := jobStatusMap[*req.Status]; ok {
-			setVals = append(setVals, gen.JobPostings.Status.SET(expr))
-		} else {
-			c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid status"})
-			return
-		}
+		query = query.Set("status = ?", *req.Status)
+		hasUpdates = true
 	}
 
-	if len(setVals) == 0 {
+	if !hasUpdates {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "No fields to update"})
 		return
 	}
 
 	// Always update updated_at on any actual update
-	setVals = append(setVals, gen.JobPostings.UpdatedAt.SET(RawTimestampz("NOW()")))
+	query = query.Set("updated_at = NOW()")
 
-	stmt := gen.JobPostings.UPDATE().SET(setVals[0], setVals[1:]...	).WHERE(
-		gen.JobPostings.ID.EQ(UUID(jobUUID)).AND(
-			gen.JobPostings.CompanyID.EQ(UUID(companyUUID)),
-		),
-	).RETURNING(
-		gen.JobPostings.AllColumns,
-	)
-
-	var jobs []model.JobPostings
-	if err := stmt.QueryContext(c.Request.Context(), h.db, &jobs); err != nil {
+	var jobs []models.JobPosting
+	err = query.Where("id = ? AND company_id = ?", jobUUID, companyUUID).
+		Returning("*").
+		Scan(c.Request.Context())
+	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to update job"})
 		return
 	}
@@ -529,13 +500,9 @@ func (h *JobHandler) DeleteJob(c *gin.Context) {
 		return
 	}
 
-	stmt := gen.JobPostings.DELETE().WHERE(
-		gen.JobPostings.ID.EQ(UUID(jobUUID)).AND(
-			gen.JobPostings.CompanyID.EQ(UUID(companyUUID)),
-		),
-	)
-
-	result, err := stmt.ExecContext(c.Request.Context(), h.db)
+	result, err := h.bunDB.NewDelete().Model((*models.JobPosting)(nil)).
+		Where("id = ? AND company_id = ?", jobUUID, companyUUID).
+		Exec(c.Request.Context())
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to delete job"})
 		return

@@ -88,7 +88,7 @@ func main() {
 	api := r.Group("/api/v1")
 
 	ref := handlers.NewReferenceHandler(bunDB)
-	jobs := handlers.NewJobHandler(database, bunDB)
+	jobs := handlers.NewJobHandler(bunDB)
 	auth := handlers.NewAuthHandler(database, cfg.JWTSecret, bunDB)
 	profiles := handlers.NewProfileHandler(database, bunDB)
 	passport := handlers.NewPassportHandler(database, bunDB)
