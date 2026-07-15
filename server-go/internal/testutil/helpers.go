@@ -1,12 +1,13 @@
 package testutil
 
 import (
-	"database/sql"
+	"context"
 	"fmt"
 
 	"github.com/go-playground/validator/v10"
 	"github.com/google/uuid"
 	"github.com/gin-gonic/gin/binding"
+	"github.com/uptrace/bun"
 )
 
 // UniqueEmail returns a unique email for test isolation.
@@ -22,7 +23,7 @@ func UniqueUsername(prefix string) string {
 
 // CleanTestData truncates all application tables for test isolation.
 // Call at the start of each test function that creates persistent data.
-func CleanTestData(db *sql.DB) {
+func CleanTestData(db bun.IConn) {
 	tables := []string{
 		// Core tables
 		"company_webhooks",
@@ -66,7 +67,7 @@ func CleanTestData(db *sql.DB) {
 		"users",
 	}
 	for _, t := range tables {
-		_, _ = db.Exec(fmt.Sprintf("TRUNCATE TABLE %s CASCADE", t))
+		_, _ = db.ExecContext(context.Background(), fmt.Sprintf("TRUNCATE TABLE %s CASCADE", t))
 	}
 }
 
