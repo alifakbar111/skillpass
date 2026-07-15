@@ -9,6 +9,9 @@ import (
 
 	"github.com/gin-gonic/gin"
 
+	"github.com/uptrace/bun"
+	"github.com/uptrace/bun/dialect/pgdialect"
+
 	"skillpass-server-go/internal/middleware"
 	"skillpass-server-go/internal/testutil"
 )
@@ -30,7 +33,7 @@ func TestSkillsGap(t *testing.T) {
 	uID2, _, _ := testutil.CreateJobseeker(db, "gapjs2@ex.com", "gapjs2", "pass123", "Gap JS 2")
 	tok2 := testutil.GenerateToken(uID2.String(), "jobseeker", 15*time.Minute)
 
-	svc := NewService(db)
+	svc := NewService(db, nil)
 	h := NewHandler(svc)
 
 	router := gin.New()
@@ -110,7 +113,7 @@ func TestMatching(t *testing.T) {
 	tok := testutil.GenerateToken(uID.String(), "jobseeker", 15*time.Minute)
 	ctok := testutil.GenerateToken(cu2.String(), "company", 15*time.Minute)
 
-	svc := NewService(db)
+	svc := NewService(db, nil)
 	h := NewHandler(svc)
 
 	router := gin.New()
@@ -122,7 +125,7 @@ func TestMatching(t *testing.T) {
 
 	// Company: match candidates
 	cog := router.Group("/api/v1/candidates")
-	cog.Use(middleware.AuthRequired(testutil.TestJWTSecret), middleware.RequireRole("company"), middleware.RequireVerifiedCompany(db))
+	cog.Use(middleware.AuthRequired(testutil.TestJWTSecret), middleware.RequireRole("company"), middleware.RequireVerifiedCompany(bun.NewDB(db, pgdialect.New())))
 	cog.GET("/matches", h.MatchCandidates)
 
 	t.Run("match jobs for jobseeker", func(t *testing.T) {

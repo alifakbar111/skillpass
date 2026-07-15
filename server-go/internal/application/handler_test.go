@@ -12,12 +12,14 @@ import (
 
 	"github.com/gin-gonic/gin"
 
+	"skillpass-server-go/internal/db"
 	"skillpass-server-go/internal/middleware"
 	"skillpass-server-go/internal/testutil"
 )
 
 func TestApplicationFlow(t *testing.T) {
 	db := testutil.SetupTestDB()
+	bunDB := db.NewBunDB(db)
 
 	// Create company with two jobs (one open, one closed)
 	cu, cID, _ := testutil.CreateCompanyUser(db, "aco@ex.com", "aco", "pass123", "App Co", true)
@@ -230,6 +232,7 @@ func TestApplicationFlow(t *testing.T) {
 
 func TestApplicationMessages(t *testing.T) {
 	db := testutil.SetupTestDB()
+	bunDB := db.NewBunDB(db)
 
 	cu, cID, _ := testutil.CreateCompanyUser(db, "msgco@ex.com", "msgco", "pass123", "Msg Co", true)
 	jID, _ := testutil.CreateJob(db, cID, "QA Engineer", "Technology", true)
@@ -302,6 +305,7 @@ func TestApplicationMessages(t *testing.T) {
 
 func TestStatusTransitions(t *testing.T) {
 	db := testutil.SetupTestDB()
+	bunDB := db.NewBunDB(db)
 
 	cu, cID, _ := testutil.CreateCompanyUser(db, "trans@ex.com", "trans", "pass123", "Trans Co", true)
 	jID, _ := testutil.CreateJob(db, cID, "Test Job", "Technology", true)
@@ -352,6 +356,7 @@ func TestStatusTransitions(t *testing.T) {
 
 func TestApplicationUnauthorized(t *testing.T) {
 	db := testutil.SetupTestDB()
+	bunDB := db.NewBunDB(db)
 
 	svc := NewService(db)
 	h := NewHandler(svc)
@@ -372,6 +377,7 @@ func TestApplicationUnauthorized(t *testing.T) {
 
 func TestApplicationMessageEdgeCases(t *testing.T) {
 	db := testutil.SetupTestDB()
+	bunDB := db.NewBunDB(db)
 
 	cu, cID, _ := testutil.CreateCompanyUser(db, "msgedge@ex.com", "msgedge", "pass123", "Msg Edge Co", true)
 	jID, _ := testutil.CreateJob(db, cID, "Msg Job", "Technology", true)
@@ -441,6 +447,7 @@ func TestApplicationMessageEdgeCases(t *testing.T) {
 
 func TestListCompanyApplications(t *testing.T) {
 	db := testutil.SetupTestDB()
+	bunDB := db.NewBunDB(db)
 
 	cu, cID, _ := testutil.CreateCompanyUser(db, "calist@ex.com", "calist", "pass123", "List Co", true)
 	jID, _ := testutil.CreateJob(db, cID, "Go Developer", "Technology", true)

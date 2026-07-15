@@ -8,13 +8,11 @@ import (
 	"strings"
 	"time"
 
-	. "github.com/go-jet/jet/v2/postgres"
 	"github.com/google/uuid"
 	"github.com/uptrace/bun"
 
-	"skillpass-server-go/.gen/skillpass/public/model"
-	"skillpass-server-go/internal/gen"
 	"skillpass-server-go/internal/lib"
+	"skillpass-server-go/internal/models"
 )
 
 const (
@@ -28,13 +26,12 @@ func IsExpired(createdAt time.Time) bool {
 
 // Service handles AI evaluation business logic.
 type Service struct {
-	db  *sql.DB
 	bun bun.IDB
 	llm lib.LLMClient
 }
 
-func NewService(db *sql.DB, llm lib.LLMClient, bun bun.IDB) *Service {
-	return &Service{db: db, bun: bun, llm: llm}
+func NewService(llm lib.LLMClient, bun bun.IDB) *Service {
+	return &Service{bun: bun, llm: llm}
 }
 
 // EvaluationResult is the internal result shape.
@@ -173,49 +170,23 @@ Return the extracted facts as JSON per the system prompt schema.`,
 		systemPrompt, userPrompt, mustMarshal(llmResult.Skills))
 
 	// 6. Insert evaluation with is_current lifecycle management
-	tx, err := s.db.BeginTx(ctx, nil)
+	tx, err := s.bun.Begin()
 	if err != nil {
 		return nil, fmt.Errorf("begin tx: %w", err)
 	}
 	defer tx.Rollback()
 
 	// Flag all existing current evaluations as not current
-	updateStmt := gen.AiEvaluations.
-		UPDATE(gen.AiEvaluations.IsCurrent).
-		SET(Bool(false)).
-		WHERE(
-			gen.AiEvaluations.ProfileID.EQ(UUID(profileUUID)).
-				AND(gen.AiEvaluations.IsCurrent.EQ(Bool(true))),
-		)
-	if _, err := updateStmt.ExecContext(ctx, tx); err != nil {
+	if _, err := tx.ExecContext(ctx, `UPDATE ai_evaluations SET is_current = false WHERE profile_id = $1 AND is_current = true`, profileUUID); err != nil {
 		return nil, fmt.Errorf("flag old evaluations: %w", err)
 	}
 
 	// Insert new evaluation with is_current = true
 	newID := uuid.New()
-	insStmt := gen.AiEvaluations.INSERT(
-		gen.AiEvaluations.ID,
-		gen.AiEvaluations.ProfileID,
-		gen.AiEvaluations.OverallScore,
-		gen.AiEvaluations.Strengths,
-		gen.AiEvaluations.Weaknesses,
-		gen.AiEvaluations.Suggestions,
-		gen.AiEvaluations.SkillScores,
-		gen.AiEvaluations.RawAnalysis,
-		gen.AiEvaluations.IsCurrent,
-	).VALUES(
-		newID,
-		profileUUID,
-		Int(int64(totalCount)),
-		StringExp(CAST(String(string(strengthsJSON))).AS("jsonb")),
-		StringExp(CAST(String(string(weaknessesJSON))).AS("jsonb")),
-		StringExp(CAST(String(string(suggestionsJSON))).AS("jsonb")),
-		StringExp(CAST(String(string(skillScoresJSON))).AS("jsonb")),
-		String(rawAnalysis),
-		Bool(true),
-	)
-
-	if _, err := insStmt.ExecContext(ctx, tx); err != nil {
+	if _, err := tx.ExecContext(ctx, `
+		INSERT INTO ai_evaluations (id, profile_id, overall_score, strengths, weaknesses, suggestions, skill_scores, raw_analysis, is_current)
+		VALUES ($1, $2, $3, $4::jsonb, $5::jsonb, $6::jsonb, $7::jsonb, $8, true)
+	`, newID, profileUUID, int64(totalCount), string(strengthsJSON), string(weaknessesJSON), string(suggestionsJSON), string(skillScoresJSON), rawAnalysis); err != nil {
 		return nil, fmt.Errorf("insert evaluation: %w", err)
 	}
 
@@ -246,11 +217,11 @@ func mustMarshal(v interface{}) string {
 }
 
 type fullProfile struct {
-	Name             string
-	Headline         *string
-	About            *string
+	Name              string
+	Headline          *string
+	About             *string
 	YearsOfExperience *int32
-	Experiences      []model.JobExperiences
+	Experiences      []models.JobExperience
 	AllSkills        []string
 }
 
@@ -260,56 +231,31 @@ func (s *Service) loadFullProfile(ctx context.Context, profileID string) (*fullP
 		return nil, fmt.Errorf("invalid profile ID: %w", err)
 	}
 
-	// Load profile
-	stmt := SELECT(
-		gen.JobseekerProfiles.ID,
-		gen.JobseekerProfiles.Headline,
-		gen.JobseekerProfiles.About,
-		gen.JobseekerProfiles.YearsOfExperience,
-		gen.Users.Name,
-	).FROM(
-		gen.JobseekerProfiles.INNER_JOIN(gen.Users, gen.Users.ID.EQ(gen.JobseekerProfiles.UserID)),
-	).WHERE(
-		gen.JobseekerProfiles.ID.EQ(UUID(profileUUID)),
-	)
-
-	var profiles []struct {
-		model.JobseekerProfiles
-		Name string `alias:"users.name"`
+	// Load profile + user name
+	var row struct {
+		Name              string  `bun:"name"`
+		Headline          *string `bun:"headline"`
+		About             *string `bun:"about"`
+		YearsOfExperience *int32  `bun:"years_of_experience"`
 	}
-	err = stmt.QueryContext(ctx, s.db, &profiles)
+	err = s.bun.NewRaw(`
+		SELECT u.name, jp.headline, jp.about, jp.years_of_experience
+		FROM jobseeker_profiles jp
+		JOIN users u ON u.id = jp.user_id
+		WHERE jp.id = ?
+	`, profileUUID).Scan(ctx, &row)
 	if err != nil {
 		return nil, err
 	}
-	if len(profiles) == 0 {
-		return nil, sql.ErrNoRows
-	}
-	profile := profiles[0]
 
 	// Load experiences
-	expStmt := SELECT(
-		gen.JobExperiences.ID,
-		gen.JobExperiences.ProfileID,
-		gen.JobExperiences.Type,
-		gen.JobExperiences.Title,
-		gen.JobExperiences.Organization,
-		gen.JobExperiences.StartDate,
-		gen.JobExperiences.EndDate,
-		gen.JobExperiences.IsCurrent,
-		gen.JobExperiences.Description,
-		gen.JobExperiences.Industry,
-		gen.JobExperiences.SkillsUsed,
-		gen.JobExperiences.URL,
-	).FROM(
-		gen.JobExperiences,
-	).WHERE(
-		gen.JobExperiences.ProfileID.EQ(UUID(profileUUID)),
-	).ORDER_BY(
-		gen.JobExperiences.StartDate.ASC(),
-	)
-
-	var exps []model.JobExperiences
-	if err := expStmt.QueryContext(ctx, s.db, &exps); err != nil {
+	var exps []models.JobExperience
+	err = s.bun.NewSelect().
+		Model(&exps).
+		Where("profile_id = ?", profileUUID).
+		OrderExpr("start_date ASC").
+		Scan(ctx)
+	if err != nil {
 		return nil, err
 	}
 
@@ -328,16 +274,16 @@ func (s *Service) loadFullProfile(ctx context.Context, profileID string) (*fullP
 	}
 
 	return &fullProfile{
-		Name:              profile.Name,
-		Headline:          profile.Headline,
-		About:             profile.About,
-		YearsOfExperience: profile.YearsOfExperience,
+		Name:              row.Name,
+		Headline:          row.Headline,
+		About:             row.About,
+		YearsOfExperience: row.YearsOfExperience,
 		Experiences:       exps,
 		AllSkills:         allSkills,
 	}, nil
 }
 
-func formatExperiences(exps []model.JobExperiences) string {
+func formatExperiences(exps []models.JobExperience) string {
 	var lines []string
 	for _, e := range exps {
 		skills := ""
@@ -367,23 +313,17 @@ func (s *Service) GetLatest(ctx context.Context, profileID string) (*EvaluationR
 		return nil, fmt.Errorf("invalid profile ID: %w", err)
 	}
 
-	stmt := SELECT(
-		gen.AiEvaluations.AllColumns,
-	).FROM(
-		gen.AiEvaluations,
-	).WHERE(
-		gen.AiEvaluations.ProfileID.EQ(UUID(profileUUID)).
-			AND(gen.AiEvaluations.IsCurrent.EQ(Bool(true))),
-	).LIMIT(1)
-
-	var evals []model.AiEvaluations
-	if err := stmt.QueryContext(ctx, s.db, &evals); err != nil {
+	var eval models.Evaluation
+	err = s.bun.NewSelect().
+		Model(&eval).
+		Where("profile_id = ? AND is_current = ?", profileUUID, true).
+		Limit(1).
+		Scan(ctx)
+	if err != nil {
 		return nil, err
 	}
-	if len(evals) == 0 {
-		return nil, sql.ErrNoRows
-	}
-	return evalToResult(evals[0]), nil
+
+	return evalToResult(&eval), nil
 }
 
 // GetHistory returns all evaluations for a profile, ordered by newest first.
@@ -393,24 +333,19 @@ func (s *Service) GetHistory(ctx context.Context, profileID string) ([]*Evaluati
 		return nil, fmt.Errorf("invalid profile ID: %w", err)
 	}
 
-	stmt := SELECT(
-		gen.AiEvaluations.AllColumns,
-	).FROM(
-		gen.AiEvaluations,
-	).WHERE(
-		gen.AiEvaluations.ProfileID.EQ(UUID(profileUUID)),
-	).ORDER_BY(
-		gen.AiEvaluations.CreatedAt.DESC(),
-	)
-
-	var evals []model.AiEvaluations
-	if err := stmt.QueryContext(ctx, s.db, &evals); err != nil {
+	var evals []models.Evaluation
+	err = s.bun.NewSelect().
+		Model(&evals).
+		Where("profile_id = ?", profileUUID).
+		OrderExpr("created_at DESC").
+		Scan(ctx)
+	if err != nil {
 		return nil, err
 	}
 
 	results := make([]*EvaluationResult, 0, len(evals))
-	for _, eval := range evals {
-		result := evalToResult(eval)
+	for i := range evals {
+		result := evalToResult(&evals[i])
 		if result != nil {
 			results = append(results, result)
 		}
@@ -418,8 +353,8 @@ func (s *Service) GetHistory(ctx context.Context, profileID string) ([]*Evaluati
 	return results, nil
 }
 
-// evalToResult converts a model.AiEvaluations row to EvaluationResult.
-func evalToResult(eval model.AiEvaluations) *EvaluationResult {
+// evalToResult converts a models.Evaluation row to EvaluationResult.
+func evalToResult(eval *models.Evaluation) *EvaluationResult {
 	var strengths []SkillNote
 	var weaknesses []SkillNote
 	var suggestions []Suggestion

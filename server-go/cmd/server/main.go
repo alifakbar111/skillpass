@@ -94,7 +94,7 @@ func main() {
 	passport := handlers.NewPassportHandler(database, bunDB)
 	companies := handlers.NewCompanyHandler(database, bunDB)
 	search := handlers.NewSearchHandler(database, bunDB)
-	admin := handlers.NewAdminHandler(database, bunDB)
+	admin := handlers.NewAdminHandler(bunDB)
 
 	// Phase 4: email delivery + auth tokens + file storage
 	emailSender := email.NewSender()

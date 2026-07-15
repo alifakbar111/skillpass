@@ -6,11 +6,8 @@ import (
 	"fmt"
 	"strings"
 
-	. "github.com/go-jet/jet/v2/postgres"
 	"github.com/google/uuid"
 	"github.com/uptrace/bun"
-
-	"skillpass-server-go/internal/gen"
 )
 
 type CategoryService struct {
@@ -28,21 +25,17 @@ func (s *CategoryService) GetJobCategoryWeights(ctx context.Context, jobPostingI
 		return nil, fmt.Errorf("invalid job posting ID: %w", err)
 	}
 
-	stmt := SELECT(
-		gen.SkillCategories.Name,
-		gen.JobCategoryWeights.Weight,
-	).FROM(
-		gen.JobCategoryWeights.
-			INNER_JOIN(gen.SkillCategories, gen.SkillCategories.ID.EQ(gen.JobCategoryWeights.CategoryID)),
-	).WHERE(
-		gen.JobCategoryWeights.JobPostingID.EQ(UUID(jobUUID)),
-	)
-
 	var results []struct {
-		Name   string `alias:"skill_categories.name"`
-		Weight int    `alias:"job_category_weights.weight"`
+		Name   string `bun:"name"`
+		Weight int    `bun:"weight"`
 	}
-	if err := stmt.QueryContext(ctx, s.db, &results); err != nil {
+	err = s.bun.NewRaw(`
+		SELECT sc.name, jcw.weight
+		FROM job_category_weights jcw
+		INNER JOIN skill_categories sc ON sc.id = jcw.category_id
+		WHERE jcw.job_posting_id = ?
+	`, jobUUID).Scan(ctx, &results)
+	if err != nil {
 		return nil, err
 	}
 

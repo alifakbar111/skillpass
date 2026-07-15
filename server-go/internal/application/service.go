@@ -8,14 +8,12 @@ import (
 	"log/slog"
 	"time"
 
-	. "github.com/go-jet/jet/v2/postgres"
 	"github.com/google/uuid"
 	"github.com/uptrace/bun"
 
-	"skillpass-server-go/.gen/skillpass/public/model"
 	"skillpass-server-go/internal/evaluation"
-	"skillpass-server-go/internal/gen"
 	"skillpass-server-go/internal/lib"
+	"skillpass-server-go/internal/models"
 )
 
 // Sentinel errors for error type discrimination.
@@ -93,45 +91,28 @@ func (s *Service) Apply(ctx context.Context, jobseekerID, jobPostingID string) (
 	}
 
 	// Verify job posting exists and is open
-	jobStmt := SELECT(
-		gen.JobPostings.ID, gen.JobPostings.Status,
-	).FROM(
-		gen.JobPostings,
-	).WHERE(
-		gen.JobPostings.ID.EQ(UUID(jobPostingUUID)),
-	)
-
-	var jobs []struct {
-		model.JobPostings
-	}
-	err = jobStmt.QueryContext(ctx, s.db, &jobs)
+	var job models.JobPosting
+	err = s.bun.NewSelect().Model(&job).Where("id = ?", jobPostingUUID).Scan(ctx)
 	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, ErrJobNotFound
+		}
 		return nil, fmt.Errorf("query job posting: %w", err)
 	}
-	if len(jobs) == 0 {
-		return nil, ErrJobNotFound
-	}
-	job := jobs[0]
-	if string(job.Status) != "open" {
+	if job.Status != "open" {
 		return nil, ErrJobClosed
 	}
 
-	// Check for duplicate application using slice target
-	dupStmt := SELECT(
-		gen.Applications.ID,
-	).FROM(
-		gen.Applications,
-	).WHERE(
-		gen.Applications.JobseekerID.EQ(UUID(jobseekerUUID)).
-			AND(gen.Applications.JobPostingID.EQ(UUID(jobPostingUUID))),
-	).LIMIT(1)
-
-	var dups []model.Applications
-	err = dupStmt.QueryContext(ctx, s.db, &dups)
-	if err != nil {
+	// Check for duplicate application
+	var existing models.Application
+	err = s.bun.NewSelect().Model(&existing).
+		Where("jobseeker_id = ? AND job_posting_id = ?", jobseekerUUID, jobPostingUUID).
+		Limit(1).
+		Scan(ctx)
+	if err != nil && !errors.Is(err, sql.ErrNoRows) {
 		return nil, fmt.Errorf("check duplicate: %w", err)
 	}
-	if len(dups) > 0 {
+	if err == nil {
 		return nil, ErrDuplicate
 	}
 
@@ -152,23 +133,14 @@ func (s *Service) Apply(ctx context.Context, jobseekerID, jobPostingID string) (
 	}
 
 	// Insert with RETURNING
-	newID := uuid.New()
-	insStmt := gen.Applications.INSERT(
-		gen.Applications.ID,
-		gen.Applications.JobseekerID,
-		gen.Applications.JobPostingID,
-		gen.Applications.Status,
-	).VALUES(
-		newID,
-		jobseekerUUID,
-		jobPostingUUID,
-		"applied",
-	).RETURNING(
-		gen.Applications.AllColumns,
-	)
-
-	var app model.Applications
-	if err := insStmt.QueryContext(ctx, s.db, &app); err != nil {
+	app := models.Application{
+		ID:           uuid.New(),
+		JobseekerID:  jobseekerUUID,
+		JobPostingID: jobPostingUUID,
+		Status:       "applied",
+	}
+	_, err = s.bun.NewInsert().Model(&app).Returning("*").Exec(ctx)
+	if err != nil {
 		return nil, fmt.Errorf("insert application: %w", err)
 	}
 
@@ -176,11 +148,11 @@ func (s *Service) Apply(ctx context.Context, jobseekerID, jobPostingID string) (
 		ID:           app.ID.String(),
 		JobseekerID:  app.JobseekerID.String(),
 		JobPostingID: app.JobPostingID.String(),
-		Status:       string(app.Status),
+		Status:       app.Status,
 		CreatedAt:    app.CreatedAt.Format(time.RFC3339),
 		UpdatedAt:    app.UpdatedAt.Format(time.RFC3339),
 	}, nil
-} 
+}
 
 func (s *Service) ListForJobseeker(ctx context.Context, jobseekerID string) ([]ApplicationResult, error) {
 	jobseekerUUID, err := lib.ParseUUID(jobseekerID)
@@ -258,81 +230,46 @@ func (s *Service) UpdateStatus(ctx context.Context, applicationID, companyID, st
 	}
 
 	// First get the current application with its job posting's company
-	selectStmt := SELECT(
-		gen.Applications.AllColumns,
-		gen.JobPostings.CompanyID,
-	).FROM(
-		gen.Applications.
-			INNER_JOIN(gen.JobPostings, gen.JobPostings.ID.EQ(gen.Applications.JobPostingID)),
-	).WHERE(
-		gen.Applications.ID.EQ(UUID(applicationUUID)),
-	).LIMIT(1)
-
-	var currentRows []struct {
-		model.Applications
-		CompanyID uuid.UUID `alias:"job_postings.company_id"`
-	}
-	err = selectStmt.QueryContext(ctx, s.db, &currentRows)
+	var current models.Application
+	var ownerCompanyID uuid.UUID
+	err = s.bun.QueryRowContext(ctx, `
+		SELECT a.id, a.jobseeker_id, a.job_posting_id, a.status, a.created_at, a.updated_at,
+		       j.company_id
+		FROM applications a
+		JOIN job_postings j ON j.id = a.job_posting_id
+		WHERE a.id = ?
+		LIMIT 1
+	`, applicationUUID).Scan(&current.ID, &current.JobseekerID, &current.JobPostingID, &current.Status, &current.CreatedAt, &current.UpdatedAt, &ownerCompanyID)
 	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, ErrAppNotFound
+		}
 		return nil, fmt.Errorf("query application: %w", err)
 	}
-	if len(currentRows) == 0 {
-		return nil, ErrAppNotFound
-	}
-	current := currentRows[0]
 
 	// Verify company ownership
-	if current.CompanyID.String() != companyID {
+	if ownerCompanyID.String() != companyID {
 		return nil, ErrForbidden
 	}
 
 	// Validate status transition
-	fromStatus := string(current.Status)
+	fromStatus := current.Status
 	if !contains(allowedTransitions[fromStatus], status) {
 		return nil, ErrInvalidStatus
 	}
 
-	// Update (trigger handles updated_at)
-	var statusExpr StringExpression
-	switch status {
-	case "applied":
-		statusExpr = gen.ApplicationStatusApplied
-	case "reviewed":
-		statusExpr = gen.ApplicationStatusReviewed
-	case "interviewed":
-		statusExpr = gen.ApplicationStatusInterviewed
-	case "offered":
-		statusExpr = gen.ApplicationStatusOffered
-	case "rejected":
-		statusExpr = gen.ApplicationStatusRejected
-	default:
-		return nil, ErrInvalidStatus
-	}
-	updStmt := gen.Applications.UPDATE(
-		gen.Applications.Status,
-	).SET(
-		gen.Applications.Status.SET(statusExpr),
-	).WHERE(
-		gen.Applications.ID.EQ(UUID(applicationUUID)),
-	).RETURNING(
-		gen.Applications.AllColumns,
-	)
-
-	var apps []model.Applications
-	err = updStmt.QueryContext(ctx, s.db, &apps)
+	// Update with RETURNING
+	app := models.Application{ID: applicationUUID, Status: status}
+	_, err = s.bun.NewUpdate().Model(&app).Column("status").WherePK().Returning("*").Exec(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("update application: %w", err)
 	}
-	if len(apps) == 0 {
-		return nil, ErrAppNotFound
-	}
-	app := apps[0]
 
 	return &ApplicationResult{
 		ID:           app.ID.String(),
 		JobseekerID:  app.JobseekerID.String(),
 		JobPostingID: app.JobPostingID.String(),
-		Status:       string(app.Status),
+		Status:       app.Status,
 		CreatedAt:    app.CreatedAt.Format(time.RFC3339),
 		UpdatedAt:    app.UpdatedAt.Format(time.RFC3339),
 	}, nil
@@ -340,18 +277,18 @@ func (s *Service) UpdateStatus(ctx context.Context, applicationID, companyID, st
 
 // CompanyApplicationResult extends ApplicationResult with candidate info for company views.
 type CompanyApplicationResult struct {
-	ID           string `json:"id"`
-	JobseekerID  string `json:"jobseekerId"`
-	JobPostingID string `json:"jobPostingId"`
-	Status       string `json:"status"`
-	CreatedAt    string `json:"createdAt"`
-	UpdatedAt    string `json:"updatedAt"`
-	JobTitle     string `json:"jobTitle"`
-	CandidateName    string `json:"candidateName"`
-	CandidateEmail   string `json:"candidateEmail"`
-	CandidateSlug    string `json:"candidateSlug"`
-	CandidateHeadline string `json:"candidateHeadline,omitempty"`
-	LatestNote       *string `json:"latestNote,omitempty"`
+	ID                string  `json:"id"`
+	JobseekerID       string  `json:"jobseekerId"`
+	JobPostingID      string  `json:"jobPostingId"`
+	Status            string  `json:"status"`
+	CreatedAt         string  `json:"createdAt"`
+	UpdatedAt         string  `json:"updatedAt"`
+	JobTitle          string  `json:"jobTitle"`
+	CandidateName     string  `json:"candidateName"`
+	CandidateEmail    string  `json:"candidateEmail"`
+	CandidateSlug     string  `json:"candidateSlug"`
+	CandidateHeadline string  `json:"candidateHeadline,omitempty"`
+	LatestNote        *string `json:"latestNote,omitempty"`
 } //@name CompanyApplicationResult
 
 func (s *Service) ListForCompany(ctx context.Context, companyID string) ([]CompanyApplicationResult, error) {

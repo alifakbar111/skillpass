@@ -10,14 +10,12 @@ import (
 	"sort"
 	"strings"
 
-	. "github.com/go-jet/jet/v2/postgres"
 	"github.com/google/uuid"
 	"github.com/lib/pq"
 	"github.com/uptrace/bun"
 
-	"skillpass-server-go/.gen/skillpass/public/model"
-	"skillpass-server-go/internal/gen"
 	"skillpass-server-go/internal/lib"
+	"skillpass-server-go/internal/models"
 )
 
 type Service struct {
@@ -180,30 +178,23 @@ func (s *Service) MatchCandidates(ctx context.Context, jobPostingID string) ([]C
 		return nil, nil
 	}
 
-	stmt := SELECT(
-		gen.AiEvaluations.ProfileID,
-		gen.AiEvaluations.OverallScore,
-		gen.AiEvaluations.SkillScores,
-		gen.JobseekerProfiles.Headline,
-		gen.Users.Name,
-		gen.Users.Username,
-	).FROM(
-		gen.AiEvaluations.
-			INNER_JOIN(gen.JobseekerProfiles, gen.JobseekerProfiles.ID.EQ(gen.AiEvaluations.ProfileID)).
-			INNER_JOIN(gen.Users, gen.Users.ID.EQ(gen.JobseekerProfiles.UserID)),
-	).ORDER_BY(
-		gen.AiEvaluations.CreatedAt.DESC(),
-	).LIMIT(200)
-
 	var rows []struct {
-		ProfileID    uuid.UUID `alias:"ai_evaluations.profile_id"`
-		OverallScore int32     `alias:"ai_evaluations.overall_score"`
-		SkillScores  string    `alias:"ai_evaluations.skill_scores"`
-		Headline     *string   `alias:"jobseeker_profiles.headline"`
-		Name         string    `alias:"users.name"`
-		Username     string    `alias:"users.username"`
+		ProfileID    uuid.UUID `bun:"profile_id"`
+		OverallScore int32     `bun:"overall_score"`
+		SkillScores  string    `bun:"skill_scores"`
+		Headline     *string   `bun:"headline"`
+		Name         string    `bun:"name"`
+		Username     string    `bun:"username"`
 	}
-	if err := stmt.QueryContext(ctx, s.db, &rows); err != nil {
+	if err := s.bun.NewRaw(`
+		SELECT ae.profile_id, ae.overall_score, ae.skill_scores,
+		       jp.headline, u.name, u.username
+		FROM ai_evaluations ae
+		INNER JOIN jobseeker_profiles jp ON jp.id = ae.profile_id
+		INNER JOIN users u ON u.id = jp.user_id
+		ORDER BY ae.created_at DESC
+		LIMIT 200
+	`).Scan(ctx, &rows); err != nil {
 		return nil, err
 	}
 
@@ -369,31 +360,26 @@ func (s *Service) IsBlindMode(ctx context.Context, companyID string) bool {
 	return blind
 }
 
-func (s *Service) getLatestEvaluation(ctx context.Context, profileID string) (*model.AiEvaluations, error) {
+func (s *Service) getLatestEvaluation(ctx context.Context, profileID string) (*models.Evaluation, error) {
 	profileUUID, err := lib.ParseUUID(profileID)
 	if err != nil {
 		return nil, fmt.Errorf("invalid profile ID: %w", err)
 	}
 
-	stmt := SELECT(
-		gen.AiEvaluations.AllColumns,
-	).FROM(
-		gen.AiEvaluations,
-	).WHERE(
-		gen.AiEvaluations.ProfileID.EQ(UUID(profileUUID)),
-	).ORDER_BY(
-		gen.AiEvaluations.CreatedAt.DESC(),
-	).LIMIT(1)
-
-	var evals []model.AiEvaluations
-	err = stmt.QueryContext(ctx, s.db, &evals)
+	var eval models.Evaluation
+	err = s.bun.NewSelect().
+		Model(&eval).
+		Where("profile_id = ?", profileUUID).
+		Order("created_at DESC").
+		Limit(1).
+		Scan(ctx)
 	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, sql.ErrNoRows
+		}
 		return nil, err
 	}
-	if len(evals) == 0 {
-		return nil, sql.ErrNoRows
-	}
-	return &evals[0], nil
+	return &eval, nil
 }
 
 // normalizeSkill strips punctuation and whitespace for fuzzy skill name matching.
@@ -404,7 +390,7 @@ func normalizeSkill(name string) string {
 	return n
 }
 
-func extractSkillNames(eval *model.AiEvaluations) []string {
+func extractSkillNames(eval *models.Evaluation) []string {
 	var scores []skillScoreData
 	if err := json.Unmarshal([]byte(eval.SkillScores), &scores); err != nil {
 		slog.Warn("failed to unmarshal skill scores for latest evaluation", "error", err)

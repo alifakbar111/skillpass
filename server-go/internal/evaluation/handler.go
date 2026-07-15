@@ -9,15 +9,16 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
+	"github.com/uptrace/bun"
 )
 
 type Handler struct {
-	db      *sql.DB
+	bun     bun.IDB
 	service *Service
 }
 
-func NewHandler(db *sql.DB, service *Service) *Handler {
-	return &Handler{db: db, service: service}
+func NewHandler(bun bun.IDB, service *Service) *Handler {
+	return &Handler{bun: bun, service: service}
 }
 
 // EvaluationResponse is the public shape returned to the frontend.
@@ -201,9 +202,7 @@ func (h *Handler) PostCareerPath(c *gin.Context) {
 
 func (h *Handler) lookupProfileID(c *gin.Context, userID string) (string, error) {
 	var profileID uuid.UUID
-	err := h.db.QueryRowContext(c.Request.Context(),
-		`SELECT id FROM jobseeker_profiles WHERE user_id = $1`, userID,
-	).Scan(&profileID)
+	err := h.bun.NewRaw(`SELECT id FROM jobseeker_profiles WHERE user_id = ?`, userID).Scan(c.Request.Context(), &profileID)
 	if err != nil {
 		return "", err
 	}

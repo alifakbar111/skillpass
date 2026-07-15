@@ -28,7 +28,7 @@ func TestListPendingVerifications(t *testing.T) {
 	testutil.CreateCompanyUser(sqlDB, "vco@ex.com", "vco", "pass123", "V Co", true)
 
 	router := gin.New()
-	h := NewAdminHandler(sqlDB, bunDB)
+	h := NewAdminHandler(bunDB)
 	g := router.Group("/api/v1/admin")
 	g.Use(middleware.AuthRequired(testutil.TestJWTSecret), middleware.RequireRole("admin"))
 	g.GET("/verifications/pending", h.ListPendingVerifications)
@@ -69,7 +69,7 @@ func TestHandleVerification(t *testing.T) {
 	_, cID, _ := testutil.CreateCompanyUser(sqlDB, "ap@ex.com", "ap", "pass123", "Approve Co", false)
 
 	router := gin.New()
-	h := NewAdminHandler(sqlDB, bunDB)
+	h := NewAdminHandler(bunDB)
 	g := router.Group("/api/v1/admin")
 	g.Use(middleware.AuthRequired(testutil.TestJWTSecret), middleware.RequireRole("admin"))
 	g.POST("/verifications/:id", h.HandleVerification)
@@ -140,7 +140,7 @@ func TestListPendingVerifications_Empty(t *testing.T) {
 	aTok := testutil.GenerateToken(aID.String(), "admin", 15*time.Minute)
 
 	router := gin.New()
-	h := NewAdminHandler(sqlDB, bunDB)
+	h := NewAdminHandler(bunDB)
 	g := router.Group("/api/v1/admin")
 	g.Use(middleware.AuthRequired(testutil.TestJWTSecret), middleware.RequireRole("admin"))
 	g.GET("/verifications/pending", h.ListPendingVerifications)
@@ -176,7 +176,7 @@ func TestListPendingVerifications_LimitOffset(t *testing.T) {
 	}
 
 	router := gin.New()
-	h := NewAdminHandler(sqlDB, bunDB)
+	h := NewAdminHandler(bunDB)
 	g := router.Group("/api/v1/admin")
 	g.Use(middleware.AuthRequired(testutil.TestJWTSecret), middleware.RequireRole("admin"))
 	g.GET("/verifications/pending", h.ListPendingVerifications)
@@ -236,7 +236,7 @@ func TestHandleVerification_RejectWithoutReason(t *testing.T) {
 	_, cID, _ := testutil.CreateCompanyUser(sqlDB, "rwr@ex.com", "rwr", "pass123", "RWR Co", false)
 
 	router := gin.New()
-	h := NewAdminHandler(sqlDB, bunDB)
+	h := NewAdminHandler(bunDB)
 	g := router.Group("/api/v1/admin")
 	g.Use(middleware.AuthRequired(testutil.TestJWTSecret), middleware.RequireRole("admin"))
 	g.POST("/verifications/:id", h.HandleVerification)
@@ -267,7 +267,7 @@ func TestHandleVerification_AlreadyApproved(t *testing.T) {
 	_, cID, _ := testutil.CreateCompanyUser(sqlDB, "aa@ex.com", "aa", "pass123", "AA Co", true)
 
 	router := gin.New()
-	h := NewAdminHandler(sqlDB, bunDB)
+	h := NewAdminHandler(bunDB)
 	g := router.Group("/api/v1/admin")
 	g.Use(middleware.AuthRequired(testutil.TestJWTSecret), middleware.RequireRole("admin"))
 	g.POST("/verifications/:id", h.HandleVerification)
@@ -300,7 +300,7 @@ func TestHandleVerification_AlreadyRejected(t *testing.T) {
 	sqlDB.Exec("UPDATE companies SET verification_status = 'rejected'::verification_status WHERE id = $1", cID.String())
 
 	router := gin.New()
-	h := NewAdminHandler(sqlDB, bunDB)
+	h := NewAdminHandler(bunDB)
 	g := router.Group("/api/v1/admin")
 	g.Use(middleware.AuthRequired(testutil.TestJWTSecret), middleware.RequireRole("admin"))
 	g.POST("/verifications/:id", h.HandleVerification)
@@ -329,7 +329,7 @@ func TestHandleVerification_NoAuth(t *testing.T) {
 	_, cID, _ := testutil.CreateCompanyUser(sqlDB, "na@ex.com", "na", "pass123", "NA Co", false)
 
 	router := gin.New()
-	h := NewAdminHandler(sqlDB, bunDB)
+	h := NewAdminHandler(bunDB)
 	g := router.Group("/api/v1/admin")
 	g.Use(middleware.AuthRequired(testutil.TestJWTSecret), middleware.RequireRole("admin"))
 	g.POST("/verifications/:id", h.HandleVerification)
@@ -354,7 +354,7 @@ func TestHandleVerification_WrongRole(t *testing.T) {
 	wt := testutil.GenerateToken(uID.String(), "jobseeker", 15*time.Minute)
 
 	router := gin.New()
-	h := NewAdminHandler(sqlDB, bunDB)
+	h := NewAdminHandler(bunDB)
 	g := router.Group("/api/v1/admin")
 	g.Use(middleware.AuthRequired(testutil.TestJWTSecret), middleware.RequireRole("admin"))
 	g.POST("/verifications/:id", h.HandleVerification)

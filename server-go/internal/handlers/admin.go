@@ -3,18 +3,17 @@ package handlers
 import (
 	"database/sql"
 	"encoding/json"
+	"errors"
 	"log/slog"
 	"net/http"
 	"strconv"
 	"time"
 
 	"github.com/gin-gonic/gin"
-	. "github.com/go-jet/jet/v2/postgres"
 	"github.com/google/uuid"
 	"github.com/uptrace/bun"
 
-	"skillpass-server-go/.gen/skillpass/public/model"
-	"skillpass-server-go/internal/gen"
+	"skillpass-server-go/internal/models"
 )
 
 const defaultListLimit = 50
@@ -39,15 +38,14 @@ type VerificationActionRequest struct {
 } //@name VerificationActionRequest
 
 type AdminHandler struct {
-	db    *sql.DB
 	bunDB *bun.DB
 }
 
-func NewAdminHandler(db *sql.DB, bunDB *bun.DB) *AdminHandler {
-	return &AdminHandler{db: db, bunDB: bunDB}
+func NewAdminHandler(bunDB *bun.DB) *AdminHandler {
+	return &AdminHandler{bunDB: bunDB}
 }
 
-func pendingCompanyFromModel(c model.Companies) PendingCompany {
+func pendingCompanyFromModel(c models.Company) PendingCompany {
 	var docs json.RawMessage
 	if c.VerificationDocs != nil {
 		docs = json.RawMessage(*c.VerificationDocs)
@@ -59,7 +57,7 @@ func pendingCompanyFromModel(c model.Companies) PendingCompany {
 		Website:            c.Website,
 		Industry:           c.Industry,
 		Description:        c.Description,
-		VerificationStatus: string(c.VerificationStatus),
+		VerificationStatus: c.VerificationStatus,
 		VerificationDocs:   docs,
 		VerifiedAt:         c.VerifiedAt,
 		CreatedAt:          c.CreatedAt,
@@ -103,18 +101,15 @@ func (h *AdminHandler) ListPendingVerifications(c *gin.Context) {
 	limit := parseLimit(c)
 	offset := parseOffset(c)
 
-	stmt := SELECT(
-		gen.Companies.AllColumns,
-	).FROM(
-		gen.Companies,
-	).WHERE(
-		gen.Companies.VerificationStatus.EQ(gen.VerificationStatusPending),
-	).ORDER_BY(
-		gen.Companies.CreatedAt.ASC(),
-	).LIMIT(limit).OFFSET(offset)
-
-	var companies []model.Companies
-	if err := stmt.QueryContext(c.Request.Context(), h.db, &companies); err != nil {
+	var companies []models.Company
+	err := h.bunDB.NewSelect().
+		Model(&companies).
+		Where("verification_status = 'pending'").
+		Order("created_at ASC").
+		Limit(int(limit)).
+		Offset(int(offset)).
+		Scan(c.Request.Context())
+	if err != nil {
 		slog.Error("failed to query pending verifications", "error", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to query pending verifications"})
 		return
@@ -167,66 +162,62 @@ func (h *AdminHandler) HandleVerification(c *gin.Context) {
 		return
 	}
 
-	tx, err := h.db.BeginTx(c.Request.Context(), nil)
+	tx, err := h.bunDB.BeginTx(c.Request.Context(), nil)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to start transaction"})
 		return
 	}
 	defer tx.Rollback()
 
-	var existing []model.Companies
-	checkStmt := SELECT(
-		gen.Companies.ID, gen.Companies.UserID,
-	).FROM(
-		gen.Companies,
-	).WHERE(
-		gen.Companies.ID.EQ(UUID(companyUUID)),
-	).FOR(UPDATE())
-
-	if err = checkStmt.QueryContext(c.Request.Context(), tx, &existing); err != nil {
+	var existing models.Company
+	err = tx.NewSelect().Model(&existing).
+		Column("id", "user_id").
+		Where("id = ?", companyUUID).
+		For("UPDATE").
+		Scan(c.Request.Context())
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			c.JSON(http.StatusNotFound, gin.H{"error": "Company not found"})
+			return
+		}
 		slog.Error("failed to find company", "error", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to process verification"})
 		return
 	}
-	if len(existing) == 0 {
-		c.JSON(http.StatusNotFound, gin.H{"error": "Company not found"})
-		return
-	}
 
-	var updated model.Companies
+	var updated models.Company
 	switch req.Action {
 	case "approve":
-		updateStmt := gen.Companies.UPDATE().SET(
-			gen.Companies.VerificationStatus.SET(gen.VerificationStatusVerified),
-			gen.Companies.VerifiedAt.SET(TimestampzT(time.Now().UTC())),
-		).WHERE(
-			gen.Companies.ID.EQ(UUID(companyUUID)),
-		).RETURNING(
-			gen.Companies.AllColumns,
-		)
-		if err = updateStmt.QueryContext(c.Request.Context(), tx, &updated); err != nil {
+		err = tx.NewUpdate().
+			Model((*models.Company)(nil)).
+			Set("verification_status = ?", "verified").
+			Set("verified_at = ?", time.Now().UTC()).
+			Where("id = ?", companyUUID).
+			Returning("*").
+			Scan(c.Request.Context(), &updated)
+		if err != nil {
 			slog.Error("failed to approve company", "error", err)
 			c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to approve"})
 			return
 		}
-		if _, err = gen.Users.UPDATE().SET(
-			gen.Users.IsVerified.SET(Bool(true)),
-		).WHERE(
-			gen.Users.ID.EQ(UUID(existing[0].UserID)),
-		).ExecContext(c.Request.Context(), tx); err != nil {
+		_, err = tx.NewUpdate().
+			Model((*models.User)(nil)).
+			Set("is_verified = ?", true).
+			Where("id = ?", existing.UserID).
+			Exec(c.Request.Context())
+		if err != nil {
 			slog.Error("failed to mark user verified", "error", err)
 			c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to approve"})
 			return
 		}
 	case "reject":
-		updateStmt := gen.Companies.UPDATE().SET(
-			gen.Companies.VerificationStatus.SET(gen.VerificationStatusRejected),
-		).WHERE(
-			gen.Companies.ID.EQ(UUID(companyUUID)),
-		).RETURNING(
-			gen.Companies.AllColumns,
-		)
-		if err = updateStmt.QueryContext(c.Request.Context(), tx, &updated); err != nil {
+		err = tx.NewUpdate().
+			Model((*models.Company)(nil)).
+			Set("verification_status = ?", "rejected").
+			Where("id = ?", companyUUID).
+			Returning("*").
+			Scan(c.Request.Context(), &updated)
+		if err != nil {
 			slog.Error("failed to reject company", "error", err)
 			c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to reject"})
 			return
@@ -236,12 +227,13 @@ func (h *AdminHandler) HandleVerification(c *gin.Context) {
 		return
 	}
 
-	if _, err = gen.AdminAuditLog.INSERT(
-		gen.AdminAuditLog.AdminID, gen.AdminAuditLog.CompanyID,
-		gen.AdminAuditLog.Action, gen.AdminAuditLog.Reason,
-	).VALUES(
-		adminUUID, companyUUID, req.Action, req.Reason,
-	).ExecContext(c.Request.Context(), tx); err != nil {
+	_, err = tx.NewInsert().Model(&models.AdminAudit{
+		AdminID:   adminUUID,
+		CompanyID: companyUUID,
+		Action:    req.Action,
+		Reason:    req.Reason,
+	}).Exec(c.Request.Context())
+	if err != nil {
 		slog.Error("failed to write audit log", "error", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to record audit"})
 		return
