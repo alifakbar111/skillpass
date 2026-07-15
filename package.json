@@ -12,7 +12,7 @@
     "start": "./skillpass",
     "db:migrate": "go -C server-go run ./cmd/migrate/",
     "db:seed": "go -C server-go run ./cmd/seed/",
-    "db:generate": "cd server-go && jet -dsn=postgres://postgres:postgres@localhost:5432/skillpass?sslmode=disable -schema=public -path=./.gen",
+    "db:generate": "echo 'Bun models are hand-written in server-go/internal/models/ — no codegen needed'",
     "api:spec": "go -C server-go tool swag init -g cmd/server/main.go -o docs --parseDependency --parseInternal",
     "api:types": "swagger2openapi --patch server-go/docs/swagger.json -o web/src/lib/generated/openapi.json && openapi-typescript web/src/lib/generated/openapi.json -o web/src/lib/generated/api.d.ts",
     "api:generate": "bun run api:spec && bun run api:types",
