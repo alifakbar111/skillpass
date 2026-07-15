@@ -11,15 +11,16 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
+	"github.com/uptrace/bun"
+	"github.com/uptrace/bun/dialect/pgdialect"
 
-	"skillpass-server-go/internal/db"
 	"skillpass-server-go/internal/middleware"
 	"skillpass-server-go/internal/testutil"
 )
 
 func TestApplicationFlow(t *testing.T) {
 	db := testutil.SetupTestDB()
-	bunDB := db.NewBunDB(db)
+	bunDB := bun.NewDB(db, pgdialect.New())
 
 	// Create company with two jobs (one open, one closed)
 	cu, cID, _ := testutil.CreateCompanyUser(db, "aco@ex.com", "aco", "pass123", "App Co", true)
@@ -31,7 +32,7 @@ func TestApplicationFlow(t *testing.T) {
 	tok := testutil.GenerateToken(uID.String(), "jobseeker", 15*time.Minute)
 	ctok := testutil.GenerateToken(cu.String(), "company", 15*time.Minute)
 
-	svc := NewService(db)
+	svc := NewService(db, bunDB)
 	h := NewHandler(svc)
 
 	router := gin.New()
@@ -232,7 +233,7 @@ func TestApplicationFlow(t *testing.T) {
 
 func TestApplicationMessages(t *testing.T) {
 	db := testutil.SetupTestDB()
-	bunDB := db.NewBunDB(db)
+	bunDB := bun.NewDB(db, pgdialect.New())
 
 	cu, cID, _ := testutil.CreateCompanyUser(db, "msgco@ex.com", "msgco", "pass123", "Msg Co", true)
 	jID, _ := testutil.CreateJob(db, cID, "QA Engineer", "Technology", true)
@@ -244,7 +245,7 @@ func TestApplicationMessages(t *testing.T) {
 	cu2, _, _ := testutil.CreateCompanyUser(db, "msgco2@ex.com", "msgco2", "pass123", "Msg Co 2", true)
 	ctok2 := testutil.GenerateToken(cu2.String(), "company", 15*time.Minute)
 
-	svc := NewService(db)
+	svc := NewService(db, bunDB)
 	h := NewHandler(svc)
 
 	router := gin.New()
@@ -305,7 +306,7 @@ func TestApplicationMessages(t *testing.T) {
 
 func TestStatusTransitions(t *testing.T) {
 	db := testutil.SetupTestDB()
-	bunDB := db.NewBunDB(db)
+	bunDB := bun.NewDB(db, pgdialect.New())
 
 	cu, cID, _ := testutil.CreateCompanyUser(db, "trans@ex.com", "trans", "pass123", "Trans Co", true)
 	jID, _ := testutil.CreateJob(db, cID, "Test Job", "Technology", true)
@@ -313,7 +314,7 @@ func TestStatusTransitions(t *testing.T) {
 	appID, _ := testutil.CreateApplication(db, pID, jID, "applied")
 	ctok := testutil.GenerateToken(cu.String(), "company", 15*time.Minute)
 
-	svc := NewService(db)
+	svc := NewService(db, bunDB)
 	h := NewHandler(svc)
 
 	router := gin.New()
@@ -356,9 +357,9 @@ func TestStatusTransitions(t *testing.T) {
 
 func TestApplicationUnauthorized(t *testing.T) {
 	db := testutil.SetupTestDB()
-	bunDB := db.NewBunDB(db)
+	bunDB := bun.NewDB(db, pgdialect.New())
 
-	svc := NewService(db)
+	svc := NewService(db, bunDB)
 	h := NewHandler(svc)
 
 	router := gin.New()
@@ -377,7 +378,7 @@ func TestApplicationUnauthorized(t *testing.T) {
 
 func TestApplicationMessageEdgeCases(t *testing.T) {
 	db := testutil.SetupTestDB()
-	bunDB := db.NewBunDB(db)
+	bunDB := bun.NewDB(db, pgdialect.New())
 
 	cu, cID, _ := testutil.CreateCompanyUser(db, "msgedge@ex.com", "msgedge", "pass123", "Msg Edge Co", true)
 	jID, _ := testutil.CreateJob(db, cID, "Msg Job", "Technology", true)
@@ -385,7 +386,7 @@ func TestApplicationMessageEdgeCases(t *testing.T) {
 	appID, _ := testutil.CreateApplication(db, pID, jID, "applied")
 	ctok := testutil.GenerateToken(cu.String(), "company", 15*time.Minute)
 
-	svc := NewService(db)
+	svc := NewService(db, bunDB)
 	h := NewHandler(svc)
 
 	router := gin.New()
@@ -447,7 +448,7 @@ func TestApplicationMessageEdgeCases(t *testing.T) {
 
 func TestListCompanyApplications(t *testing.T) {
 	db := testutil.SetupTestDB()
-	bunDB := db.NewBunDB(db)
+	bunDB := bun.NewDB(db, pgdialect.New())
 
 	cu, cID, _ := testutil.CreateCompanyUser(db, "calist@ex.com", "calist", "pass123", "List Co", true)
 	jID, _ := testutil.CreateJob(db, cID, "Go Developer", "Technology", true)
@@ -457,7 +458,7 @@ func TestListCompanyApplications(t *testing.T) {
 	_, pID, _ := testutil.CreateJobseeker(db, "jslist@ex.com", "jslist", "pass123", "JS List")
 	testutil.CreateApplication(db, pID, jID, "applied")
 
-	svc := NewService(db)
+	svc := NewService(db, bunDB)
 	h := NewHandler(svc)
 
 	router := gin.New()

@@ -110,8 +110,8 @@ func main() {
 
 	// Phase 2: AI Evaluation & Matching
 	llmClient := lib.NewLLMClient()
-	evalService := evaluation.NewService(database, llmClient, bunDB)
-	evalHandler := evaluation.NewHandler(database, evalService)
+	evalService := evaluation.NewService(llmClient, bunDB)
+	evalHandler := evaluation.NewHandler(bunDB, evalService)
 
 	resumeService := resume.NewService(llmClient)
 	resumeHandler := resume.NewHandler(resumeService, cfg.MarkItDownURL)

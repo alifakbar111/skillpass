@@ -2,7 +2,6 @@ package evaluation
 
 import (
 	"context"
-	"database/sql"
 	"encoding/json"
 	"fmt"
 	"strings"
@@ -170,28 +169,25 @@ Return the extracted facts as JSON per the system prompt schema.`,
 		systemPrompt, userPrompt, mustMarshal(llmResult.Skills))
 
 	// 6. Insert evaluation with is_current lifecycle management
-	tx, err := s.bun.Begin()
-	if err != nil {
-		return nil, fmt.Errorf("begin tx: %w", err)
-	}
-	defer tx.Rollback()
+	var newID uuid.UUID
+	if err := s.bun.RunInTx(ctx, nil, func(ctx context.Context, tx bun.Tx) error {
+		// Flag all existing current evaluations as not current
+		if _, err := tx.ExecContext(ctx, `UPDATE ai_evaluations SET is_current = false WHERE profile_id = $1 AND is_current = true`, profileUUID); err != nil {
+			return fmt.Errorf("flag old evaluations: %w", err)
+		}
 
-	// Flag all existing current evaluations as not current
-	if _, err := tx.ExecContext(ctx, `UPDATE ai_evaluations SET is_current = false WHERE profile_id = $1 AND is_current = true`, profileUUID); err != nil {
-		return nil, fmt.Errorf("flag old evaluations: %w", err)
-	}
+		// Insert new evaluation with is_current = true
+		newID = uuid.New()
+		if _, err := tx.ExecContext(ctx, `
+			INSERT INTO ai_evaluations (id, profile_id, overall_score, strengths, weaknesses, suggestions, skill_scores, raw_analysis, is_current)
+			VALUES ($1, $2, $3, $4::jsonb, $5::jsonb, $6::jsonb, $7::jsonb, $8, true)
+		`, newID, profileUUID, int64(totalCount), string(strengthsJSON), string(weaknessesJSON), string(suggestionsJSON), string(skillScoresJSON), rawAnalysis); err != nil {
+			return fmt.Errorf("insert evaluation: %w", err)
+		}
 
-	// Insert new evaluation with is_current = true
-	newID := uuid.New()
-	if _, err := tx.ExecContext(ctx, `
-		INSERT INTO ai_evaluations (id, profile_id, overall_score, strengths, weaknesses, suggestions, skill_scores, raw_analysis, is_current)
-		VALUES ($1, $2, $3, $4::jsonb, $5::jsonb, $6::jsonb, $7::jsonb, $8, true)
-	`, newID, profileUUID, int64(totalCount), string(strengthsJSON), string(weaknessesJSON), string(suggestionsJSON), string(skillScoresJSON), rawAnalysis); err != nil {
-		return nil, fmt.Errorf("insert evaluation: %w", err)
-	}
-
-	if err := tx.Commit(); err != nil {
-		return nil, fmt.Errorf("commit tx: %w", err)
+		return nil
+	}); err != nil {
+		return nil, err
 	}
 
 	return &EvaluationResult{

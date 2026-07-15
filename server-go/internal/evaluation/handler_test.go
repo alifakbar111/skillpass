@@ -18,6 +18,7 @@ import (
 
 func TestCareerPath(t *testing.T) {
 	db := testutil.SetupTestDB()
+	bunDB := bun.NewDB(db, pgdialect.New())
 
 	uID, pID, err := testutil.CreateJobseeker(db, "cp@ex.com", "cpuser", "pass123", "CP User")
 	if err != nil {
@@ -39,8 +40,8 @@ func TestCareerPath(t *testing.T) {
 			},
 		}
 	}
-	svc := NewService(db, mockLLM)
-	h := NewHandler(db, svc)
+	svc := NewService(mockLLM, bunDB)
+	h := NewHandler(bunDB, svc)
 
 	router := gin.New()
 	g := router.Group("/api/v1/evaluate")
@@ -80,6 +81,7 @@ func TestCareerPath(t *testing.T) {
 
 func TestPostEvaluate(t *testing.T) {
 	db := testutil.SetupTestDB()
+	bunDB := bun.NewDB(db, pgdialect.New())
 
 	uID, _, err := testutil.CreateJobseeker(db, "eval@ex.com", "eval", "pass123", "Eval User")
 	if err != nil {
@@ -88,8 +90,8 @@ func TestPostEvaluate(t *testing.T) {
 	tok := testutil.GenerateToken(uID.String(), "jobseeker", 15*time.Minute)
 
 	mockLLM := lib.NewMockLLMClient()
-	svc := NewService(db, mockLLM)
-	h := NewHandler(db, svc)
+	svc := NewService(mockLLM, bunDB)
+	h := NewHandler(bunDB, svc)
 
 	router := gin.New()
 	g := router.Group("/api/v1/evaluate")
