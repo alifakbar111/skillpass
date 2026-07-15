@@ -1,20 +1,16 @@
 package middleware
 
 import (
+	"fmt"
 	"net/http"
 	"strings"
 
-	"database/sql"
-
-	"fmt"
-
 	"github.com/gin-gonic/gin"
 	"github.com/golang-jwt/jwt/v5"
-	. "github.com/go-jet/jet/v2/postgres"
+	"github.com/uptrace/bun"
 
-	"skillpass-server-go/.gen/skillpass/public/model"
-	"skillpass-server-go/internal/gen"
 	"skillpass-server-go/internal/lib"
+	"skillpass-server-go/internal/models"
 )
 
 type Claims struct {
@@ -71,7 +67,7 @@ func RequireRole(role string) gin.HandlerFunc {
 	}
 }
 
-func RequireVerifiedCompany(db *sql.DB) gin.HandlerFunc {
+func RequireVerifiedCompany(bunDB *bun.DB) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		userIDVal, exists := c.Get("userId")
 		if !exists {
@@ -90,16 +86,12 @@ func RequireVerifiedCompany(db *sql.DB) gin.HandlerFunc {
 		return
 	}
 
-	stmt := SELECT(
-		gen.Companies.ID, gen.Companies.VerificationStatus,
-	).FROM(
-		gen.Companies,
-	).WHERE(
-		gen.Companies.UserID.EQ(UUID(userUUID)),
-	)
-
-		var companies []model.Companies
-		err = stmt.QueryContext(c.Request.Context(), db, &companies)
+	var companies []models.Company
+		err = bunDB.NewSelect().
+			Model(&companies).
+			Column("id", "verification_status").
+			Where("user_id = ?", userUUID).
+			Scan(c.Request.Context())
 		if err != nil {
 			c.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{"error": "Company lookup failed"})
 			return
@@ -109,7 +101,7 @@ func RequireVerifiedCompany(db *sql.DB) gin.HandlerFunc {
 			return
 		}
 		company := companies[0]
-		if company.VerificationStatus != model.VerificationStatus_Verified {
+		if company.VerificationStatus != "verified" {
 			c.AbortWithStatusJSON(http.StatusForbidden, gin.H{"error": "Company not verified"})
 			return
 		}

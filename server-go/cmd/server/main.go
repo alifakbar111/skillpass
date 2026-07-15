@@ -202,7 +202,7 @@ func main() {
 	verifiedCompany := []gin.HandlerFunc{
 		middleware.AuthRequired(cfg.JWTSecret),
 		middleware.RequireRole("company"),
-		middleware.RequireVerifiedCompany(database),
+		middleware.RequireVerifiedCompany(bunDB),
 	}
 
 	jobsGroup := api.Group("/jobs")
