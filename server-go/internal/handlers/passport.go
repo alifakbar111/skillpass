@@ -2,15 +2,14 @@ package handlers
 
 import (
 	"database/sql"
+	"errors"
 	"log/slog"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
-	. "github.com/go-jet/jet/v2/postgres"
 	"github.com/uptrace/bun"
 
-	"skillpass-server-go/.gen/skillpass/public/model"
-	"skillpass-server-go/internal/gen"
+	"skillpass-server-go/internal/models"
 )
 
 type PublicProfileResponse struct {
@@ -44,64 +43,39 @@ func NewPassportHandler(db *sql.DB, bunDB *bun.DB) *PassportHandler {
 func (h *PassportHandler) GetProfile(c *gin.Context) {
 	username := c.Param("username")
 
-	profileStmt := SELECT(
-		gen.JobseekerProfiles.ID, gen.JobseekerProfiles.UserID, gen.JobseekerProfiles.Headline,
-		gen.JobseekerProfiles.About, gen.JobseekerProfiles.YearsOfExperience,
-	).FROM(
-		gen.JobseekerProfiles,
-	).WHERE(
-		gen.JobseekerProfiles.Slug.EQ(String(username)),
-	)
-
-	var profiles []model.JobseekerProfiles
-	err := profileStmt.QueryContext(c.Request.Context(), h.db, &profiles)
+	var profile models.JobseekerProfile
+	err := h.bunDB.NewSelect().Model(&profile).
+		Where("slug = ?", username).
+		Scan(c.Request.Context())
 	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			c.JSON(http.StatusNotFound, gin.H{"error": "Profile not found"})
+			return
+		}
 		slog.Error("failed to load profile", "error", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to load profile"})
 		return
 	}
-	if len(profiles) == 0 {
-		c.JSON(http.StatusNotFound, gin.H{"error": "Profile not found"})
-		return
-	}
-	profile := profiles[0]
 
-	userStmt := SELECT(
-		gen.Users.Name, gen.Users.AvatarURL,
-	).FROM(
-		gen.Users,
-	).WHERE(
-		gen.Users.ID.EQ(UUID(profile.UserID)),
-	)
-
-	var users []model.Users
-	err = userStmt.QueryContext(c.Request.Context(), h.db, &users)
+	var user models.User
+	err = h.bunDB.NewSelect().Model(&user).Column("name", "avatar_url").
+		Where("id = ?", profile.UserID).
+		Scan(c.Request.Context())
 	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			c.JSON(http.StatusNotFound, gin.H{"error": "Profile not found"})
+			return
+		}
 		slog.Error("failed to load user", "error", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to load user"})
 		return
 	}
-	if len(users) == 0 {
-		c.JSON(http.StatusNotFound, gin.H{"error": "Profile not found"})
-		return
-	}
-	user := users[0]
 
-	expStmt := SELECT(
-		gen.JobExperiences.ID, gen.JobExperiences.ProfileID, gen.JobExperiences.Type,
-		gen.JobExperiences.Title, gen.JobExperiences.Organization, gen.JobExperiences.StartDate,
-		gen.JobExperiences.EndDate, gen.JobExperiences.IsCurrent, gen.JobExperiences.Description,
-		gen.JobExperiences.Industry, gen.JobExperiences.SkillsUsed, gen.JobExperiences.URL,
-	).FROM(
-		gen.JobExperiences,
-	).WHERE(
-		gen.JobExperiences.ProfileID.EQ(UUID(profile.ID)),
-	).ORDER_BY(
-		gen.JobExperiences.StartDate.ASC(),
-	)
-
-	var exps []model.JobExperiences
-	err = expStmt.QueryContext(c.Request.Context(), h.db, &exps)
+	var exps []models.JobExperience
+	err = h.bunDB.NewSelect().Model(&exps).
+		Where("profile_id = ?", profile.ID).
+		Order("start_date ASC").
+		Scan(c.Request.Context())
 	if err != nil {
 		slog.Error("failed to query experiences", "error", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to query experiences"})
@@ -113,11 +87,11 @@ func (h *PassportHandler) GetProfile(c *gin.Context) {
 		experiences[i] = mapExperience(exp)
 	}
 
-	// Increment the view counter and read the updated value (raw SQL — column not in go-jet model).
+	profileUUID := profile.ID.String()
 	var viewCount int
-	if err := h.db.QueryRowContext(c.Request.Context(),
+	if err := h.bunDB.QueryRowContext(c.Request.Context(),
 		`UPDATE jobseeker_profiles SET view_count = view_count + 1 WHERE id = $1 RETURNING view_count`,
-		profile.ID,
+		profileUUID,
 	).Scan(&viewCount); err != nil {
 		slog.Warn("failed to increment view count", "error", err)
 	}

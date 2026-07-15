@@ -9,14 +9,12 @@ import (
 	"regexp"
 
 	"github.com/gin-gonic/gin"
-	. "github.com/go-jet/jet/v2/postgres"
-	"github.com/go-jet/jet/v2/qrm"
 	"github.com/jackc/pgx/v5/pgconn"
+	"github.com/lib/pq"
 	"github.com/uptrace/bun"
 
-	"skillpass-server-go/.gen/skillpass/public/model"
-	"skillpass-server-go/internal/gen"
 	"skillpass-server-go/internal/lib"
+	"skillpass-server-go/internal/models"
 )
 
 type UpdateProfileRequest struct {
@@ -100,7 +98,7 @@ func NewProfileHandler(db *sql.DB, bunDB *bun.DB) *ProfileHandler {
 	return &ProfileHandler{db: db, bunDB: bunDB}
 }
 
-func mapExperience(exp model.JobExperiences) Experience {
+func mapExperience(exp models.JobExperience) Experience {
 	skillsUsed := []string{}
 	if exp.SkillsUsed != nil {
 		skillsUsed = []string(*exp.SkillsUsed)
@@ -108,7 +106,7 @@ func mapExperience(exp model.JobExperiences) Experience {
 	return Experience{
 		ID:           exp.ID.String(),
 		ProfileID:    exp.ProfileID.String(),
-		Type:         string(exp.Type),
+		Type:         exp.Type,
 		Title:        exp.Title,
 		Organization: exp.Organization,
 		StartDate:    exp.StartDate,
@@ -144,15 +142,6 @@ var reservedSlugs = map[string]struct{}{
 	"about":       {},
 	"terms":       {},
 	"privacy":     {},
-}
-
-var experienceTypeMap = map[string]StringExpression{
-	"employment":    gen.ExperienceTypeEmployment,
-	"gig":           gen.ExperienceTypeGig,
-	"education":     gen.ExperienceTypeEducation,
-	"certification": gen.ExperienceTypeCertification,
-	"project":       gen.ExperienceTypeProject,
-	"volunteering":  gen.ExperienceTypeVolunteering,
 }
 
 func isValidSlug(s string) bool {
@@ -201,63 +190,33 @@ func (h *ProfileHandler) GetMyProfile(c *gin.Context) {
 		return
 	}
 
-	profileStmt := SELECT(
-		gen.JobseekerProfiles.ID, gen.JobseekerProfiles.UserID, gen.JobseekerProfiles.Headline,
-		gen.JobseekerProfiles.About, gen.JobseekerProfiles.YearsOfExperience, gen.JobseekerProfiles.Slug,
-	).FROM(
-		gen.JobseekerProfiles,
-	).WHERE(
-		gen.JobseekerProfiles.UserID.EQ(UUID(userUUID)),
-	)
-
-	var profiles []model.JobseekerProfiles
-	err = profileStmt.QueryContext(c.Request.Context(), h.db, &profiles)
+	var profile models.JobseekerProfile
+	err = h.bunDB.NewSelect().Model(&profile).Where("user_id = ?", userUUID).Scan(c.Request.Context())
 	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			c.JSON(http.StatusNotFound, gin.H{"error": "Profile not found"})
+			return
+		}
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to load profile"})
 		return
 	}
-	if len(profiles) == 0 {
-		c.JSON(http.StatusNotFound, gin.H{"error": "Profile not found"})
-		return
-	}
-	profile := profiles[0]
 
-	userStmt := SELECT(
-		gen.Users.Name, gen.Users.Email, gen.Users.Username, gen.Users.Role, gen.Users.AvatarURL,
-	).FROM(
-		gen.Users,
-	).WHERE(
-		gen.Users.ID.EQ(UUID(userUUID)),
-	)
-
-	var users []model.Users
-	err = userStmt.QueryContext(c.Request.Context(), h.db, &users)
+	var user models.User
+	err = h.bunDB.NewSelect().Model(&user).Where("id = ?", userUUID).Scan(c.Request.Context())
 	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			c.JSON(http.StatusNotFound, gin.H{"error": "Profile not found"})
+			return
+		}
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to fetch user"})
 		return
 	}
-	if len(users) == 0 {
-		c.JSON(http.StatusNotFound, gin.H{"error": "Profile not found"})
-		return
-	}
-	user := users[0]
 
-	expStmt := SELECT(
-		gen.JobExperiences.ID, gen.JobExperiences.ProfileID, gen.JobExperiences.Type,
-		gen.JobExperiences.Title, gen.JobExperiences.Organization, gen.JobExperiences.StartDate,
-		gen.JobExperiences.EndDate, gen.JobExperiences.IsCurrent, gen.JobExperiences.Description,
-		gen.JobExperiences.Industry, gen.JobExperiences.SkillsUsed, gen.JobExperiences.URL,
-	).FROM(
-		gen.JobExperiences,
-	).WHERE(
-		gen.JobExperiences.ProfileID.EQ(UUID(profile.ID)),
-	).ORDER_BY(
-		gen.JobExperiences.SortOrder.ASC(),
-		gen.JobExperiences.StartDate.DESC(),
-	)
-
-	var exps []model.JobExperiences
-	err = expStmt.QueryContext(c.Request.Context(), h.db, &exps)
+	var exps []models.JobExperience
+	err = h.bunDB.NewSelect().Model(&exps).
+		Where("profile_id = ?", profile.ID).
+		Order("sort_order ASC", "start_date DESC").
+		Scan(c.Request.Context())
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to query experiences"})
 		return
@@ -278,7 +237,7 @@ func (h *ProfileHandler) GetMyProfile(c *gin.Context) {
 		Name:        user.Name,
 		Email:       user.Email,
 		Username:    user.Username,
-		Role:        string(user.Role),
+		Role:        user.Role,
 		AvatarURL:   user.AvatarURL,
 		Experiences: experiences,
 	})
@@ -322,40 +281,38 @@ func (h *ProfileHandler) UpdateMyProfile(c *gin.Context) {
 		return
 	}
 
-	var setVals []interface{}
+	query := h.bunDB.NewUpdate().Model((*models.JobseekerProfile)(nil))
+	hasFields := false
 	if req.Headline != nil {
-		setVals = append(setVals, gen.JobseekerProfiles.Headline.SET(String(*req.Headline)))
+		query = query.Set("headline = ?", *req.Headline)
+		hasFields = true
 	}
 	if req.About != nil {
-		setVals = append(setVals, gen.JobseekerProfiles.About.SET(String(*req.About)))
+		query = query.Set("about = ?", *req.About)
+		hasFields = true
 	}
 	if req.YearsOfExperience != nil {
-		setVals = append(setVals, gen.JobseekerProfiles.YearsOfExperience.SET(Int64(int64(*req.YearsOfExperience))))
+		query = query.Set("years_of_experience = ?", int32(*req.YearsOfExperience))
+		hasFields = true
 	}
 	if req.Slug != nil {
 		if !isValidSlug(*req.Slug) {
 			c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid slug format or reserved word"})
 			return
 		}
-		setVals = append(setVals, gen.JobseekerProfiles.Slug.SET(String(*req.Slug)))
+		query = query.Set("slug = ?", *req.Slug)
+		hasFields = true
 	}
 
-	if len(setVals) == 0 {
+	if !hasFields {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "No fields to update"})
 		return
 	}
 
-	stmt := gen.JobseekerProfiles.UPDATE().SET(setVals[0], setVals[1:]...).WHERE(
-		gen.JobseekerProfiles.UserID.EQ(UUID(userUUID)),
-	).RETURNING(
-		gen.JobseekerProfiles.ID, gen.JobseekerProfiles.UserID, gen.JobseekerProfiles.Headline,
-		gen.JobseekerProfiles.About, gen.JobseekerProfiles.YearsOfExperience, gen.JobseekerProfiles.Slug,
-	)
-
-	var profiles []model.JobseekerProfiles
-	err = stmt.QueryContext(c.Request.Context(), h.db, &profiles)
+	var profile models.JobseekerProfile
+	err = query.Where("user_id = ?", userUUID).Returning("*").Scan(c.Request.Context(), &profile)
 	if err != nil {
-		if errors.Is(err, qrm.ErrNoRows) {
+		if errors.Is(err, sql.ErrNoRows) {
 			c.JSON(http.StatusNotFound, gin.H{"error": "Profile not found"})
 			return
 		}
@@ -367,11 +324,6 @@ func (h *ProfileHandler) UpdateMyProfile(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to update profile"})
 		return
 	}
-	if len(profiles) == 0 {
-		c.JSON(http.StatusNotFound, gin.H{"error": "Profile not found"})
-		return
-	}
-	profile := profiles[0]
 
 	c.JSON(http.StatusOK, UpdateProfileResponse{
 		ID:                profile.ID.String(),
@@ -432,17 +384,18 @@ func (h *ProfileHandler) ReorderExperience(c *gin.Context) {
 		return
 	}
 
-	profileStmt := SELECT(gen.JobseekerProfiles.ID).FROM(gen.JobseekerProfiles).
-		WHERE(gen.JobseekerProfiles.UserID.EQ(UUID(userUUID)))
-	var profiles []model.JobseekerProfiles
-	err = profileStmt.QueryContext(c.Request.Context(), h.db, &profiles)
-	if err != nil || len(profiles) == 0 {
-		c.JSON(http.StatusNotFound, gin.H{"error": "Profile not found"})
+	var profile models.JobseekerProfile
+	err = h.bunDB.NewSelect().Model(&profile).Column("id").Where("user_id = ?", userUUID).Scan(c.Request.Context())
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			c.JSON(http.StatusNotFound, gin.H{"error": "Profile not found"})
+			return
+		}
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to load profile"})
 		return
 	}
-	profileID := profiles[0].ID
 
-	tx, err := h.db.BeginTx(c.Request.Context(), nil)
+	tx, err := h.bunDB.BeginTx(c.Request.Context(), nil)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to start transaction"})
 		return
@@ -455,14 +408,10 @@ func (h *ProfileHandler) ReorderExperience(c *gin.Context) {
 			c.JSON(http.StatusBadRequest, gin.H{"error": fmt.Sprintf("Invalid experience ID: %s", item.ID)})
 			return
 		}
-		updateStmt := gen.JobExperiences.UPDATE().
-			SET(gen.JobExperiences.SortOrder.SET(Int64(int64(item.SortOrder)))).
-			WHERE(
-				gen.JobExperiences.ID.EQ(UUID(expUUID)).AND(
-					gen.JobExperiences.ProfileID.EQ(UUID(profileID)),
-				),
-			)
-		result, err := updateStmt.ExecContext(c.Request.Context(), tx)
+		result, err := tx.NewUpdate().Model((*models.JobExperience)(nil)).
+			Set("sort_order = ?", int32(item.SortOrder)).
+			Where("id = ? AND profile_id = ?", expUUID, profile.ID).
+			Exec(c.Request.Context())
 		if err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to update experience order"})
 			return
@@ -532,48 +481,40 @@ func (h *ProfileHandler) CreateExperience(c *gin.Context) {
 		return
 	}
 
-	profileStmt := SELECT(
-		gen.JobseekerProfiles.ID,
-	).FROM(
-		gen.JobseekerProfiles,
-	).WHERE(
-		gen.JobseekerProfiles.UserID.EQ(UUID(userUUID)),
-	)
-
-	var profiles []model.JobseekerProfiles
-	err = profileStmt.QueryContext(c.Request.Context(), h.db, &profiles)
+	var profile models.JobseekerProfile
+	err = h.bunDB.NewSelect().Model(&profile).Column("id").Where("user_id = ?", userUUID).Scan(c.Request.Context())
 	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			c.JSON(http.StatusNotFound, gin.H{"error": "Profile not found"})
+			return
+		}
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to load profile"})
 		return
 	}
-	if len(profiles) == 0 {
-		c.JSON(http.StatusNotFound, gin.H{"error": "Profile not found"})
-		return
-	}
-	profile := profiles[0]
 
 	isCurrent := false
 	if req.IsCurrent != nil {
 		isCurrent = *req.IsCurrent
 	}
 
-	insertStmt := gen.JobExperiences.INSERT(
-		gen.JobExperiences.ProfileID, gen.JobExperiences.Type, gen.JobExperiences.Title,
-		gen.JobExperiences.Organization, gen.JobExperiences.StartDate, gen.JobExperiences.EndDate,
-		gen.JobExperiences.IsCurrent, gen.JobExperiences.Description, gen.JobExperiences.Industry,
-		gen.JobExperiences.SkillsUsed, gen.JobExperiences.URL,
-	).VALUES(
-		profile.ID, req.Type, req.Title, req.Organization, req.StartDate, req.EndDate,
-		isCurrent, req.Description, req.Industry, StringArray(req.SkillsUsed...), req.URL,
-	).RETURNING(
-		gen.JobExperiences.ID, gen.JobExperiences.ProfileID, gen.JobExperiences.Type,
-		gen.JobExperiences.Title, gen.JobExperiences.Organization, gen.JobExperiences.StartDate,
-		gen.JobExperiences.EndDate, gen.JobExperiences.IsCurrent, gen.JobExperiences.Description,
-		gen.JobExperiences.Industry, gen.JobExperiences.SkillsUsed, gen.JobExperiences.URL,
-	)
+	exp := &models.JobExperience{
+		ProfileID:    profile.ID,
+		Type:         req.Type,
+		Title:        req.Title,
+		Organization: req.Organization,
+		StartDate:    req.StartDate,
+		EndDate:      req.EndDate,
+		IsCurrent:    isCurrent,
+		Description:  req.Description,
+		Industry:     req.Industry,
+		URL:          req.URL,
+	}
+	if len(req.SkillsUsed) > 0 {
+		arr := pq.StringArray(req.SkillsUsed)
+		exp.SkillsUsed = &arr
+	}
 
-	var exp model.JobExperiences
-	err = insertStmt.QueryContext(c.Request.Context(), h.db, &exp)
+	err = h.bunDB.NewInsert().Model(exp).Returning("*").Scan(c.Request.Context())
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to create experience"})
 		return
@@ -584,12 +525,11 @@ func (h *ProfileHandler) CreateExperience(c *gin.Context) {
 		if skill == "" {
 			continue
 		}
-		upsertStmt := gen.Skills.INSERT(gen.Skills.Name).VALUES(skill).
-			ON_CONFLICT(gen.Skills.Name).DO_NOTHING()
-		_, _ = upsertStmt.ExecContext(c.Request.Context(), h.db)
+		_, _ = h.bunDB.ExecContext(c.Request.Context(),
+			`INSERT INTO skills (name) VALUES ($1) ON CONFLICT (name) DO NOTHING`, skill)
 	}
 
-	c.JSON(http.StatusCreated, mapExperience(exp))
+	c.JSON(http.StatusCreated, mapExperience(*exp))
 }
 
 // UpdateExperience	godoc
@@ -631,25 +571,16 @@ func (h *ProfileHandler) UpdateExperience(c *gin.Context) {
 		return
 	}
 
-	profileStmt := SELECT(
-		gen.JobseekerProfiles.ID,
-	).FROM(
-		gen.JobseekerProfiles,
-	).WHERE(
-		gen.JobseekerProfiles.UserID.EQ(UUID(userUUID)),
-	)
-
-	var profiles []model.JobseekerProfiles
-	err = profileStmt.QueryContext(c.Request.Context(), h.db, &profiles)
+	var profile models.JobseekerProfile
+	err = h.bunDB.NewSelect().Model(&profile).Column("id").Where("user_id = ?", userUUID).Scan(c.Request.Context())
 	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			c.JSON(http.StatusNotFound, gin.H{"error": "Profile not found"})
+			return
+		}
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to load profile"})
 		return
 	}
-	if len(profiles) == 0 {
-		c.JSON(http.StatusNotFound, gin.H{"error": "Profile not found"})
-		return
-	}
-	profile := profiles[0]
 
 	var req UpdateExperienceRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -671,67 +602,62 @@ func (h *ProfileHandler) UpdateExperience(c *gin.Context) {
 		return
 	}
 
-	var setVals []interface{}
+	query := h.bunDB.NewUpdate().Model((*models.JobExperience)(nil))
+	hasFields := false
 	if req.Type != nil {
-		if expr, ok := experienceTypeMap[*req.Type]; ok {
-			setVals = append(setVals, gen.JobExperiences.Type.SET(expr))
-		} else {
-			c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid experience type"})
-			return
-		}
+		query = query.Set("type = ?", *req.Type)
+		hasFields = true
 	}
 	if req.Title != nil {
-		setVals = append(setVals, gen.JobExperiences.Title.SET(String(*req.Title)))
+		query = query.Set("title = ?", *req.Title)
+		hasFields = true
 	}
 	if req.Organization != nil {
-		setVals = append(setVals, gen.JobExperiences.Organization.SET(String(*req.Organization)))
+		query = query.Set("organization = ?", *req.Organization)
+		hasFields = true
 	}
 	if req.StartDate != nil {
-		setVals = append(setVals, gen.JobExperiences.StartDate.SET(String(*req.StartDate)))
+		query = query.Set("start_date = ?", *req.StartDate)
+		hasFields = true
 	}
 	if req.EndDate != nil {
-		setVals = append(setVals, gen.JobExperiences.EndDate.SET(String(*req.EndDate)))
+		query = query.Set("end_date = ?", *req.EndDate)
+		hasFields = true
 	}
 	if req.IsCurrent != nil {
-		setVals = append(setVals, gen.JobExperiences.IsCurrent.SET(Bool(*req.IsCurrent)))
+		query = query.Set("is_current = ?", *req.IsCurrent)
+		hasFields = true
 	}
 	if req.Description != nil {
-		setVals = append(setVals, gen.JobExperiences.Description.SET(String(*req.Description)))
+		query = query.Set("description = ?", *req.Description)
+		hasFields = true
 	}
 	if req.Industry != nil {
-		setVals = append(setVals, gen.JobExperiences.Industry.SET(String(*req.Industry)))
+		query = query.Set("industry = ?", *req.Industry)
+		hasFields = true
 	}
 	if req.SkillsUsed != nil {
-		setVals = append(setVals, gen.JobExperiences.SkillsUsed.SET(StringArray(req.SkillsUsed...)))
+		query = query.Set("skills_used = ?", pq.StringArray(req.SkillsUsed))
+		hasFields = true
 	}
 	if req.URL != nil {
-		setVals = append(setVals, gen.JobExperiences.URL.SET(String(*req.URL)))
+		query = query.Set("url = ?", *req.URL)
+		hasFields = true
 	}
 
-	if len(setVals) == 0 {
+	if !hasFields {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "No fields to update"})
 		return
 	}
 
-	stmt := gen.JobExperiences.UPDATE().SET(setVals[0], setVals[1:]...).WHERE(
-		gen.JobExperiences.ID.EQ(UUID(expUUID)).AND(
-			gen.JobExperiences.ProfileID.EQ(UUID(profile.ID)),
-		),
-	).RETURNING(
-		gen.JobExperiences.ID, gen.JobExperiences.ProfileID, gen.JobExperiences.Type,
-		gen.JobExperiences.Title, gen.JobExperiences.Organization, gen.JobExperiences.StartDate,
-		gen.JobExperiences.EndDate, gen.JobExperiences.IsCurrent, gen.JobExperiences.Description,
-		gen.JobExperiences.Industry, gen.JobExperiences.SkillsUsed, gen.JobExperiences.URL,
-	)
-
-	var exps []model.JobExperiences
-	err = stmt.QueryContext(c.Request.Context(), h.db, &exps)
+	var exp models.JobExperience
+	err = query.Where("id = ? AND profile_id = ?", expUUID, profile.ID).Returning("*").Scan(c.Request.Context(), &exp)
 	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			c.JSON(http.StatusNotFound, gin.H{"error": "Experience not found"})
+			return
+		}
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to update experience"})
-		return
-	}
-	if len(exps) == 0 {
-		c.JSON(http.StatusNotFound, gin.H{"error": "Experience not found"})
 		return
 	}
 
@@ -741,13 +667,12 @@ func (h *ProfileHandler) UpdateExperience(c *gin.Context) {
 			if skill == "" {
 				continue
 			}
-			upsertStmt := gen.Skills.INSERT(gen.Skills.Name).VALUES(skill).
-				ON_CONFLICT(gen.Skills.Name).DO_NOTHING()
-			_, _ = upsertStmt.ExecContext(c.Request.Context(), h.db)
+			_, _ = h.bunDB.ExecContext(c.Request.Context(),
+				`INSERT INTO skills (name) VALUES ($1) ON CONFLICT (name) DO NOTHING`, skill)
 		}
 	}
 
-	c.JSON(http.StatusOK, mapExperience(exps[0]))
+	c.JSON(http.StatusOK, mapExperience(exp))
 }
 
 // DeleteExperience	godoc
@@ -787,33 +712,20 @@ func (h *ProfileHandler) DeleteExperience(c *gin.Context) {
 		return
 	}
 
-	profileStmt := SELECT(
-		gen.JobseekerProfiles.ID,
-	).FROM(
-		gen.JobseekerProfiles,
-	).WHERE(
-		gen.JobseekerProfiles.UserID.EQ(UUID(userUUID)),
-	)
-
-	var profiles []model.JobseekerProfiles
-	err = profileStmt.QueryContext(c.Request.Context(), h.db, &profiles)
+	var profile models.JobseekerProfile
+	err = h.bunDB.NewSelect().Model(&profile).Column("id").Where("user_id = ?", userUUID).Scan(c.Request.Context())
 	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			c.JSON(http.StatusNotFound, gin.H{"error": "Profile not found"})
+			return
+		}
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to load profile"})
 		return
 	}
-	if len(profiles) == 0 {
-		c.JSON(http.StatusNotFound, gin.H{"error": "Profile not found"})
-		return
-	}
-	profile := profiles[0]
 
-	deleteStmt := gen.JobExperiences.DELETE().WHERE(
-		gen.JobExperiences.ID.EQ(UUID(expUUID)).AND(
-			gen.JobExperiences.ProfileID.EQ(UUID(profile.ID)),
-		),
-	)
-
-	result, err := deleteStmt.ExecContext(c.Request.Context(), h.db)
+	result, err := h.bunDB.NewDelete().Model((*models.JobExperience)(nil)).
+		Where("id = ? AND profile_id = ?", expUUID, profile.ID).
+		Exec(c.Request.Context())
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to delete experience"})
 		return
