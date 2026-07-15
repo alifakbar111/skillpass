@@ -70,6 +70,9 @@ func main() {
 	}
 	defer database.Close()
 
+	bunDB := db.NewBunDB(database)
+	defer bunDB.Close()
+
 	r := gin.Default()
 
 	r.Use(cors.New(cors.Config{

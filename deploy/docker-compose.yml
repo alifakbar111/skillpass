@@ -1,0 +1,116 @@
+# SkillPass Dev Server — Docker Compose
+#
+# Run on VPS after images are built and pushed to Docker Hub.
+# Usage: docker compose up -d
+#
+# ── Before first run ──────────────────────────────────────
+# 1. Copy .env.prod to .env and fill in your values
+# 2. docker compose pull
+# 3. docker compose up -d
+# 4. docker compose run --rm migrate   # run DB migrations
+# 5. docker compose run --rm seed      # seed initial data (optional)
+
+services:
+  # ── PostgreSQL database ──
+  db:
+    image: postgres:16-alpine
+    expose:
+      - "5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    environment:
+      POSTGRES_DB: skillpass
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-postgres}
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
+
+  # ── Go API server (Gin) — serves API + embedded SPA frontend ──
+  server:
+    image: ${DOCKER_REGISTRY:-docker.io}/${DOCKER_USER:-skillpass}/skillpass-server:${TAG:-latest}
+    ports:
+      - "127.0.0.1:1234:1234"
+    env_file: .env
+    environment:
+      DB_HOST: db
+      DB_PORT: "5432"
+      DB_USER: postgres
+      DB_PASSWORD: ${DB_PASSWORD:-postgres}
+      DB_NAME: skillpass
+      DATABASE_URL: postgres://postgres:${DB_PASSWORD:-postgres}@db:5432/skillpass?sslmode=disable
+      CORS_ORIGIN: ${APP_URL:-http://localhost}
+      APP_URL: ${APP_URL:-http://localhost}
+      SERVE_STATIC: "true"
+      GIN_MODE: release
+      COOKIE_SECURE: "false"   # set to "true" once TLS is enabled
+    volumes:
+      - uploads:/app/uploads
+    depends_on:
+      db:
+        condition: service_healthy
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:1234/api/v1/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+
+  # ── MarkItDown (PDF → Markdown microservice) ──
+  # NOTE: Only receives the env vars it needs — NOT the full .env (least-privilege)
+  markitdown:
+    image: ${DOCKER_REGISTRY:-docker.io}/${DOCKER_USER:-skillpass}/skillpass-markitdown:${TAG:-latest}
+    expose:
+      - "8000"
+    environment:
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
+      LLM_MODEL: ${LLM_MODEL:-gpt-4o-mini}
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 15s
+
+  # ── Database migration (one-shot) ──
+  migrate:
+    image: ${DOCKER_REGISTRY:-docker.io}/${DOCKER_USER:-skillpass}/skillpass-server:${TAG:-latest}
+    env_file: .env
+    environment:
+      DATABASE_URL: postgres://postgres:${DB_PASSWORD:-postgres}@db:5432/skillpass?sslmode=disable
+    command: ["./skillpass-migrate"]
+    depends_on:
+      db:
+        condition: service_healthy
+    restart: "no"
+    profiles:
+      - setup
+
+  # ── Database seeding (one-shot) ──
+  seed:
+    image: ${DOCKER_REGISTRY:-docker.io}/${DOCKER_USER:-skillpass}/skillpass-server:${TAG:-latest}
+    env_file: .env
+    environment:
+      DATABASE_URL: postgres://postgres:${DB_PASSWORD:-postgres}@db:5432/skillpass?sslmode=disable
+      ADMIN_EMAIL: ${ADMIN_EMAIL:-admin@skillpass.com}
+      # REQUIRED: Set ADMIN_PASSWORD in .env — do not rely on a default
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD}
+      APP_URL: ${APP_URL:-http://localhost}
+      JWT_SECRET: ${JWT_SECRET}
+    command: ["./skillpass-seed"]
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+    restart: "no"
+    profiles:
+      - setup
+
+volumes:
+  pgdata:
+  uploads:
