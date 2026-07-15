@@ -48,7 +48,7 @@ func TestApplicationFlow(t *testing.T) {
 
 	// Company routes
 	sg := router.Group("/api/v1/applications")
-	sg.Use(middleware.AuthRequired(testutil.TestJWTSecret), middleware.RequireRole("company"), middleware.RequireVerifiedCompany(db))
+	sg.Use(middleware.AuthRequired(testutil.TestJWTSecret), middleware.RequireRole("company"), middleware.RequireVerifiedCompany(bunDB))
 	sg.PUT("/:id/status", h.UpdateStatus)
 
 	t.Run("apply success", func(t *testing.T) {
@@ -250,7 +250,7 @@ func TestApplicationMessages(t *testing.T) {
 
 	router := gin.New()
 	g := router.Group("/api/v1/applications")
-	g.Use(middleware.AuthRequired(testutil.TestJWTSecret), middleware.RequireRole("company"), middleware.RequireVerifiedCompany(db))
+	g.Use(middleware.AuthRequired(testutil.TestJWTSecret), middleware.RequireRole("company"), middleware.RequireVerifiedCompany(bunDB))
 	g.POST("/:id/messages", h.AddMessage)
 	g.GET("/:id/messages", h.ListMessages)
 
@@ -319,7 +319,7 @@ func TestStatusTransitions(t *testing.T) {
 
 	router := gin.New()
 	sg := router.Group("/api/v1/applications")
-	sg.Use(middleware.AuthRequired(testutil.TestJWTSecret), middleware.RequireRole("company"), middleware.RequireVerifiedCompany(db))
+	sg.Use(middleware.AuthRequired(testutil.TestJWTSecret), middleware.RequireRole("company"), middleware.RequireVerifiedCompany(bunDB))
 	sg.PUT("/:id/status", h.UpdateStatus)
 
 	tests := []struct {
@@ -391,7 +391,7 @@ func TestApplicationMessageEdgeCases(t *testing.T) {
 
 	router := gin.New()
 	g := router.Group("/api/v1/applications")
-	g.Use(middleware.AuthRequired(testutil.TestJWTSecret), middleware.RequireRole("company"), middleware.RequireVerifiedCompany(db))
+	g.Use(middleware.AuthRequired(testutil.TestJWTSecret), middleware.RequireRole("company"), middleware.RequireVerifiedCompany(bunDB))
 	g.POST("/:id/messages", h.AddMessage)
 	g.GET("/:id/messages", h.ListMessages)
 
@@ -463,7 +463,7 @@ func TestListCompanyApplications(t *testing.T) {
 
 	router := gin.New()
 	cg := router.Group("/api/v1/company")
-	cg.Use(middleware.AuthRequired(testutil.TestJWTSecret), middleware.RequireRole("company"), middleware.RequireVerifiedCompany(db))
+	cg.Use(middleware.AuthRequired(testutil.TestJWTSecret), middleware.RequireRole("company"), middleware.RequireVerifiedCompany(bunDB))
 	cg.GET("/applications", h.ListCompanyApplications)
 
 	t.Run("list company applications", func(t *testing.T) {
