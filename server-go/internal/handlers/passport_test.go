@@ -8,20 +8,22 @@ import (
 
 	"github.com/gin-gonic/gin"
 
+	"skillpass-server-go/internal/db"
 	"skillpass-server-go/internal/testutil"
 )
 
 func TestGetPublicProfile(t *testing.T) {
-	db := testutil.SetupTestDB()
+	sqlDB := testutil.SetupTestDB()
+	bunDB := db.NewBunDB(sqlDB)
 
-	_, profileID, err := testutil.CreateJobseeker(db, "public@example.com", "publicuser", "password123", "Public User")
+	_, profileID, err := testutil.CreateJobseeker(sqlDB, "public@example.com", "publicuser", "password123", "Public User")
 	if err != nil {
 		t.Fatalf("create jobseeker: %v", err)
 	}
-	testutil.CreateExperience(db, profileID, "employment", "Software Engineer", "Tech Corp")
+	testutil.CreateExperience(sqlDB, profileID, "employment", "Software Engineer", "Tech Corp")
 
 	router := gin.New()
-	h := NewPassportHandler(db)
+	h := NewPassportHandler(sqlDB, bunDB)
 	router.GET("/api/v1/profiles/:username", h.GetProfile)
 
 	t.Run("get profile by slug", func(t *testing.T) {
@@ -61,15 +63,16 @@ func TestGetPublicProfile(t *testing.T) {
 }
 
 func TestPassportViewCount(t *testing.T) {
-	db := testutil.SetupTestDB()
+	sqlDB := testutil.SetupTestDB()
+	bunDB := db.NewBunDB(sqlDB)
 
-	_, _, err := testutil.CreateJobseeker(db, "views@example.com", "viewsuser", "password123", "Views User")
+	_, _, err := testutil.CreateJobseeker(sqlDB, "views@example.com", "viewsuser", "password123", "Views User")
 	if err != nil {
 		t.Fatalf("create jobseeker: %v", err)
 	}
 
 	router := gin.New()
-	h := NewPassportHandler(db)
+	h := NewPassportHandler(sqlDB, bunDB)
 	router.GET("/api/v1/profiles/:username", h.GetProfile)
 
 	get := func() PublicProfileResponse {
@@ -92,15 +95,16 @@ func TestPassportViewCount(t *testing.T) {
 }
 
 func TestGetPublicProfile_NoExperiences(t *testing.T) {
-	db := testutil.SetupTestDB()
+	sqlDB := testutil.SetupTestDB()
+	bunDB := db.NewBunDB(sqlDB)
 
-	_, _, err := testutil.CreateJobseeker(db, "noexp@example.com", "noexpuser", "password123", "No Exp User")
+	_, _, err := testutil.CreateJobseeker(sqlDB, "noexp@example.com", "noexpuser", "password123", "No Exp User")
 	if err != nil {
 		t.Fatalf("create jobseeker: %v", err)
 	}
 
 	router := gin.New()
-	h := NewPassportHandler(db)
+	h := NewPassportHandler(sqlDB, bunDB)
 	router.GET("/api/v1/profiles/:username", h.GetProfile)
 
 	t.Run("profile with no experiences", func(t *testing.T) {

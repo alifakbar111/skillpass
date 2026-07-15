@@ -9,14 +9,11 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
-	. "github.com/go-jet/jet/v2/postgres"
-	"github.com/go-jet/jet/v2/qrm"
 	"github.com/uptrace/bun"
 	"log/slog"
 
-	"skillpass-server-go/.gen/skillpass/public/model"
-	"skillpass-server-go/internal/gen"
 	"skillpass-server-go/internal/lib"
+	"skillpass-server-go/internal/models"
 )
 
 type CompanyResponse struct {
@@ -57,7 +54,7 @@ func NewCompanyHandler(db *sql.DB, bunDB *bun.DB) *CompanyHandler {
 	return &CompanyHandler{db: db, bunDB: bunDB}
 }
 
-func companyFromModel(c model.Companies) CompanyResponse {
+func companyFromModel(c models.Company) CompanyResponse {
 	var docs json.RawMessage
 	if c.VerificationDocs != nil {
 		docs = json.RawMessage(*c.VerificationDocs)
@@ -69,9 +66,10 @@ func companyFromModel(c model.Companies) CompanyResponse {
 		Website:            c.Website,
 		Industry:           c.Industry,
 		Description:        c.Description,
-		VerificationStatus: string(c.VerificationStatus),
+		VerificationStatus: c.VerificationStatus,
 		VerificationDocs:   docs,
 		VerifiedAt:         c.VerifiedAt,
+		BlindMode:          c.BlindMode,
 		CreatedAt:          c.CreatedAt,
 	}
 }
@@ -104,17 +102,13 @@ func (h *CompanyHandler) GetProfile(c *gin.Context) {
 		return
 	}
 
-	stmt := SELECT(
-		gen.Companies.AllColumns,
-	).FROM(
-		gen.Companies,
-	).WHERE(
-		gen.Companies.UserID.EQ(UUID(userUUID)),
-	)
-
-	var company model.Companies
-	if err := stmt.QueryContext(c.Request.Context(), h.db, &company); err != nil {
-		if errors.Is(err, sql.ErrNoRows) || errors.Is(err, qrm.ErrNoRows) {
+	var company models.Company
+	err = h.bunDB.NewSelect().
+		Model(&company).
+		Where("user_id = ?", userUUID).
+		Scan(c.Request.Context())
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
 			c.JSON(http.StatusNotFound, gin.H{"error": "Company not found"})
 			return
 		}
@@ -165,26 +159,12 @@ func (h *CompanyHandler) UpdateProfile(c *gin.Context) {
 		return
 	}
 
-	var setVals []interface{}
-	if req.CompanyName != nil {
-		setVals = append(setVals, gen.Companies.CompanyName.SET(String(*req.CompanyName)))
-	}
-	if req.Website != nil {
-		setVals = append(setVals, gen.Companies.Website.SET(String(*req.Website)))
-	}
-	if req.Industry != nil {
-		setVals = append(setVals, gen.Companies.Industry.SET(String(*req.Industry)))
-	}
-	if req.Description != nil {
-		setVals = append(setVals, gen.Companies.Description.SET(String(*req.Description)))
-	}
-
-	if len(setVals) == 0 && req.BlindMode == nil {
+	if req.CompanyName == nil && req.Website == nil && req.Industry == nil && req.Description == nil && req.BlindMode == nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "No fields to update"})
 		return
 	}
 
-	// blind_mode is not part of the go-jet model; update it via raw SQL.
+	// blind_mode is not part of the Bun model; update it via raw SQL.
 	if req.BlindMode != nil {
 		if _, err := h.db.ExecContext(c.Request.Context(),
 			`UPDATE companies SET blind_mode = $1 WHERE user_id = $2`,
@@ -196,15 +176,25 @@ func (h *CompanyHandler) UpdateProfile(c *gin.Context) {
 		}
 	}
 
-	var company model.Companies
-	if len(setVals) > 0 {
-		stmt := gen.Companies.UPDATE().SET(setVals[0], setVals[1:]...).WHERE(
-			gen.Companies.UserID.EQ(UUID(userUUID)),
-		).RETURNING(
-			gen.Companies.AllColumns,
-		)
-		if err := stmt.QueryContext(c.Request.Context(), h.db, &company); err != nil {
-			if errors.Is(err, sql.ErrNoRows) || errors.Is(err, qrm.ErrNoRows) {
+	var company models.Company
+	hasProfileFields := req.CompanyName != nil || req.Website != nil || req.Industry != nil || req.Description != nil
+	if hasProfileFields {
+		query := h.bunDB.NewUpdate().Model((*models.Company)(nil))
+		if req.CompanyName != nil {
+			query = query.Set("company_name = ?", *req.CompanyName)
+		}
+		if req.Website != nil {
+			query = query.Set("website = ?", *req.Website)
+		}
+		if req.Industry != nil {
+			query = query.Set("industry = ?", *req.Industry)
+		}
+		if req.Description != nil {
+			query = query.Set("description = ?", *req.Description)
+		}
+		err = query.Where("user_id = ?", userUUID).Returning("*").Scan(c.Request.Context())
+		if err != nil {
+			if errors.Is(err, sql.ErrNoRows) {
 				c.JSON(http.StatusNotFound, gin.H{"error": "Company not found"})
 				return
 			}
@@ -214,11 +204,9 @@ func (h *CompanyHandler) UpdateProfile(c *gin.Context) {
 		}
 	} else {
 		// Only blind_mode changed — re-read the row for the response.
-		stmt := SELECT(gen.Companies.AllColumns).FROM(gen.Companies).WHERE(
-			gen.Companies.UserID.EQ(UUID(userUUID)),
-		)
-		if err := stmt.QueryContext(c.Request.Context(), h.db, &company); err != nil {
-			if errors.Is(err, sql.ErrNoRows) || errors.Is(err, qrm.ErrNoRows) {
+		err = h.bunDB.NewSelect().Model(&company).Where("user_id = ?", userUUID).Scan(c.Request.Context())
+		if err != nil {
+			if errors.Is(err, sql.ErrNoRows) {
 				c.JSON(http.StatusNotFound, gin.H{"error": "Company not found"})
 				return
 			}
@@ -272,14 +260,12 @@ func (h *CompanyHandler) SubmitVerification(c *gin.Context) {
 
 	docs, _ := json.Marshal(req)
 
-	stmt := gen.Companies.UPDATE().SET(
-		gen.Companies.VerificationDocs.SET(StringExp(CAST(String(string(docs))).AS("jsonb"))),
-		gen.Companies.VerificationStatus.SET(gen.VerificationStatusPending),
-	).WHERE(
-		gen.Companies.UserID.EQ(UUID(userUUID)),
-	)
-
-	result, err := stmt.ExecContext(c.Request.Context(), h.db)
+	result, err := h.bunDB.NewUpdate().
+		Model((*models.Company)(nil)).
+		Set("verification_docs = ?", string(docs)).
+		Set("verification_status = ?", "pending").
+		Where("user_id = ?", userUUID).
+		Exec(c.Request.Context())
 	if err != nil {
 		slog.Error("failed to submit verification", "error", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to submit verification"})
@@ -321,18 +307,14 @@ func (h *CompanyHandler) GetVerificationStatus(c *gin.Context) {
 		return
 	}
 
-	stmt := SELECT(
-		gen.Companies.VerificationStatus,
-	).FROM(
-		gen.Companies,
-	).WHERE(
-		gen.Companies.UserID.EQ(UUID(userUUID)),
-	)
-
-	var company model.Companies
-	err = stmt.QueryContext(c.Request.Context(), h.db, &company)
+	var company models.Company
+	err = h.bunDB.NewSelect().
+		Model(&company).
+		Column("verification_status").
+		Where("user_id = ?", userUUID).
+		Scan(c.Request.Context())
 	if err != nil {
-		if errors.Is(err, sql.ErrNoRows) || errors.Is(err, qrm.ErrNoRows) {
+		if errors.Is(err, sql.ErrNoRows) {
 			c.JSON(http.StatusOK, VerificationStatusResponse{VerificationStatus: "none"})
 			return
 		}
@@ -341,5 +323,5 @@ func (h *CompanyHandler) GetVerificationStatus(c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusOK, VerificationStatusResponse{VerificationStatus: string(company.VerificationStatus)})
+	c.JSON(http.StatusOK, VerificationStatusResponse{VerificationStatus: company.VerificationStatus})
 }

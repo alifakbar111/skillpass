@@ -12,22 +12,24 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
 
+	"skillpass-server-go/internal/db"
 	"skillpass-server-go/internal/middleware"
 	"skillpass-server-go/internal/testutil"
 )
 
 func TestGetMyProfile(t *testing.T) {
-	db := testutil.SetupTestDB()
+	sqlDB := testutil.SetupTestDB()
+	bunDB := db.NewBunDB(sqlDB)
 
-	userID, profileID, err := testutil.CreateJobseeker(db, "myprofile@example.com", "myprofile", "password123", "My Profile")
+	userID, profileID, err := testutil.CreateJobseeker(sqlDB, "myprofile@example.com", "myprofile", "password123", "My Profile")
 	if err != nil {
 		t.Fatalf("create jobseeker: %v", err)
 	}
-	testutil.CreateExperience(db, profileID, "employment", "Engineer", "Acme")
+	testutil.CreateExperience(sqlDB, profileID, "employment", "Engineer", "Acme")
 	token := testutil.GenerateToken(userID.String(), "jobseeker", 15*time.Minute)
 
 	router := gin.New()
-	h := NewProfileHandler(db)
+	h := NewProfileHandler(sqlDB, bunDB)
 	g := router.Group("/api/v1/profiles")
 	g.Use(middleware.AuthRequired(testutil.TestJWTSecret))
 	g.GET("/me", h.GetMyProfile)
@@ -60,7 +62,7 @@ func TestGetMyProfile(t *testing.T) {
 	})
 
 	t.Run("company user no profile", func(t *testing.T) {
-		cu, _, _ := testutil.CreateCompanyUser(db, "comp@ex.com", "comp", "pass123", "Co", true)
+		cu, _, _ := testutil.CreateCompanyUser(sqlDB, "comp@ex.com", "comp", "pass123", "Co", true)
 		ct := testutil.GenerateToken(cu.String(), "company", 15*time.Minute)
 		w := httptest.NewRecorder()
 		req := httptest.NewRequest("GET", "/api/v1/profiles/me", nil)
@@ -83,7 +85,7 @@ func TestGetMyProfile(t *testing.T) {
 	})
 
 	t.Run("profile no experiences", func(t *testing.T) {
-		uid, _, _ := testutil.CreateJobseeker(db, testutil.UniqueEmail("noexp"), testutil.UniqueUsername("noexp"), "pass123", "No Exp")
+		uid, _, _ := testutil.CreateJobseeker(sqlDB, testutil.UniqueEmail("noexp"), testutil.UniqueUsername("noexp"), "pass123", "No Exp")
 		tk := testutil.GenerateToken(uid.String(), "jobseeker", 15*time.Minute)
 		w := httptest.NewRecorder()
 		req := httptest.NewRequest("GET", "/api/v1/profiles/me", nil)
@@ -103,13 +105,14 @@ func TestGetMyProfile(t *testing.T) {
 }
 
 func TestUpdateMyProfile(t *testing.T) {
-	db := testutil.SetupTestDB()
+	sqlDB := testutil.SetupTestDB()
+	bunDB := db.NewBunDB(sqlDB)
 
-	userID, _, _ := testutil.CreateJobseeker(db, "up@ex.com", "upuser", "pass123", "Up User")
+	userID, _, _ := testutil.CreateJobseeker(sqlDB, "up@ex.com", "upuser", "pass123", "Up User")
 	token := testutil.GenerateToken(userID.String(), "jobseeker", 15*time.Minute)
 
 	router := gin.New()
-	h := NewProfileHandler(db)
+	h := NewProfileHandler(sqlDB, bunDB)
 	g := router.Group("/api/v1/profiles")
 	g.Use(middleware.AuthRequired(testutil.TestJWTSecret))
 	g.PUT("/me", h.UpdateMyProfile)
@@ -225,7 +228,7 @@ func TestUpdateMyProfile(t *testing.T) {
 	})
 
 	t.Run("profile does not exist", func(t *testing.T) {
-		cuID, _, _ := testutil.CreateCompanyUser(db, testutil.UniqueEmail("update-cu"), testutil.UniqueUsername("update-cu"), "pass123", "Test Co", true)
+		cuID, _, _ := testutil.CreateCompanyUser(sqlDB, testutil.UniqueEmail("update-cu"), testutil.UniqueUsername("update-cu"), "pass123", "Test Co", true)
 		cuToken := testutil.GenerateToken(cuID.String(), "company", 15*time.Minute)
 		w := httptest.NewRecorder()
 		req := httptest.NewRequest("PUT", "/api/v1/profiles/me", bytes.NewBufferString(`{"headline":"Hacker"}`))
@@ -239,7 +242,7 @@ func TestUpdateMyProfile(t *testing.T) {
 
 	t.Run("slug already taken", func(t *testing.T) {
 		// Create a second user with a known slug
-		_, _, err := testutil.CreateJobseeker(db, testutil.UniqueEmail("slug-other"), testutil.UniqueUsername("slug-other"), "pass123", "Other User")
+		_, _, err := testutil.CreateJobseeker(sqlDB, testutil.UniqueEmail("slug-other"), testutil.UniqueUsername("slug-other"), "pass123", "Other User")
 		if err != nil {
 			t.Fatalf("create second jobseeker: %v", err)
 		}
@@ -255,7 +258,7 @@ func TestUpdateMyProfile(t *testing.T) {
 
 	t.Run("slug conflict", func(t *testing.T) {
 		// Second user tries to take first user's slug
-		oID, _, err := testutil.CreateJobseeker(db, testutil.UniqueEmail("slug-conflict"), testutil.UniqueUsername("slug-conflict"), "pass123", "Conflict User")
+		oID, _, err := testutil.CreateJobseeker(sqlDB, testutil.UniqueEmail("slug-conflict"), testutil.UniqueUsername("slug-conflict"), "pass123", "Conflict User")
 		if err != nil {
 			t.Fatalf("create second jobseeker: %v", err)
 		}
@@ -272,13 +275,14 @@ func TestUpdateMyProfile(t *testing.T) {
 }
 
 func TestCreateExperience(t *testing.T) {
-	db := testutil.SetupTestDB()
+	sqlDB := testutil.SetupTestDB()
+	bunDB := db.NewBunDB(sqlDB)
 
-	userID, _, _ := testutil.CreateJobseeker(db, "ce@ex.com", "ceuser", "pass123", "CE User")
+	userID, _, _ := testutil.CreateJobseeker(sqlDB, "ce@ex.com", "ceuser", "pass123", "CE User")
 	token := testutil.GenerateToken(userID.String(), "jobseeker", 15*time.Minute)
 
 	router := gin.New()
-	h := NewProfileHandler(db)
+	h := NewProfileHandler(sqlDB, bunDB)
 	g := router.Group("/api/v1/profiles")
 	g.Use(middleware.AuthRequired(testutil.TestJWTSecret))
 	g.POST("/me/experience", h.CreateExperience)
@@ -380,14 +384,15 @@ func TestCreateExperience(t *testing.T) {
 }
 
 func TestUpdateExperience(t *testing.T) {
-	db := testutil.SetupTestDB()
+	sqlDB := testutil.SetupTestDB()
+	bunDB := db.NewBunDB(sqlDB)
 
-	userID, profileID, _ := testutil.CreateJobseeker(db, "ue@ex.com", "ueuser", "pass123", "UE User")
-	expID, _ := testutil.CreateExperience(db, profileID, "employment", "Junior", "Small Co")
+	userID, profileID, _ := testutil.CreateJobseeker(sqlDB, "ue@ex.com", "ueuser", "pass123", "UE User")
+	expID, _ := testutil.CreateExperience(sqlDB, profileID, "employment", "Junior", "Small Co")
 	token := testutil.GenerateToken(userID.String(), "jobseeker", 15*time.Minute)
 
 	router := gin.New()
-	h := NewProfileHandler(db)
+	h := NewProfileHandler(sqlDB, bunDB)
 	g := router.Group("/api/v1/profiles")
 	g.Use(middleware.AuthRequired(testutil.TestJWTSecret))
 	g.PUT("/me/experience/:id", h.UpdateExperience)
@@ -437,8 +442,8 @@ func TestUpdateExperience(t *testing.T) {
 	})
 
 	t.Run("belongs to another user", func(t *testing.T) {
-		otherID, otherProfileID, _ := testutil.CreateJobseeker(db, testutil.UniqueEmail("other-ue"), testutil.UniqueUsername("other-ue"), "pass123", "Other")
-		otherExpID, _ := testutil.CreateExperience(db, otherProfileID, "employment", "Other Job", "Other Co")
+		otherID, otherProfileID, _ := testutil.CreateJobseeker(sqlDB, testutil.UniqueEmail("other-ue"), testutil.UniqueUsername("other-ue"), "pass123", "Other")
+		otherExpID, _ := testutil.CreateExperience(sqlDB, otherProfileID, "employment", "Other Job", "Other Co")
 		_ = otherID
 		w := httptest.NewRecorder()
 		req := httptest.NewRequest("PUT", fmt.Sprintf("/api/v1/profiles/me/experience/%s", otherExpID.String()), bytes.NewBufferString(`{"title":"Hacked"}`))
@@ -452,14 +457,15 @@ func TestUpdateExperience(t *testing.T) {
 }
 
 func TestDeleteExperience(t *testing.T) {
-	db := testutil.SetupTestDB()
+	sqlDB := testutil.SetupTestDB()
+	bunDB := db.NewBunDB(sqlDB)
 
-	userID, profileID, _ := testutil.CreateJobseeker(db, "de@ex.com", "deuser", "pass123", "DE User")
-	expID, _ := testutil.CreateExperience(db, profileID, "employment", "Temp", "Temp Co")
+	userID, profileID, _ := testutil.CreateJobseeker(sqlDB, "de@ex.com", "deuser", "pass123", "DE User")
+	expID, _ := testutil.CreateExperience(sqlDB, profileID, "employment", "Temp", "Temp Co")
 	token := testutil.GenerateToken(userID.String(), "jobseeker", 15*time.Minute)
 
 	router := gin.New()
-	h := NewProfileHandler(db)
+	h := NewProfileHandler(sqlDB, bunDB)
 	g := router.Group("/api/v1/profiles")
 	g.Use(middleware.AuthRequired(testutil.TestJWTSecret))
 	g.DELETE("/me/experience/:id", h.DeleteExperience)
@@ -494,8 +500,8 @@ func TestDeleteExperience(t *testing.T) {
 	})
 
 	t.Run("belongs to another user", func(t *testing.T) {
-		otherID, otherProfileID, _ := testutil.CreateJobseeker(db, testutil.UniqueEmail("other-de"), testutil.UniqueUsername("other-de"), "pass123", "Other")
-		otherExpID, _ := testutil.CreateExperience(db, otherProfileID, "employment", "Other Job", "Other Co")
+		otherID, otherProfileID, _ := testutil.CreateJobseeker(sqlDB, testutil.UniqueEmail("other-de"), testutil.UniqueUsername("other-de"), "pass123", "Other")
+		otherExpID, _ := testutil.CreateExperience(sqlDB, otherProfileID, "employment", "Other Job", "Other Co")
 		_ = otherID
 		w := httptest.NewRecorder()
 		req := httptest.NewRequest("DELETE", fmt.Sprintf("/api/v1/profiles/me/experience/%s", otherExpID.String()), nil)

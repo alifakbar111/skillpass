@@ -11,19 +11,21 @@ import (
 
 	"github.com/gin-gonic/gin"
 
+	"skillpass-server-go/internal/db"
 	"skillpass-server-go/internal/middleware"
 	"skillpass-server-go/internal/testutil"
 )
 
 func TestListJobs(t *testing.T) {
-	db := testutil.SetupTestDB()
+	sqlDB := testutil.SetupTestDB()
+	bunDB := db.NewBunDB(sqlDB)
 
-	_, cID, _ := testutil.CreateCompanyUser(db, "jc@ex.com", "jc", "pass123", "Job Co", true)
-	testutil.CreateJob(db, cID, "Software Engineer", "Technology", true)
-	testutil.CreateJob(db, cID, "Doctor", "Healthcare", false)
+	_, cID, _ := testutil.CreateCompanyUser(sqlDB, "jc@ex.com", "jc", "pass123", "Job Co", true)
+	testutil.CreateJob(sqlDB, cID, "Software Engineer", "Technology", true)
+	testutil.CreateJob(sqlDB, cID, "Doctor", "Healthcare", false)
 
 	router := gin.New()
-	h := NewJobHandler(db)
+	h := NewJobHandler(sqlDB, bunDB)
 	router.GET("/api/v1/jobs", h.ListJobs)
 
 	t.Run("list only open", func(t *testing.T) {
@@ -63,9 +65,9 @@ func TestListJobs(t *testing.T) {
 	})
 
 	t.Run("pagination", func(t *testing.T) {
-		testutil.CreateJob(db, cID, "Extra 1", "Tech", true)
-		testutil.CreateJob(db, cID, "Extra 2", "Tech", true)
-		testutil.CreateJob(db, cID, "Extra 3", "Tech", true)
+		testutil.CreateJob(sqlDB, cID, "Extra 1", "Tech", true)
+		testutil.CreateJob(sqlDB, cID, "Extra 2", "Tech", true)
+		testutil.CreateJob(sqlDB, cID, "Extra 3", "Tech", true)
 		w := httptest.NewRecorder()
 		req := httptest.NewRequest("GET", "/api/v1/jobs?limit=2&offset=0", nil)
 		router.ServeHTTP(w, req)
@@ -80,8 +82,8 @@ func TestListJobs(t *testing.T) {
 	})
 
 	t.Run("filter by experience_level", func(t *testing.T) {
-		eID, _ := testutil.CreateJob(db, cID, "Entry Job", "Tech", true)
-		db.Exec(`UPDATE job_postings SET experience_level = 'entry'::experience_level WHERE id = $1`, eID)
+		eID, _ := testutil.CreateJob(sqlDB, cID, "Entry Job", "Tech", true)
+		sqlDB.Exec(`UPDATE job_postings SET experience_level = 'entry'::experience_level WHERE id = $1`, eID)
 		w := httptest.NewRecorder()
 		req := httptest.NewRequest("GET", "/api/v1/jobs?experience_level=entry", nil)
 		router.ServeHTTP(w, req)
@@ -96,10 +98,10 @@ func TestListJobs(t *testing.T) {
 	})
 
 	t.Run("industry + experience_level", func(t *testing.T) {
-		mID, _ := testutil.CreateJob(db, cID, "Mid Tech", "Technology", true)
-		testutil.CreateJob(db, cID, "Mid Health", "Healthcare", true)
-		db.Exec(`UPDATE job_postings SET experience_level = 'mid'::experience_level WHERE id = $1`, mID)
-		db.Exec(`UPDATE job_postings SET experience_level = 'mid'::experience_level WHERE title = 'Mid Health'`)
+		mID, _ := testutil.CreateJob(sqlDB, cID, "Mid Tech", "Technology", true)
+		testutil.CreateJob(sqlDB, cID, "Mid Health", "Healthcare", true)
+		sqlDB.Exec(`UPDATE job_postings SET experience_level = 'mid'::experience_level WHERE id = $1`, mID)
+		sqlDB.Exec(`UPDATE job_postings SET experience_level = 'mid'::experience_level WHERE title = 'Mid Health'`)
 		w := httptest.NewRecorder()
 		req := httptest.NewRequest("GET", "/api/v1/jobs?industry=Technology&experience_level=mid", nil)
 		router.ServeHTTP(w, req)
@@ -159,13 +161,14 @@ func TestListJobs(t *testing.T) {
 }
 
 func TestGetJob(t *testing.T) {
-	db := testutil.SetupTestDB()
+	sqlDB := testutil.SetupTestDB()
+	bunDB := db.NewBunDB(sqlDB)
 
-	_, cID, _ := testutil.CreateCompanyUser(db, "gj@ex.com", "gj", "pass123", "GJ Co", true)
-	jID, _ := testutil.CreateJob(db, cID, "Backend Engineer", "Technology", true)
+	_, cID, _ := testutil.CreateCompanyUser(sqlDB, "gj@ex.com", "gj", "pass123", "GJ Co", true)
+	jID, _ := testutil.CreateJob(sqlDB, cID, "Backend Engineer", "Technology", true)
 
 	router := gin.New()
-	h := NewJobHandler(db)
+	h := NewJobHandler(sqlDB, bunDB)
 	router.GET("/api/v1/jobs/:id", h.GetJob)
 
 	t.Run("by id", func(t *testing.T) {
@@ -196,7 +199,7 @@ func TestGetJob(t *testing.T) {
 	})
 
 	t.Run("closed job", func(t *testing.T) {
-		closedID, _ := testutil.CreateJob(db, cID, "Closed Job", "Tech", false)
+		closedID, _ := testutil.CreateJob(sqlDB, cID, "Closed Job", "Tech", false)
 		w := httptest.NewRecorder()
 		req := httptest.NewRequest("GET", fmt.Sprintf("/api/v1/jobs/%s", closedID.String()), nil)
 		router.ServeHTTP(w, req)
@@ -212,21 +215,22 @@ func TestGetJob(t *testing.T) {
 }
 
 func TestListMyJobs(t *testing.T) {
-	db := testutil.SetupTestDB()
+	sqlDB := testutil.SetupTestDB()
+	bunDB := db.NewBunDB(sqlDB)
 
-	uID, cID, _ := testutil.CreateCompanyUser(db, "mj@ex.com", "mj", "pass123", "MJ Co", true)
-	testutil.CreateJob(db, cID, "Job 1", "Tech", true)
-	testutil.CreateJob(db, cID, "Job 2", "Tech", false)
+	uID, cID, _ := testutil.CreateCompanyUser(sqlDB, "mj@ex.com", "mj", "pass123", "MJ Co", true)
+	testutil.CreateJob(sqlDB, cID, "Job 1", "Tech", true)
+	testutil.CreateJob(sqlDB, cID, "Job 2", "Tech", false)
 	tok := testutil.GenerateToken(uID.String(), "company", 15*time.Minute)
-	uID2, _, _ := testutil.CreateCompanyUser(db, "mj-empty@ex.com", "mj-empty", "pass123", "Empty Co", true)
+	uID2, _, _ := testutil.CreateCompanyUser(sqlDB, "mj-empty@ex.com", "mj-empty", "pass123", "Empty Co", true)
 	tokNoJobs := testutil.GenerateToken(uID2.String(), "company", 15*time.Minute)
-	jsUID, _, _ := testutil.CreateJobseeker(db, "js-mj@ex.com", "js-mj", "pass123", "Job Seeker")
+	jsUID, _, _ := testutil.CreateJobseeker(sqlDB, "js-mj@ex.com", "js-mj", "pass123", "Job Seeker")
 	tokJobseeker := testutil.GenerateToken(jsUID.String(), "jobseeker", 15*time.Minute)
 
 	router := gin.New()
-	h := NewJobHandler(db)
+	h := NewJobHandler(sqlDB, bunDB)
 	g := router.Group("/api/v1/jobs")
-	g.Use(middleware.AuthRequired(testutil.TestJWTSecret), middleware.RequireRole("company"), middleware.RequireVerifiedCompany(db))
+	g.Use(middleware.AuthRequired(testutil.TestJWTSecret), middleware.RequireRole("company"), middleware.RequireVerifiedCompany(bunDB))
 	g.GET("/me", h.ListMyJobs)
 
 	t.Run("all statuses", func(t *testing.T) {
@@ -280,17 +284,18 @@ func TestListMyJobs(t *testing.T) {
 }
 
 func TestCreateJob(t *testing.T) {
-	db := testutil.SetupTestDB()
+	sqlDB := testutil.SetupTestDB()
+	bunDB := db.NewBunDB(sqlDB)
 
-	uID, _, _ := testutil.CreateCompanyUser(db, "cj@ex.com", "cj", "pass123", "CJ Co", true)
+	uID, _, _ := testutil.CreateCompanyUser(sqlDB, "cj@ex.com", "cj", "pass123", "CJ Co", true)
 	tok := testutil.GenerateToken(uID.String(), "company", 15*time.Minute)
-	uIDUnv, _, _ := testutil.CreateCompanyUser(db, "cj-unv@ex.com", "cj-unv", "pass123", "Unverified Co", false)
+	uIDUnv, _, _ := testutil.CreateCompanyUser(sqlDB, "cj-unv@ex.com", "cj-unv", "pass123", "Unverified Co", false)
 	tokUnverified := testutil.GenerateToken(uIDUnv.String(), "company", 15*time.Minute)
 
 	router := gin.New()
-	h := NewJobHandler(db)
+	h := NewJobHandler(sqlDB, bunDB)
 	g := router.Group("/api/v1/jobs")
-	g.Use(middleware.AuthRequired(testutil.TestJWTSecret), middleware.RequireRole("company"), middleware.RequireVerifiedCompany(db))
+	g.Use(middleware.AuthRequired(testutil.TestJWTSecret), middleware.RequireRole("company"), middleware.RequireVerifiedCompany(bunDB))
 	g.POST("", h.CreateJob)
 
 	t.Run("success", func(t *testing.T) {
@@ -380,18 +385,19 @@ func TestCreateJob(t *testing.T) {
 }
 
 func TestUpdateJob(t *testing.T) {
-	db := testutil.SetupTestDB()
+	sqlDB := testutil.SetupTestDB()
+	bunDB := db.NewBunDB(sqlDB)
 
-	uID, cID, _ := testutil.CreateCompanyUser(db, "uj@ex.com", "uj", "pass123", "UJ Co", true)
-	jID, _ := testutil.CreateJob(db, cID, "Original", "Tech", true)
+	uID, cID, _ := testutil.CreateCompanyUser(sqlDB, "uj@ex.com", "uj", "pass123", "UJ Co", true)
+	jID, _ := testutil.CreateJob(sqlDB, cID, "Original", "Tech", true)
 	tok := testutil.GenerateToken(uID.String(), "company", 15*time.Minute)
-	uID2, _, _ := testutil.CreateCompanyUser(db, "uj-other@ex.com", "uj-other", "pass123", "Other Co", true)
+	uID2, _, _ := testutil.CreateCompanyUser(sqlDB, "uj-other@ex.com", "uj-other", "pass123", "Other Co", true)
 	tokOther := testutil.GenerateToken(uID2.String(), "company", 15*time.Minute)
 
 	router := gin.New()
-	h := NewJobHandler(db)
+	h := NewJobHandler(sqlDB, bunDB)
 	g := router.Group("/api/v1/jobs")
-	g.Use(middleware.AuthRequired(testutil.TestJWTSecret), middleware.RequireRole("company"), middleware.RequireVerifiedCompany(db))
+	g.Use(middleware.AuthRequired(testutil.TestJWTSecret), middleware.RequireRole("company"), middleware.RequireVerifiedCompany(bunDB))
 	g.PUT("/:id", h.UpdateJob)
 
 	t.Run("update title", func(t *testing.T) {
@@ -480,21 +486,22 @@ func TestUpdateJob(t *testing.T) {
 }
 
 func TestDeleteJob(t *testing.T) {
-	db := testutil.SetupTestDB()
+	sqlDB := testutil.SetupTestDB()
+	bunDB := db.NewBunDB(sqlDB)
 
-	uID, cID, _ := testutil.CreateCompanyUser(db, "dj@ex.com", "dj", "pass123", "DJ Co", true)
-	jID, _ := testutil.CreateJob(db, cID, "To Delete", "Tech", true)
+	uID, cID, _ := testutil.CreateCompanyUser(sqlDB, "dj@ex.com", "dj", "pass123", "DJ Co", true)
+	jID, _ := testutil.CreateJob(sqlDB, cID, "To Delete", "Tech", true)
 	tok := testutil.GenerateToken(uID.String(), "company", 15*time.Minute)
-	jID2, _ := testutil.CreateJob(db, cID, "To Delete 2", "Tech", true)
-	uID2, _, _ := testutil.CreateCompanyUser(db, "dj-other@ex.com", "dj-other", "pass123", "Other Co", true)
+	jID2, _ := testutil.CreateJob(sqlDB, cID, "To Delete 2", "Tech", true)
+	uID2, _, _ := testutil.CreateCompanyUser(sqlDB, "dj-other@ex.com", "dj-other", "pass123", "Other Co", true)
 	tokOther := testutil.GenerateToken(uID2.String(), "company", 15*time.Minute)
-	jsUID, _, _ := testutil.CreateJobseeker(db, "js-dj@ex.com", "js-dj", "pass123", "Job Seeker")
+	jsUID, _, _ := testutil.CreateJobseeker(sqlDB, "js-dj@ex.com", "js-dj", "pass123", "Job Seeker")
 	tokJobseeker := testutil.GenerateToken(jsUID.String(), "jobseeker", 15*time.Minute)
 
 	router := gin.New()
-	h := NewJobHandler(db)
+	h := NewJobHandler(sqlDB, bunDB)
 	g := router.Group("/api/v1/jobs")
-	g.Use(middleware.AuthRequired(testutil.TestJWTSecret), middleware.RequireRole("company"), middleware.RequireVerifiedCompany(db))
+	g.Use(middleware.AuthRequired(testutil.TestJWTSecret), middleware.RequireRole("company"), middleware.RequireVerifiedCompany(bunDB))
 	g.DELETE("/:id", h.DeleteJob)
 
 	t.Run("success", func(t *testing.T) {

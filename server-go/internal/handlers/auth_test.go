@@ -11,15 +11,17 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
 
+	"skillpass-server-go/internal/db"
 	"skillpass-server-go/internal/middleware"
 	"skillpass-server-go/internal/testutil"
 )
 
 func TestRegister(t *testing.T) {
-	db := testutil.SetupTestDB()
+	sqlDB := testutil.SetupTestDB()
+	bunDB := db.NewBunDB(sqlDB)
 
 	router := gin.New()
-	h := NewAuthHandler(db, testutil.TestJWTSecret)
+	h := NewAuthHandler(sqlDB, testutil.TestJWTSecret, bunDB)
 	rl := middleware.NewRateLimiter(100, 200)
 	router.POST("/api/v1/auth/register", rl.Middleware(), h.Register)
 
@@ -100,12 +102,13 @@ func TestRegister(t *testing.T) {
 }
 
 func TestLogin(t *testing.T) {
-	db := testutil.SetupTestDB()
+	sqlDB := testutil.SetupTestDB()
+	bunDB := db.NewBunDB(sqlDB)
 
-	testutil.CreateUser(db, "login@example.com", "loginuser", "correct-password", "Login User", "jobseeker")
+	testutil.CreateUser(sqlDB, "login@example.com", "loginuser", "correct-password", "Login User", "jobseeker")
 
 	router := gin.New()
-	h := NewAuthHandler(db, testutil.TestJWTSecret)
+	h := NewAuthHandler(sqlDB, testutil.TestJWTSecret, bunDB)
 	rl := middleware.NewRateLimiter(100, 200)
 	router.POST("/api/v1/auth/login", rl.Middleware(), h.Login)
 
@@ -154,19 +157,20 @@ func TestLogin(t *testing.T) {
 }
 
 func TestRefresh(t *testing.T) {
-	db := testutil.SetupTestDB()
+	sqlDB := testutil.SetupTestDB()
+	bunDB := db.NewBunDB(sqlDB)
 
-	userID, err := testutil.CreateUser(db, "refresh@example.com", "refreshuser", "password123", "Refresh User", "jobseeker")
+	userID, err := testutil.CreateUser(sqlDB, "refresh@example.com", "refreshuser", "password123", "Refresh User", "jobseeker")
 	if err != nil {
 		t.Fatalf("create user: %v", err)
 	}
 
 	refreshID := uuid.New()
 	refreshTokenStr := testutil.GenerateRefreshToken(userID.String(), "jobseeker", refreshID.String(), 7*24*time.Hour)
-	testutil.InsertRefreshToken(db, refreshID, userID, refreshTokenStr, time.Now().Add(7*24*time.Hour))
+	testutil.InsertRefreshToken(sqlDB, refreshID, userID, refreshTokenStr, time.Now().Add(7*24*time.Hour))
 
 	router := gin.New()
-	h := NewAuthHandler(db, testutil.TestJWTSecret)
+	h := NewAuthHandler(sqlDB, testutil.TestJWTSecret, bunDB)
 	rl := middleware.NewRateLimiter(100, 200)
 	router.POST("/api/v1/auth/refresh", rl.Middleware(), h.Refresh)
 
@@ -207,16 +211,17 @@ func TestRefresh(t *testing.T) {
 }
 
 func TestLogout(t *testing.T) {
-	db := testutil.SetupTestDB()
+	sqlDB := testutil.SetupTestDB()
+	bunDB := db.NewBunDB(sqlDB)
 
-	userID, err := testutil.CreateUser(db, "logout@example.com", "logoutuser", "password123", "Logout User", "jobseeker")
+	userID, err := testutil.CreateUser(sqlDB, "logout@example.com", "logoutuser", "password123", "Logout User", "jobseeker")
 	if err != nil {
 		t.Fatalf("create user: %v", err)
 	}
 	token := testutil.GenerateToken(userID.String(), "jobseeker", 15*time.Minute)
 
 	router := gin.New()
-	h := NewAuthHandler(db, testutil.TestJWTSecret)
+	h := NewAuthHandler(sqlDB, testutil.TestJWTSecret, bunDB)
 	router.POST("/api/v1/auth/logout", middleware.AuthRequired(testutil.TestJWTSecret), h.Logout)
 
 	t.Run("logout success", func(t *testing.T) {

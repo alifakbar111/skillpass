@@ -13,6 +13,7 @@ import (
 	"github.com/gin-gonic/gin"
 
 	"skillpass-server-go/internal/authtoken"
+	"skillpass-server-go/internal/db"
 	"skillpass-server-go/internal/middleware"
 	"skillpass-server-go/internal/testutil"
 )
@@ -49,12 +50,13 @@ func (r *recordingSender) lastToken(t *testing.T) string {
 
 func setupAuthRecoveryRouter(t *testing.T) (*gin.Engine, *recordingSender, func() string) {
 	t.Helper()
-	db := testutil.SetupTestDB()
+	sqlDB := testutil.SetupTestDB()
+	bunDB := db.NewBunDB(sqlDB)
 
 	sender := &recordingSender{}
-	h := NewAuthHandler(db, testutil.TestJWTSecret)
+	h := NewAuthHandler(sqlDB, testutil.TestJWTSecret, bunDB)
 	h.SetEmailer(sender)
-	h.SetTokenService(authtoken.NewService(db))
+	h.SetTokenService(authtoken.NewService(sqlDB))
 
 	router := gin.New()
 	router.POST("/api/v1/auth/register", h.Register)
@@ -222,15 +224,16 @@ func TestPasswordResetFlow(t *testing.T) {
 }
 
 func TestOGPage(t *testing.T) {
-	db := testutil.SetupTestDB()
-	_, _, err := testutil.CreateJobseeker(db, "og@example.com", "oguser", "password123", "OG User")
+	sqlDB := testutil.SetupTestDB()
+	bunDB := db.NewBunDB(sqlDB)
+	_, _, err := testutil.CreateJobseeker(sqlDB, "og@example.com", "oguser", "password123", "OG User")
 	if err != nil {
 		t.Fatalf("create jobseeker: %v", err)
 	}
-	db.Exec(`UPDATE jobseeker_profiles SET headline = 'Senior Gopher' WHERE slug = 'oguser'`)
+	sqlDB.Exec(`UPDATE jobseeker_profiles SET headline = 'Senior Gopher' WHERE slug = 'oguser'`)
 
 	router := gin.New()
-	h := NewPassportHandler(db)
+	h := NewPassportHandler(sqlDB, bunDB)
 	router.GET("/p/:username", h.GetOGPage)
 
 	t.Run("renders og tags", func(t *testing.T) {

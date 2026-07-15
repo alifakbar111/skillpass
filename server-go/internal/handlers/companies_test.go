@@ -11,18 +11,20 @@ import (
 
 	"github.com/gin-gonic/gin"
 
+	"skillpass-server-go/internal/db"
 	"skillpass-server-go/internal/middleware"
 	"skillpass-server-go/internal/testutil"
 )
 
 func TestBlindModeToggle(t *testing.T) {
-	db := testutil.SetupTestDB()
+	sqlDB := testutil.SetupTestDB()
+	bunDB := db.NewBunDB(sqlDB)
 
-	uID, cID, _ := testutil.CreateCompanyUser(db, "blind@ex.com", "blindco", "pass123", "Blind Corp", true)
+	uID, cID, _ := testutil.CreateCompanyUser(sqlDB, "blind@ex.com", "blindco", "pass123", "Blind Corp", true)
 	tok := testutil.GenerateToken(uID.String(), "company", 15*time.Minute)
 
 	router := gin.New()
-	h := NewCompanyHandler(db)
+	h := NewCompanyHandler(sqlDB, bunDB)
 	g := router.Group("/api/v1/company")
 	g.Use(middleware.AuthRequired(testutil.TestJWTSecret), middleware.RequireRole("company"))
 	g.GET("/profile", h.GetProfile)
@@ -57,20 +59,21 @@ func TestBlindModeToggle(t *testing.T) {
 	})
 
 	t.Run("helper reflects update", func(t *testing.T) {
-		if !CompanyBlindMode(context.Background(), db, cID.String()) {
+		if !CompanyBlindMode(context.Background(), sqlDB, cID.String()) {
 			t.Fatal("expected CompanyBlindMode true")
 		}
 	})
 }
 
 func TestGetCompanyProfile(t *testing.T) {
-	db := testutil.SetupTestDB()
+	sqlDB := testutil.SetupTestDB()
+	bunDB := db.NewBunDB(sqlDB)
 
-	uID, _, _ := testutil.CreateCompanyUser(db, "comp@ex.com", "comp", "pass123", "Test Corp", true)
+	uID, _, _ := testutil.CreateCompanyUser(sqlDB, "comp@ex.com", "comp", "pass123", "Test Corp", true)
 	tok := testutil.GenerateToken(uID.String(), "company", 15*time.Minute)
 
 	router := gin.New()
-	h := NewCompanyHandler(db)
+	h := NewCompanyHandler(sqlDB, bunDB)
 	g := router.Group("/api/v1/company")
 	g.Use(middleware.AuthRequired(testutil.TestJWTSecret), middleware.RequireRole("company"))
 	g.GET("/profile", h.GetProfile)
@@ -111,7 +114,7 @@ func TestGetCompanyProfile(t *testing.T) {
 	})
 
 	t.Run("company not found", func(t *testing.T) {
-		uid, err := testutil.CreateUser(db, testutil.UniqueEmail("nocomp"), testutil.UniqueUsername("nocomp"), "pass123", "No Company", "company")
+		uid, err := testutil.CreateUser(sqlDB, testutil.UniqueEmail("nocomp"), testutil.UniqueUsername("nocomp"), "pass123", "No Company", "company")
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -138,13 +141,14 @@ func TestGetCompanyProfile(t *testing.T) {
 }
 
 func TestUpdateCompanyProfile(t *testing.T) {
-	db := testutil.SetupTestDB()
+	sqlDB := testutil.SetupTestDB()
+	bunDB := db.NewBunDB(sqlDB)
 
-	uID, _, _ := testutil.CreateCompanyUser(db, "uc@ex.com", "uc", "pass123", "Old Name", true)
+	uID, _, _ := testutil.CreateCompanyUser(sqlDB, "uc@ex.com", "uc", "pass123", "Old Name", true)
 	tok := testutil.GenerateToken(uID.String(), "company", 15*time.Minute)
 
 	router := gin.New()
-	h := NewCompanyHandler(db)
+	h := NewCompanyHandler(sqlDB, bunDB)
 	g := router.Group("/api/v1/company")
 	g.Use(middleware.AuthRequired(testutil.TestJWTSecret), middleware.RequireRole("company"))
 	g.PUT("/profile", h.UpdateProfile)
@@ -214,7 +218,7 @@ func TestUpdateCompanyProfile(t *testing.T) {
 	})
 
 	t.Run("company not found", func(t *testing.T) {
-		uid, err := testutil.CreateUser(db, testutil.UniqueEmail("nocompup"), testutil.UniqueUsername("nocompup"), "pass123", "No Company Up", "company")
+		uid, err := testutil.CreateUser(sqlDB, testutil.UniqueEmail("nocompup"), testutil.UniqueUsername("nocompup"), "pass123", "No Company Up", "company")
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -231,13 +235,14 @@ func TestUpdateCompanyProfile(t *testing.T) {
 }
 
 func TestSubmitVerification(t *testing.T) {
-	db := testutil.SetupTestDB()
+	sqlDB := testutil.SetupTestDB()
+	bunDB := db.NewBunDB(sqlDB)
 
-	uID, _, _ := testutil.CreateCompanyUser(db, "sv@ex.com", "sv", "pass123", "SV Corp", false)
+	uID, _, _ := testutil.CreateCompanyUser(sqlDB, "sv@ex.com", "sv", "pass123", "SV Corp", false)
 	tok := testutil.GenerateToken(uID.String(), "company", 15*time.Minute)
 
 	router := gin.New()
-	h := NewCompanyHandler(db)
+	h := NewCompanyHandler(sqlDB, bunDB)
 	g := router.Group("/api/v1/company")
 	g.Use(middleware.AuthRequired(testutil.TestJWTSecret), middleware.RequireRole("company"))
 	g.POST("/verification", h.SubmitVerification)
@@ -278,7 +283,7 @@ func TestSubmitVerification(t *testing.T) {
 	})
 
 	t.Run("non-existent company", func(t *testing.T) {
-		uid, err := testutil.CreateUser(db, testutil.UniqueEmail("nover"), testutil.UniqueUsername("nover"), "pass123", "No Ver", "company")
+		uid, err := testutil.CreateUser(sqlDB, testutil.UniqueEmail("nover"), testutil.UniqueUsername("nover"), "pass123", "No Ver", "company")
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -295,7 +300,7 @@ func TestSubmitVerification(t *testing.T) {
 	})
 
 	t.Run("already verified", func(t *testing.T) {
-		avU, _, _ := testutil.CreateCompanyUser(db, testutil.UniqueEmail("alreadyv"), testutil.UniqueUsername("alreadyv"), "pass123", "Already V", true)
+		avU, _, _ := testutil.CreateCompanyUser(sqlDB, testutil.UniqueEmail("alreadyv"), testutil.UniqueUsername("alreadyv"), "pass123", "Already V", true)
 		avT := testutil.GenerateToken(avU.String(), "company", 15*time.Minute)
 		body := `{"businessRegistration":"BR-888","website":"https://alreadyv.com","address":"789 St","contact":"a@ex.com"}`
 		w := httptest.NewRecorder()
@@ -310,15 +315,16 @@ func TestSubmitVerification(t *testing.T) {
 }
 
 func TestGetVerificationStatus(t *testing.T) {
-	db := testutil.SetupTestDB()
+	sqlDB := testutil.SetupTestDB()
+	bunDB := db.NewBunDB(sqlDB)
 
-	pu, _, _ := testutil.CreateCompanyUser(db, "p@ex.com", "p", "pass123", "P Inc", false)
-	vu, _, _ := testutil.CreateCompanyUser(db, "v@ex.com", "v", "pass123", "V Inc", true)
+	pu, _, _ := testutil.CreateCompanyUser(sqlDB, "p@ex.com", "p", "pass123", "P Inc", false)
+	vu, _, _ := testutil.CreateCompanyUser(sqlDB, "v@ex.com", "v", "pass123", "V Inc", true)
 	pt := testutil.GenerateToken(pu.String(), "company", 15*time.Minute)
 	vt := testutil.GenerateToken(vu.String(), "company", 15*time.Minute)
 
 	router := gin.New()
-	h := NewCompanyHandler(db)
+	h := NewCompanyHandler(sqlDB, bunDB)
 	g := router.Group("/api/v1/company")
 	g.Use(middleware.AuthRequired(testutil.TestJWTSecret), middleware.RequireRole("company"))
 	g.GET("/verification-status", h.GetVerificationStatus)
@@ -348,7 +354,7 @@ func TestGetVerificationStatus(t *testing.T) {
 	})
 
 	t.Run("no company record", func(t *testing.T) {
-		uid, err := testutil.CreateUser(db, testutil.UniqueEmail("nostatus"), testutil.UniqueUsername("nostatus"), "pass123", "No Status", "company")
+		uid, err := testutil.CreateUser(sqlDB, testutil.UniqueEmail("nostatus"), testutil.UniqueUsername("nostatus"), "pass123", "No Status", "company")
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -366,13 +372,14 @@ func TestGetVerificationStatus(t *testing.T) {
 }
 
 func TestUpdateCompanyAllFields(t *testing.T) {
-	db := testutil.SetupTestDB()
+	sqlDB := testutil.SetupTestDB()
+	bunDB := db.NewBunDB(sqlDB)
 
-	uID, _, _ := testutil.CreateCompanyUser(db, testutil.UniqueEmail("allfields"), testutil.UniqueUsername("allfields"), "pass123", "Original Name", false)
+	uID, _, _ := testutil.CreateCompanyUser(sqlDB, testutil.UniqueEmail("allfields"), testutil.UniqueUsername("allfields"), "pass123", "Original Name", false)
 	tok := testutil.GenerateToken(uID.String(), "company", 15*time.Minute)
 
 	router := gin.New()
-	h := NewCompanyHandler(db)
+	h := NewCompanyHandler(sqlDB, bunDB)
 	g := router.Group("/api/v1/company")
 	g.Use(middleware.AuthRequired(testutil.TestJWTSecret), middleware.RequireRole("company"))
 	g.PUT("/profile", h.UpdateProfile)
