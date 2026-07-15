@@ -1,9 +1,9 @@
 ---
 name: "db-migration"
-description: "Create timestamped SQL migration files and trigger go-jet codegen"
+description: "Create timestamped SQL migration files and trigger Bun codegen"
 ---
 
-Create SQL migrations and manage go-jet codegen workflow.
+Create SQL migrations and manage Bun codegen workflow.
 
 ## Method
 

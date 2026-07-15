@@ -13,7 +13,7 @@
 | build web | `bun run build` |
 | db migrate | `bun run db:migrate` |
 | db seed | `bun run db:seed` |
-| db generate (go-jet codegen) | `bun run db:generate` |
+| db generate (Bun codegen) | `bun run db:generate` |
 | docker full stack up | `bun run docker:up` |
 | docker full stack down | `bun run docker:down` |
 | typecheck web | `bun --cwd web typecheck` |

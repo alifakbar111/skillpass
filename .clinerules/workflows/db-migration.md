@@ -2,7 +2,7 @@
 
 Invoke via: `/db-migration <description>`
 
-Create SQL migrations and manage go-jet codegen workflow.
+Create SQL migrations and manage Bun codegen workflow.
 
 ## Method
 

@@ -5,7 +5,7 @@
 - **Server**: Gin (Go) — migrated from Elysia (Bun)
 - **Frontend**: React 19 SPA (not Next.js), React Router v7, Vite 7
 - **Styling**: Tailwind CSS v4 + DaisyUI 5 (no `tailwind.config.*` — uses `@import "tailwindcss"; @plugin "daisyui"` in CSS)
-- **DB**: PostgreSQL + go-jet (codegen)
+- **DB**: PostgreSQL + Bun ORM
 - **Linter**: Biome (single binary, replaces ESLint + Prettier)
 
 ## Agent Dev Kit
@@ -52,7 +52,7 @@ skillpass/          — root: orchestration (concurrently runs both)
 │   │                 career/, companyreviews/, feedback/, hris/,
 │   │                 rbac/, spdid/, profileviews/
 │   ├── migrations/ — 17 SQL DDL files (000001-000017)
-│   ├── .gen/       — go-jet generated types
+│   ├── internal/models/ — Bun model structs
 │   └── docs/       — Swagger spec
 ├── web/            — React SPA — entrypoint: src/main.tsx
 │   └── src/
@@ -78,7 +78,7 @@ skillpass/          — root: orchestration (concurrently runs both)
 | Dev web only | `bun run dev:web` |
 | DB migrate | `bun run db:migrate` |
 | DB seed | `bun run db:seed` |
-| DB generate (go-jet codegen) | `bun run db:generate` |
+| DB generate (Bun codegen) | `bun run db:generate` |
 | API generate (swag + openapi-typescript) | `bun run api:generate` |
 | API drift check (pre-push gate) | `bun run api:check` |
 | Start fresh | `bun run setup` |
@@ -122,14 +122,14 @@ Or step by step:
 - Role guards: `RequireRole("company")` + `RequireVerifiedCompany(pool)` middleware
 - Password hashing: `internal/lib/password.go` — bcrypt (default) + argon2id fallback for existing hashes. Cost = `BcryptCost` (default 4 for dev)
 - Config from `internal/config/config.go` — reads `JWT_SECRET`, `DATABASE_URL`, `PORT`, `CORS_ORIGIN` from `.env` file or env vars
-- DB: pgx pool (`internal/db/db.go`), raw SQL queries + go-jet query builder
-- go-jet generated types in `.gen/` directory, re-exported via `internal/gen/`
+- DB: pgx pool (`internal/db/db.go`), raw SQL queries + Bun ORM
+- Bun model structs in `internal/models/`
 - All responses use **camelCase** JSON field names
 
 ### API response shape (important gotcha)
 
 When changing an API request/response shape:
-1. Edit the **handler-level response struct** in `server-go/internal/handlers/` (or `evaluation/`, `application/`, `matching/`) — never return raw `gin.H` or go-jet `internal/gen/` types from success paths
+1. Edit the **handler-level response struct** in `server-go/internal/handlers/` (or `evaluation/`, `application/`, `matching/`) — never return raw `gin.H` or Bun model types from success paths
 2. Run `bun run api:generate` — regenerates `server-go/docs/` (swagger) and `web/src/lib/generated/` (TypeScript types)
 3. Commit **both** the Go change and the regenerated files together
 4. Web types come from `@/lib/api-types` (barrel over `web/src/lib/generated/api.d.ts`) — never hand-write API response interfaces
@@ -154,10 +154,10 @@ When changing an API request/response shape:
 - Zero custom CSS — all utility classes from Tailwind + DaisyUI
 - Read `DESIGN.md` for color tokens, typography, spacing, and component patterns
 
-## DB / go-jet
-- go-jet code generator (database-first): `bun run db:generate` runs `jet` CLI against live DB
+## DB / Bun ORM
+- Bun ORM (database-first): `bun run db:generate` generates Bun model structs from the live DB schema
 - Raw SQL migrations in `server-go/migrations/` (numbered `000001_init.sql` through `000017_phase3_profile_views.sql`)
-- Generated types in `server-go/.gen/`, re-exported through `server-go/internal/gen/`
+- Bun model structs in `server-go/internal/models/`
 - Migration naming: `000018_<kebab-name>.sql`
 
 ## Testing
@@ -171,7 +171,7 @@ When changing an API request/response shape:
 ## Git hooks (lefthook)
 - **pre-commit**: `bun run format` (auto-fix code style, auto-stages)
 - **pre-push**: Go tests, web tests (if any), govulncheck, `bun audit`, API drift check, gen-types annotation check
-- The `no-gen-types-in-annotations` hook prevents go-jet `internal/gen` types from appearing in `@Success` swagger annotations — always wrap in a handler response struct
+- The `no-gen-types-in-annotations` hook prevents raw model types from appearing in `@Success` swagger annotations — always wrap in a handler response struct
 
 ## Git commits
 - Commit messages must be a single line only — no body, no trailers

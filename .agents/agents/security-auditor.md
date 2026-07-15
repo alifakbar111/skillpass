@@ -9,7 +9,7 @@ Audit code for security vulnerabilities. Read-only — does not modify code.
 ## Scope
 
 - JWT token handling and middleware ordering
-- SQL injection paths in raw queries and go-jet expressions
+- SQL injection paths in raw queries and Bun expressions
 - Role guards: `RequireRole`, `RequireVerifiedCompany`
 - Password hashing: bcrypt vs argon2id usage
 - CORS configuration

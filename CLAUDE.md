@@ -20,7 +20,7 @@ skillpass/              — root orchestration
 | Layer | Technology |
 |-------|------------|
 | **Runtime** | Go 1.26+ (server) · Bun (web tooling) |
-| **Backend** | Gin framework · pgx (database driver) · go-jet (ORM codegen) |
+| **Backend** | Gin framework · pgx (database driver) · Bun ORM |
 | **Frontend** | React 19 · React Router v7 · Vite 7 · TanStack Query v5 |
 | **Forms** | react-hook-form + Zod validation |
 | **Styling** | Tailwind CSS v4 · DaisyUI 5 (no tailwind.config files) |
@@ -44,7 +44,7 @@ skillpass/              — root orchestration
 | **Database** | |
 | Run migrations | `bun run db:migrate` |
 | Seed initial data | `bun run db:seed` |
-| Regenerate go-jet types | `bun run db:generate` |
+| Regenerate Bun model types | `bun run db:generate` |
 | Regenerate API types | `bun run api:generate` (after changing any response struct or swag annotation) |
 | API drift check | `bun run api:check` |
 | **Code quality** | |
@@ -91,15 +91,14 @@ bun run dev                            # Start server + web concurrently
 - Rate limiting on auth endpoints via `internal/middleware/ratelimit.go`
 - Password hashing: bcrypt (cost 4 in dev) via `internal/lib/password.go`, with argon2id fallback for existing hashes
 - **All JSON responses use camelCase** field names (struct tags: `json:"fieldName"`)
-- Named response structs in `handlers/responses.go` — never return raw `gin.H` or go-jet `internal/gen` types from success paths
+- Named response structs in `handlers/responses.go` — never return raw `gin.H` or Bun model types from success paths
 - Config from `internal/config/config.go` reads: `JWT_SECRET`, `DATABASE_URL`, `PORT`, `CORS_ORIGIN` from `.env` or env vars
 - **Important:** Server looks for `.env` in `server-go/.env`, not root `.env`
 
 **Database:**
 - pgx pool setup in `internal/db/db.go`
 - Raw SQL in `server-go/migrations/` (DDL files, 17 migrations)
-- go-jet generated types in `server-go/.gen/`, re-exported via `server-go/internal/gen/`
-- Codegen: `bun run db:generate` runs the `jet` CLI against the live DB
+- Bun model structs in `server-go/internal/models/`
 - DB-backed migration tracking (replaced brittle file markers)
 
 **Handlers:** One handler type per domain:
@@ -191,7 +190,7 @@ bun run dev                            # Start server + web concurrently
   - `govulncheck` (Go vulnerability scanner)
   - `bun audit` (npm audit)
   - `bun run api:check` (API drift check — regenerates and diffs)
-  - gen-types annotation check (prevents go-jet types in swagger annotations)
+  - gen-types annotation check (prevents Bun model types in swagger annotations)
 
 **Commit before pushing** if you want to reformat locally first (hooks auto-stage fixed files).
 
@@ -220,7 +219,7 @@ bun run dev                            # Start server + web concurrently
 - `security.md` — Auth, validation, SQL injection prevention
 - `naming-and-structure.md` — Variable/function/file naming conventions
 - `commands.md` — All available commands
-- `database.md` — PostgreSQL, go-jet, migrations
+- `database.md` — PostgreSQL, Bun ORM, migrations
 
 ## Environment Setup
 
@@ -277,12 +276,12 @@ CORS_ORIGIN=http://localhost:4200
 
 1. Write new SQL file in `server-go/migrations/` (naming: `000018_<kebab-name>.sql`)
 2. Run `bun run db:migrate`
-3. Run `bun run db:generate` to regenerate go-jet types
-4. Types appear in `server-go/.gen/`, re-import via `server-go/internal/gen/`
+3. Run `bun run db:generate` to regenerate Bun model types
+4. Model types appear in `server-go/internal/models/`
 
 ### Changing an API request/response shape
 
-1. Edit the named struct in `server-go/internal/handlers/` (or evaluation/application/matching) — never return raw `gin.H` or go-jet `internal/gen` types from success paths
+1. Edit the named struct in `server-go/internal/handlers/` (or evaluation/application/matching) — never return raw `gin.H` or Bun model types from success paths
 2. Run `bun run api:generate` — regenerates `server-go/docs/` and `web/src/lib/generated/`
 3. Commit BOTH the Go change and the regenerated files together
 4. Web types come from `@/lib/api-types` (a barrel over `web/src/lib/generated/api.d.ts`) — never hand-write API response interfaces

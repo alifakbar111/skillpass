@@ -7,12 +7,12 @@ Talent marketplace where jobseekers build structured career profiles, get AI-pow
 | Layer | Choice |
 |---|---|
 | Runtime | Go 1.26+ (server), Bun (web tooling) |
-| Backend | Go + Gin + go-jet |
+| Backend | Go + Gin + Bun ORM |
 | Frontend | React 19 + React Router v7 + TanStack Query v5 |
 | Styling | Tailwind CSS v4 + DaisyUI 5 |
 | Forms | react-hook-form + Zod |
 | Database | PostgreSQL |
-| Schema Mgmt | SQL DDL + go-jet codegen |
+| Schema Mgmt | SQL DDL + Bun codegen |
 | Auth | JWT (golang-jwt) |
 | Linting | Biome (replaces ESLint + Prettier) |
 | Testing | vitest (web) · Go testing (server) |
@@ -43,7 +43,6 @@ Talent marketplace where jobseekers build structured career profiles, get AI-pow
 | [Go](https://go.dev) | >= 1.26 | `go version` |
 | [Bun](https://bun.sh) | >= 1.2 | `bun --version` |
 | [Docker](https://docker.com) | Any recent | `docker --version` |
-| [jet CLI](https://github.com/go-jet/jet) | Latest | `go install github.com/go-jet/jet/v2/cmd/jet@latest` (optional — for codegen) |
 
 > **Quick version check:**
 > ```bash
@@ -140,15 +139,13 @@ bun run db:migrate
 ```bash
 bun run db:seed
 ```
-### 8. Generate go-jet Types (Optional)
+### 8. Generate Bun Model Types
 
 ```bash
 bun run db:generate
 ```
 
-Regenerates the Go type-safe query builder types from the live database schema into `server-go/.gen/`. Run this **after** any schema change.
-
-> Requires the `jet` CLI: `go install github.com/go-jet/jet/v2/cmd/jet@latest`
+Regenerates Bun model structs from the live database schema into `server-go/internal/models/`. Run this **after** any schema change.
 
 ### 9. Generate API Types
 
@@ -218,7 +215,7 @@ This uses the `docker-compose.yml` which builds:
 | `bun run build` | Build web for production |
 | `bun run db:migrate` | Run SQL migrations |
 | `bun run db:seed` | Seed industry categories + admin user |
-| `bun run db:generate` | Regenerate go-jet types from DB |
+| `bun run db:generate` | Regenerate Bun model types from DB |
 | `bun run api:generate` | Regenerate Swagger + TypeScript API types |
 | `bun run api:check` | API drift check (pre-push gate) |
 | `bun run lint` | Biome check |
@@ -240,14 +237,14 @@ skillpass/
 │   ├── cmd/
 │   │   ├── server/         — Entry point (main.go)
 │   │   ├── migrate/        — SQL migration runner
-│   │   └── seed/           — DB seeder (go-jet)
+│   │   └── seed/           — DB seeder
 │   ├── internal/
 │   │   ├── config/         — Env config
 │   │   ├── db/             — pgx pool setup
 │   │   ├── handlers/       — Route handlers by domain
 │   │   ├── lib/            — Utilities (password hashing, LLM client)
 │   │   ├── middleware/     — Auth guards, role checks, rate limiting
-│   │   ├── gen/            — go-jet re-exports
+│   │   ├── models/         — Bun model structs
 │   │   ├── evaluation/     — AI evaluation handler + service
 │   │   ├── application/    — Application tracking
 │   │   ├── matching/       — Job-candidate matching
@@ -267,7 +264,7 @@ skillpass/
 │   │   ├── authtoken/      — Auth token management
 │   │   └── testutil/       — Test helpers + factories
 │   ├── migrations/         — SQL DDL files (000001-000017)
-│   ├── .gen/               — go-jet generated types
+│   ├── internal/models/    — Bun model structs
 │   ├── docs/               — Swagger spec
 │   └── Dockerfile
 ├── web/                    — React SPA frontend
@@ -322,7 +319,7 @@ skillpass/
 ### Database
 - PostgreSQL with pgx pool
 - 17 SQL migrations (000001-000017)
-- go-jet codegen for type-safe queries
+- Bun ORM for type-safe queries
 - DB-backed migration tracking (no file markers)
 
 ## Git Hooks (lefthook)
