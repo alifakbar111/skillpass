@@ -1,24 +1,21 @@
 package handlers
 
 import (
-	"database/sql"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
-	. "github.com/go-jet/jet/v2/postgres"
 	"github.com/google/uuid"
 	"github.com/uptrace/bun"
 
-	"skillpass-server-go/internal/gen"
+	"skillpass-server-go/internal/models"
 )
 
 type ReferenceHandler struct {
-	db    *sql.DB
 	bunDB *bun.DB
 }
 
-func NewReferenceHandler(db *sql.DB, bunDB *bun.DB) *ReferenceHandler {
-	return &ReferenceHandler{db: db, bunDB: bunDB}
+func NewReferenceHandler(bunDB *bun.DB) *ReferenceHandler {
+	return &ReferenceHandler{bunDB: bunDB}
 }
 
 // IndustryResponse is the camelCase JSON shape for an industry category.
@@ -36,16 +33,11 @@ type IndustryResponse struct {
 // @Success		200 {array} handlers.IndustryResponse
 // @Router		/industries [get]
 func (h *ReferenceHandler) GetIndustries(c *gin.Context) {
-	stmt := SELECT(
-		gen.IndustryCategories.AllColumns,
-	).FROM(
-		gen.IndustryCategories,
-	).ORDER_BY(
-		gen.IndustryCategories.Name,
-	)
-
-	var dest []gen.IndustryCategory
-	err := stmt.QueryContext(c.Request.Context(), h.db, &dest)
+	var dest []models.IndustryCategory
+	err := h.bunDB.NewSelect().
+		Model(&dest).
+		Order("name ASC").
+		Scan(c.Request.Context())
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to query industries"})
 		return
@@ -82,35 +74,18 @@ type TagResponse struct {
 func (h *ReferenceHandler) GetTags(c *gin.Context) {
 	industryID := c.Query("industry")
 
-	var stmt SelectStatement
+	var dest []models.Tag
+	query := h.bunDB.NewSelect().Model(&dest).Order("name ASC")
 	if industryID != "" {
 		parsed, err := uuid.Parse(industryID)
 		if err != nil {
 			c.JSON(http.StatusBadRequest, gin.H{"error": "invalid industry ID"})
 			return
 		}
-
-		stmt = SELECT(
-			gen.Tags.AllColumns,
-		).FROM(
-			gen.Tags,
-		).WHERE(
-			gen.Tags.IndustryCategoryID.EQ(UUID(parsed)),
-		).ORDER_BY(
-			gen.Tags.Name,
-		)
-	} else {
-		stmt = SELECT(
-			gen.Tags.AllColumns,
-		).FROM(
-			gen.Tags,
-		).ORDER_BY(
-			gen.Tags.Name,
-		)
+		query = query.Where("industry_category_id = ?", parsed)
 	}
 
-	var dest []gen.Tag
-	err := stmt.QueryContext(c.Request.Context(), h.db, &dest)
+	err := query.Scan(c.Request.Context())
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to query tags"})
 		return

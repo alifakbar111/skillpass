@@ -8,17 +8,19 @@ import (
 
 	"github.com/gin-gonic/gin"
 
+	"skillpass-server-go/internal/db"
 	"skillpass-server-go/internal/testutil"
 )
 
 func TestGetIndustries(t *testing.T) {
-	db := testutil.SetupTestDB()
+	sqlDB := testutil.SetupTestDB()
+	bunDB := db.NewBunDB(sqlDB)
 
-	testutil.CreateIndustry(db, "Technology", "Software and IT")
-	testutil.CreateIndustry(db, "Healthcare", "Medical services")
+	testutil.CreateIndustry(sqlDB, "Technology", "Software and IT")
+	testutil.CreateIndustry(sqlDB, "Healthcare", "Medical services")
 
 	router := gin.New()
-	h := NewReferenceHandler(db)
+	h := NewReferenceHandler(bunDB)
 	router.GET("/api/v1/industries", h.GetIndustries)
 
 	w := httptest.NewRecorder()
@@ -38,10 +40,11 @@ func TestGetIndustries(t *testing.T) {
 }
 
 func TestGetIndustriesEmpty(t *testing.T) {
-	db := testutil.SetupTestDB()
+	sqlDB := testutil.SetupTestDB()
+	bunDB := db.NewBunDB(sqlDB)
 
 	router := gin.New()
-	h := NewReferenceHandler(db)
+	h := NewReferenceHandler(bunDB)
 	router.GET("/api/v1/industries", h.GetIndustries)
 
 	w := httptest.NewRecorder()
@@ -59,16 +62,17 @@ func TestGetIndustriesEmpty(t *testing.T) {
 }
 
 func TestGetTags(t *testing.T) {
-	db := testutil.SetupTestDB()
+	sqlDB := testutil.SetupTestDB()
+	bunDB := db.NewBunDB(sqlDB)
 
-	testutil.CreateIndustry(db, "Technology", "SW")
+	testutil.CreateIndustry(sqlDB, "Technology", "SW")
 	var techID string
-	db.QueryRow("SELECT id FROM industry_categories WHERE name = 'Technology'").Scan(&techID)
-	testutil.CreateTag(db, "Go", techID)
-	testutil.CreateTag(db, "React", techID)
+	sqlDB.QueryRow("SELECT id FROM industry_categories WHERE name = 'Technology'").Scan(&techID)
+	testutil.CreateTag(sqlDB, "Go", techID)
+	testutil.CreateTag(sqlDB, "React", techID)
 
 	router := gin.New()
-	h := NewReferenceHandler(db)
+	h := NewReferenceHandler(bunDB)
 	router.GET("/api/v1/tags", h.GetTags)
 
 	w := httptest.NewRecorder()
@@ -86,18 +90,19 @@ func TestGetTags(t *testing.T) {
 }
 
 func TestGetTagsFilterByIndustry(t *testing.T) {
-	db := testutil.SetupTestDB()
+	sqlDB := testutil.SetupTestDB()
+	bunDB := db.NewBunDB(sqlDB)
 
-	testutil.CreateIndustry(db, "Technology", "SW")
-	testutil.CreateIndustry(db, "Healthcare", "Med")
+	testutil.CreateIndustry(sqlDB, "Technology", "SW")
+	testutil.CreateIndustry(sqlDB, "Healthcare", "Med")
 	var techID, healthID string
-	db.QueryRow("SELECT id FROM industry_categories WHERE name = 'Technology'").Scan(&techID)
-	db.QueryRow("SELECT id FROM industry_categories WHERE name = 'Healthcare'").Scan(&healthID)
-	testutil.CreateTag(db, "Go", techID)
-	testutil.CreateTag(db, "Nursing", healthID)
+	sqlDB.QueryRow("SELECT id FROM industry_categories WHERE name = 'Technology'").Scan(&techID)
+	sqlDB.QueryRow("SELECT id FROM industry_categories WHERE name = 'Healthcare'").Scan(&healthID)
+	testutil.CreateTag(sqlDB, "Go", techID)
+	testutil.CreateTag(sqlDB, "Nursing", healthID)
 
 	router := gin.New()
-	h := NewReferenceHandler(db)
+	h := NewReferenceHandler(bunDB)
 	router.GET("/api/v1/tags", h.GetTags)
 
 	w := httptest.NewRecorder()
@@ -112,10 +117,11 @@ func TestGetTagsFilterByIndustry(t *testing.T) {
 }
 
 func TestGetTags_InvalidIndustryID(t *testing.T) {
-	db := testutil.SetupTestDB()
+	sqlDB := testutil.SetupTestDB()
+	bunDB := db.NewBunDB(sqlDB)
 
 	router := gin.New()
-	h := NewReferenceHandler(db)
+	h := NewReferenceHandler(bunDB)
 	router.GET("/api/v1/tags", h.GetTags)
 
 	t.Run("invalid industry ID format", func(t *testing.T) {
@@ -136,10 +142,11 @@ func TestGetTags_InvalidIndustryID(t *testing.T) {
 }
 
 func TestGetTags_NonExistentIndustry(t *testing.T) {
-	db := testutil.SetupTestDB()
+	sqlDB := testutil.SetupTestDB()
+	bunDB := db.NewBunDB(sqlDB)
 
 	router := gin.New()
-	h := NewReferenceHandler(db)
+	h := NewReferenceHandler(bunDB)
 	router.GET("/api/v1/tags", h.GetTags)
 
 	t.Run("non-existent industry returns empty", func(t *testing.T) {
