@@ -12,16 +12,14 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
-	. "github.com/go-jet/jet/v2/postgres"
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/google/uuid"
 	"github.com/uptrace/bun"
 
-	"skillpass-server-go/.gen/skillpass/public/model"
 	"skillpass-server-go/internal/authtoken"
 	"skillpass-server-go/internal/email"
-	"skillpass-server-go/internal/gen"
 	"skillpass-server-go/internal/lib"
+	"skillpass-server-go/internal/models"
 )
 
 const (
@@ -93,7 +91,7 @@ type tokenClaims struct {
 	Type   string
 }
 
-func (h *AuthHandler) signTokens(c *gin.Context, userID, role string) (accessToken, refreshToken string, refreshID uuid.UUID, err error) {
+func (h *AuthHandler) signTokens(c *gin.Context, db bun.IDB, userID, role string) (accessToken, refreshToken string, refreshID uuid.UUID, err error) {
 	now := time.Now()
 	accessToken, err = jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
 		"userId": userID,
@@ -120,14 +118,14 @@ func (h *AuthHandler) signTokens(c *gin.Context, userID, role string) (accessTok
 	}
 
 	hash := hashToken(refreshToken)
-	insertStmt := gen.RefreshTokens.INSERT(
-		gen.RefreshTokens.ID, gen.RefreshTokens.UserID, gen.RefreshTokens.TokenHash,
-		gen.RefreshTokens.ExpiresAt,
-	).VALUES(
-		refreshID, userID, hash, TimestampzT(refreshExpires),
-	)
+	rt := &models.RefreshToken{
+		ID:        refreshID,
+		UserID:    uuid.MustParse(userID),
+		TokenHash: hash,
+		ExpiresAt: refreshExpires,
+	}
 	ctx := c.Request.Context()
-	if _, err = insertStmt.ExecContext(ctx, h.db); err != nil {
+	if _, err = db.NewInsert().Model(rt).Exec(ctx); err != nil {
 		return "", "", uuid.Nil, err
 	}
 
@@ -203,33 +201,31 @@ func (h *AuthHandler) Register(c *gin.Context) {
 		return
 	}
 
-	tx, err := h.db.BeginTx(c.Request.Context(), nil)
+	tx, err := h.bunDB.BeginTx(c.Request.Context(), nil)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to start transaction"})
 		return
 	}
 	defer tx.Rollback()
 
-	var user model.Users
-	insertStmt := gen.Users.INSERT(
-		gen.Users.Email, gen.Users.Username, gen.Users.PasswordHash, gen.Users.Name, gen.Users.Role,
-	).VALUES(
-		req.Email, req.Username, passwordHash, displayName, req.Role,
-	).RETURNING(
-		gen.Users.ID, gen.Users.Email, gen.Users.Username, gen.Users.Name, gen.Users.Role,
-	)
-
-	if err = insertStmt.QueryContext(c.Request.Context(), tx, &user); err != nil {
+	user := &models.User{
+		Email:        req.Email,
+		Username:     req.Username,
+		PasswordHash: passwordHash,
+		Name:         displayName,
+		Role:         req.Role,
+	}
+	err = tx.NewInsert().Model(user).Returning("*").Scan(c.Request.Context())
+	if err != nil {
 		c.JSON(http.StatusConflict, gin.H{"error": "Could not create account. The email already registered"})
 		return
 	}
 
 	if req.Role == "jobseeker" {
-		_, err = gen.JobseekerProfiles.INSERT(
-			gen.JobseekerProfiles.UserID, gen.JobseekerProfiles.Slug,
-		).VALUES(
-			user.ID, req.Username,
-		).ExecContext(c.Request.Context(), tx)
+		_, err = tx.NewInsert().Model(&models.JobseekerProfile{
+			UserID: user.ID,
+			Slug:   req.Username,
+		}).Exec(c.Request.Context())
 		if err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to create profile"})
 			return
@@ -245,13 +241,14 @@ func (h *AuthHandler) Register(c *gin.Context) {
 			"address":              coalesceStr(req.Address),
 			"contact":              coalesceStr(req.Contact),
 		})
-		_, err = gen.Companies.INSERT(
-			gen.Companies.UserID, gen.Companies.CompanyName, gen.Companies.Website, gen.Companies.Industry,
-			gen.Companies.VerificationDocs, gen.Companies.VerificationStatus,
-		).VALUES(
-			user.ID, coName, coalesceStr(req.Website), "Technology",
-			string(verificationDocs), gen.VerificationStatusPending,
-		).ExecContext(c.Request.Context(), tx)
+		_, err = tx.NewInsert().Model(&models.Company{
+			UserID:             user.ID,
+			CompanyName:        coName,
+			Website:            coalesceStrPtr(req.Website),
+			Industry:           "Technology",
+			VerificationDocs:   strPtr(string(verificationDocs)),
+			VerificationStatus: "pending",
+		}).Exec(c.Request.Context())
 		if err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to create company"})
 			return
@@ -263,7 +260,7 @@ func (h *AuthHandler) Register(c *gin.Context) {
 		return
 	}
 
-	accessToken, _, _, err := h.signTokens(c, user.ID.String(), string(user.Role))
+	accessToken, _, _, err := h.signTokens(c, tx, user.ID.String(), user.Role)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to sign token"})
 		return
@@ -279,7 +276,7 @@ func (h *AuthHandler) Register(c *gin.Context) {
 			Email:      user.Email,
 			Username:   user.Username,
 			Name:       user.Name,
-			Role:       string(user.Role),
+			Role:       user.Role,
 			IsVerified: false,
 		},
 	})
@@ -302,17 +299,11 @@ func (h *AuthHandler) Login(c *gin.Context) {
 		return
 	}
 
-	stmt := SELECT(
-		gen.Users.ID, gen.Users.Email, gen.Users.Username, gen.Users.Name,
-		gen.Users.Role, gen.Users.PasswordHash, gen.Users.IsVerified,
-	).FROM(
-		gen.Users,
-	).WHERE(
-		gen.Users.Email.EQ(String(req.Email)),
-	)
-
-	var user model.Users
-	err := stmt.QueryContext(c.Request.Context(), h.db, &user)
+	var user models.User
+	err := h.bunDB.NewSelect().Model(&user).
+		Column("id", "email", "username", "name", "role", "password_hash", "is_verified").
+		Where("email = ?", req.Email).
+		Scan(c.Request.Context())
 	if err != nil {
 		_, _ = lib.HashPassword("dummy-equalize-timing")
 		c.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid credentials"})
@@ -325,7 +316,7 @@ func (h *AuthHandler) Login(c *gin.Context) {
 		return
 	}
 
-	accessToken, _, _, err := h.signTokens(c, user.ID.String(), string(user.Role))
+	accessToken, _, _, err := h.signTokens(c, h.bunDB, user.ID.String(), user.Role)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to sign token"})
 		return
@@ -338,7 +329,7 @@ func (h *AuthHandler) Login(c *gin.Context) {
 			Email:      user.Email,
 			Username:   user.Username,
 			Name:       user.Name,
-			Role:       string(user.Role),
+			Role:       user.Role,
 			IsVerified: user.IsVerified,
 		},
 	})
@@ -367,24 +358,19 @@ func (h *AuthHandler) Refresh(c *gin.Context) {
 
 	tokenHash := hashToken(cookie)
 
-	tx, err := h.db.BeginTx(c.Request.Context(), nil)
+	tx, err := h.bunDB.BeginTx(c.Request.Context(), nil)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to start transaction"})
 		return
 	}
 	defer tx.Rollback()
 
-	rtStmt := SELECT(
-		gen.RefreshTokens.ID, gen.RefreshTokens.UserID, gen.RefreshTokens.ExpiresAt,
-		gen.RefreshTokens.RevokedAt, gen.RefreshTokens.ReplacedBy,
-	).FROM(
-		gen.RefreshTokens,
-	).WHERE(
-		gen.RefreshTokens.TokenHash.EQ(String(tokenHash)),
-	).FOR(UPDATE())
-
-	var rt model.RefreshTokens
-	if err = rtStmt.QueryContext(c.Request.Context(), tx, &rt); err != nil {
+	var rt models.RefreshToken
+	err = tx.NewSelect().Model(&rt).
+		Where("token_hash = ?", tokenHash).
+		For("UPDATE").
+		Scan(c.Request.Context())
+	if err != nil {
 		c.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid refresh token"})
 		return
 	}
@@ -396,18 +382,17 @@ func (h *AuthHandler) Refresh(c *gin.Context) {
 		return
 	}
 
-	accessToken, _, _, err := h.signTokens(c, rt.UserID.String(), claims.Role)
+	accessToken, _, _, err := h.signTokens(c, tx, rt.UserID.String(), claims.Role)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to sign token"})
 		return
 	}
 
-	revokeStmt := gen.RefreshTokens.UPDATE().SET(
-		gen.RefreshTokens.RevokedAt.SET(TimestampzT(time.Now())),
-	).WHERE(
-		gen.RefreshTokens.ID.EQ(UUID(rt.ID)),
-	)
-	if _, err = revokeStmt.ExecContext(c.Request.Context(), tx); err != nil {
+	_, err = tx.NewUpdate().Model((*models.RefreshToken)(nil)).
+		Set("revoked_at = ?", time.Now()).
+		Where("id = ?", rt.ID).
+		Exec(c.Request.Context())
+	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to rotate token"})
 		return
 	}
@@ -442,7 +427,7 @@ func (h *AuthHandler) Logout(c *gin.Context) {
 		return
 	}
 
-	if err := revokeAllForUserString(c.Request.Context(), h.db, userIDStr); err != nil {
+	if err := revokeAllForUserString(c.Request.Context(), h.bunDB, userIDStr); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to log out"})
 		return
 	}
@@ -477,20 +462,26 @@ func parseRefreshToken(tokenStr, secret string) (*tokenClaims, error) {
 
 var errInvalidToken = errors.New("invalid refresh token")
 
-func revokeAllForUserString(ctx context.Context, db *sql.DB, userID string) error {
+func revokeAllForUserString(ctx context.Context, bunDB bun.IDB, userID string) error {
 	uid, err := lib.ParseUUID(userID)
 	if err != nil {
 		return nil
 	}
-	stmt := gen.RefreshTokens.UPDATE().SET(
-		gen.RefreshTokens.RevokedAt.SET(TimestampzT(time.Now())),
-	).WHERE(
-		gen.RefreshTokens.UserID.EQ(UUID(uid)).AND(
-			gen.RefreshTokens.RevokedAt.IS_NULL(),
-		),
-	)
-	_, err = stmt.ExecContext(ctx, db)
+	_, err = bunDB.NewUpdate().
+		Model((*models.RefreshToken)(nil)).
+		Set("revoked_at = ?", time.Now()).
+		Where("user_id = ? AND revoked_at IS NULL", uid).
+		Exec(ctx)
 	return err
+}
+
+func strPtr(s string) *string { return &s }
+
+func coalesceStrPtr(s *string) *string {
+	if s == nil {
+		return strPtr("")
+	}
+	return s
 }
 
 func coalesceStr(s *string) string {
