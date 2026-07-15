@@ -1,24 +1,21 @@
 package handlers
 
 import (
-	"database/sql"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
-	. "github.com/go-jet/jet/v2/postgres"
 	"github.com/google/uuid"
 	"github.com/uptrace/bun"
 
-	"skillpass-server-go/internal/gen"
+	"skillpass-server-go/internal/models"
 )
 
 type SkillsHandler struct {
-	db    *sql.DB
 	bunDB *bun.DB
 }
 
-func NewSkillsHandler(db *sql.DB, bunDB *bun.DB) *SkillsHandler {
-	return &SkillsHandler{db: db, bunDB: bunDB}
+func NewSkillsHandler(bunDB *bun.DB) *SkillsHandler {
+	return &SkillsHandler{bunDB: bunDB}
 }
 
 // SkillResponse is the camelCase JSON shape for a skill.
@@ -36,32 +33,12 @@ type SkillResponse struct {
 // @Success		200 {array} handlers.SkillResponse
 // @Router		/skills [get]
 func (h *SkillsHandler) SearchSkills(c *gin.Context) {
-	query := c.Query("q")
-
-	var stmt SelectStatement
-	if query == "" {
-		stmt = SELECT(
-			gen.Skills.ID, gen.Skills.Name,
-		).FROM(
-			gen.Skills,
-		).ORDER_BY(
-			gen.Skills.Name,
-		).LIMIT(20)
-	} else {
-		stmt = SELECT(
-			gen.Skills.ID, gen.Skills.Name,
-		).FROM(
-			gen.Skills,
-		).WHERE(
-			LOWER(gen.Skills.Name).LIKE(LOWER(String("%"+query+"%"))),
-		).ORDER_BY(
-			gen.Skills.Name,
-		).LIMIT(20)
+	var skills []models.Skill
+	q := h.bunDB.NewSelect().Model(&skills).Column("id", "name").Order("name ASC").Limit(20)
+	if query := c.Query("q"); query != "" {
+		q = q.Where("LOWER(name) LIKE LOWER(?)", "%"+query+"%")
 	}
-
-	var skills []gen.Skill
-	err := stmt.QueryContext(c.Request.Context(), h.db, &skills)
-	if err != nil {
+	if err := q.Scan(c.Request.Context()); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to query skills"})
 		return
 	}

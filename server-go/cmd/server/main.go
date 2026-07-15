@@ -157,7 +157,7 @@ func main() {
 	api.GET("/industries", ref.GetIndustries)
 	api.GET("/tags", ref.GetTags)
 
-	skillsHandler := handlers.NewSkillsHandler(database, bunDB)
+	skillsHandler := handlers.NewSkillsHandler(bunDB)
 	api.GET("/skills", skillsHandler.SearchSkills)
 
 	api.GET("/jobs", jobs.ListJobs)
