@@ -27,7 +27,7 @@ type UpdateProfileRequest struct {
 type CreateExperienceRequest struct {
 	Type         string   `json:"type" binding:"required,oneof=employment gig education certification project volunteering"`
 	Title        string   `json:"title" binding:"required"`
-	Organization string   `json:"organization"` // not required — project/volunteering may have no org; fallback to title
+	Organization string   `json:"organization,omitempty"` // not required — project/volunteering may have no org; fallback to title
 	StartDate    string   `json:"startDate" binding:"required"`
 	EndDate      *string  `json:"endDate,omitempty"`
 	IsCurrent    *bool    `json:"isCurrent,omitempty"`
