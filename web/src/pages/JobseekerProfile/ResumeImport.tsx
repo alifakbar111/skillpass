@@ -1,9 +1,49 @@
-import { Check, Download, FileUp, Sparkles, Wand2 } from 'lucide-react';
-import { useRef, useState } from 'react';
+import { Award, Briefcase, Check, Code, Download, FileUp, GraduationCap, Heart, Sparkles, Wand2 } from 'lucide-react';
+import { type ReactNode, useRef, useState } from 'react';
 import { LoadingSpinner } from '@/components/ui/LoadingFallback';
 import { ApiError, api } from '@/lib/api';
 import type { Experience } from '@/lib/api-types';
 import { type ParsedExperience, type ParsedResume, parseResume, uploadResume } from '@/lib/resume';
+
+/** Map raw parser types to valid experience type enum values. */
+function normalizeType(raw: string): string {
+  const aliases: Record<string, string> = {
+    'side project': 'project',
+    side_project: 'project',
+    research: 'project',
+    'research project': 'project',
+    certificate: 'certification',
+    volunteer: 'volunteering',
+    'volunteer work': 'volunteering',
+    freelance: 'gig',
+    contract: 'gig',
+    internship: 'employment',
+    intern: 'employment',
+  };
+  return aliases[raw.toLowerCase().trim()] ?? raw;
+}
+
+interface SectionMeta {
+  label: string;
+  icon: ReactNode;
+}
+
+const SECTION_META: Record<string, SectionMeta> = {
+  employment: { label: 'Work History', icon: <Briefcase size={14} /> },
+  gig: { label: 'Work History', icon: <Briefcase size={14} /> },
+  education: { label: 'Education', icon: <GraduationCap size={14} /> },
+  certification: { label: 'Certifications & Licenses', icon: <Award size={14} /> },
+  project: { label: 'Projects & Portfolio', icon: <Code size={14} /> },
+  volunteering: { label: 'Volunteering', icon: <Heart size={14} /> },
+};
+
+/** The canonical section key for a type (employment+gig collapse to one section). */
+function sectionKey(type: string): string {
+  return type === 'employment' || type === 'gig' ? 'employment' : type;
+}
+
+/** Display order for sections. */
+const SECTION_ORDER = ['employment', 'education', 'certification', 'project', 'volunteering'] as const;
 
 interface Props {
   onExperienceAdded: (exp: Experience) => void;
@@ -19,14 +59,21 @@ export function ResumeImport({ onExperienceAdded, open, onToggle }: Props) {
   const [error, setError] = useState<string | null>(null);
   const [addedIdx, setAddedIdx] = useState<Set<number>>(new Set());
   const [savingIdx, setSavingIdx] = useState<number | null>(null);
+  const [addingAll, setAddingAll] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  /** Reset all import state (parsed data, index tracking, errors). */
+  function resetImport() {
+    setParsed(null);
+    setAddedIdx(new Set());
+    setError(null);
+  }
 
   async function handleParse() {
     if (text.trim().length < 30 || parsing) return;
     setParsing(true);
     setError(null);
-    setParsed(null);
-    setAddedIdx(new Set());
+    resetImport();
     try {
       const result = await parseResume(text);
       setParsed(result);
@@ -41,8 +88,7 @@ export function ResumeImport({ onExperienceAdded, open, onToggle }: Props) {
     if (parsing) return;
     setParsing(true);
     setError(null);
-    setParsed(null);
-    setAddedIdx(new Set());
+    resetImport();
     try {
       const result = await uploadResume(file);
       setParsed(result);
@@ -61,7 +107,7 @@ export function ResumeImport({ onExperienceAdded, open, onToggle }: Props) {
       const added = await api<Experience>('/profiles/me/experience', {
         method: 'POST',
         body: {
-          type: exp.type,
+          type: normalizeType(exp.type),
           title: exp.title,
           organization: exp.organization,
           startDate: exp.startDate,
@@ -73,8 +119,6 @@ export function ResumeImport({ onExperienceAdded, open, onToggle }: Props) {
       });
       onExperienceAdded(added);
       setAddedIdx((prev) => new Set(prev).add(idx));
-      // Reload page to refresh all profile sections with the new data
-      window.location.reload();
     } catch (err) {
       setError(err instanceof ApiError ? (err.serverMessage ?? err.message) : 'Failed to add entry');
     } finally {
@@ -95,16 +139,32 @@ export function ResumeImport({ onExperienceAdded, open, onToggle }: Props) {
 
   async function addAll() {
     if (!parsed) return;
-    for (let i = 0; i < parsed.experiences.length; i++) {
-      if (!addedIdx.has(i)) {
-        // Sequential to keep ordering and avoid rate spikes.
-        // eslint-disable-next-line no-await-in-loop
+    setAddingAll(true);
+    setError(null);
+    const indices = parsed.experiences.map((_, i) => i).filter((i) => !addedIdx.has(i));
+    for (const i of indices) {
+      try {
         await addOne(parsed.experiences[i], i);
+      } catch {
+        // Continue with remaining entries even if one fails.
       }
     }
-    // Reload page to refresh all profile sections
-    window.location.reload();
+    setAddingAll(false);
   }
+
+  /** Group parsed experiences by section for display. */
+  const grouped = parsed
+    ? SECTION_ORDER.reduce(
+        (acc, key) => {
+          const entries = parsed.experiences
+            .map((exp, idx) => ({ exp: { ...exp, type: normalizeType(exp.type) }, idx }))
+            .filter(({ exp }) => sectionKey(exp.type) === key);
+          if (entries.length > 0) acc.push({ key, entries });
+          return acc;
+        },
+        [] as { key: string; entries: { exp: ParsedExperience; idx: number }[] }[],
+      )
+    : [];
 
   return (
     <div className="card bg-base-200 p-4">
@@ -191,52 +251,69 @@ export function ResumeImport({ onExperienceAdded, open, onToggle }: Props) {
                     </button>
                   )}
                   {parsed.experiences.length > 0 && (
-                    <button type="button" className="btn btn-outline btn-xs" onClick={addAll}>
-                      Add all
+                    <button type="button" className="btn btn-outline btn-xs" onClick={addAll} disabled={addingAll}>
+                      {addingAll ? <span className="loading loading-spinner loading-xs" /> : null}
+                      {addingAll ? 'Adding…' : 'Add all'}
                     </button>
                   )}
                 </div>
               </div>
 
-              <div className="space-y-2">
-                {parsed.experiences.map((exp, idx) => (
-                  <div
-                    // biome-ignore lint/suspicious/noArrayIndexKey: parsed entries have no stable id; title+org+idx disambiguates duplicates
-                    key={`${exp.title}-${exp.organization}-${idx}`}
-                    className="bg-base-100 rounded-box p-3 flex justify-between items-start gap-3"
-                  >
-                    <div className="min-w-0">
-                      <p className="font-medium text-sm">{exp.title}</p>
-                      <p className="text-xs opacity-60">
-                        {exp.organization} · {exp.startDate}
-                        {exp.isCurrent ? ' - Present' : exp.endDate ? ` - ${exp.endDate}` : ''} · {exp.type}
-                      </p>
-                      {exp.skillsUsed?.length > 0 && (
-                        <div className="flex flex-wrap gap-1 mt-1">
-                          {exp.skillsUsed.slice(0, 6).map((s) => (
-                            <span key={s} className="badge badge-xs badge-ghost">
-                              {s}
-                            </span>
-                          ))}
-                        </div>
-                      )}
+              {/* Entries grouped by profile section */}
+              <div className="space-y-4">
+                {grouped.map(({ key, entries }) => {
+                  const meta = SECTION_META[key];
+                  return (
+                    <div key={key}>
+                      <h4 className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider opacity-60 mb-1.5">
+                        {meta?.icon}
+                        {meta?.label ?? key}
+                        <span className="ml-auto font-normal normal-case opacity-50">
+                          {entries.length} {entries.length === 1 ? 'entry' : 'entries'}
+                        </span>
+                      </h4>
+                      <div className="space-y-1.5">
+                        {entries.map(({ exp, idx }) => (
+                          <div
+                            key={`${exp.title}-${exp.organization}-${idx}`}
+                            className="bg-base-100 rounded-box p-3 flex justify-between items-start gap-3"
+                          >
+                            <div className="min-w-0">
+                              <p className="font-medium text-sm">{exp.title}</p>
+                              <p className="text-xs opacity-60">
+                                {exp.organization} · {exp.startDate}
+                                {exp.isCurrent ? ' - Present' : exp.endDate ? ` - ${exp.endDate}` : ''}
+                              </p>
+                              {exp.skillsUsed?.length > 0 && (
+                                <div className="flex flex-wrap gap-1 mt-1">
+                                  {exp.skillsUsed.slice(0, 6).map((s) => (
+                                    <span key={s} className="badge badge-xs badge-ghost">
+                                      {s}
+                                    </span>
+                                  ))}
+                                </div>
+                              )}
+                            </div>
+                            {addedIdx.has(idx) ? (
+                              <span className="badge badge-success gap-1 shrink-0">
+                                <Check size={12} /> Added
+                              </span>
+                            ) : (
+                              <button
+                                type="button"
+                                className="btn btn-primary btn-xs shrink-0"
+                                onClick={() => addOne(exp, idx)}
+                                disabled={savingIdx === idx}
+                              >
+                                {savingIdx === idx ? <span className="loading loading-spinner loading-xs" /> : 'Add'}
+                              </button>
+                            )}
+                          </div>
+                        ))}
+                      </div>
                     </div>
-                    {addedIdx.has(idx) ? (
-                      <span className="badge badge-success gap-1">
-                        <Check size={12} /> Added
-                      </span>
-                    ) : (
-                      <button
-                        type="button"
-                        className="btn btn-primary btn-xs"
-                        onClick={() => addOne(exp, idx)}
-                        disabled={savingIdx === idx}
-                      >
-                        {savingIdx === idx ? <span className="loading loading-spinner loading-xs" /> : 'Add'}
-                      </button>
-                    )}
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             </div>
           )}

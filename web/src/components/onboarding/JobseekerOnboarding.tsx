@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import { ChecklistCard, type ChecklistStep } from '@/components/onboarding/ChecklistCard';
 import { getLatestEvaluation } from '@/lib/evaluation';
 
@@ -12,24 +12,16 @@ interface Props {
 // JobseekerOnboarding guides a fresh account to its first "aha":
 // profile basics -> first experience -> AI evaluation (which unlocks matches).
 export function JobseekerOnboarding({ hasHeadline, experienceCount, onAddExperience }: Props) {
-  const [hasEvaluation, setHasEvaluation] = useState<boolean | null>(null);
+  // Share the same query key as AIEvaluationSection so TanStack Query deduplicates.
+  const { data: evaluation, isLoading } = useQuery({
+    queryKey: ['evaluation', 'latest'],
+    queryFn: getLatestEvaluation,
+  });
 
-  useEffect(() => {
-    let cancelled = false;
-    getLatestEvaluation()
-      .then(() => {
-        if (!cancelled) setHasEvaluation(true);
-      })
-      .catch(() => {
-        if (!cancelled) setHasEvaluation(false);
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, []);
+  const hasEvaluation = evaluation !== undefined && evaluation !== null;
 
   // Wait for the evaluation check so the card doesn't flash a wrong state.
-  if (hasEvaluation === null) return null;
+  if (isLoading) return null;
 
   const steps: ChecklistStep[] = [
     {

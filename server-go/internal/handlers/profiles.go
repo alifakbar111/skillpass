@@ -27,7 +27,7 @@ type UpdateProfileRequest struct {
 type CreateExperienceRequest struct {
 	Type         string   `json:"type" binding:"required,oneof=employment gig education certification project volunteering"`
 	Title        string   `json:"title" binding:"required"`
-	Organization string   `json:"organization" binding:"required"`
+	Organization string   `json:"organization"` // not required — project/volunteering may have no org; fallback to title
 	StartDate    string   `json:"startDate" binding:"required"`
 	EndDate      *string  `json:"endDate,omitempty"`
 	IsCurrent    *bool    `json:"isCurrent,omitempty"`
@@ -497,11 +497,15 @@ func (h *ProfileHandler) CreateExperience(c *gin.Context) {
 		isCurrent = *req.IsCurrent
 	}
 
+	org := req.Organization
+	if org == "" {
+		org = req.Title // DB column is NOT NULL; fallback for project/volunteering with no org
+	}
 	exp := &models.JobExperience{
 		ProfileID:    profile.ID,
 		Type:         req.Type,
 		Title:        req.Title,
-		Organization: req.Organization,
+		Organization: org,
 		StartDate:    req.StartDate,
 		EndDate:      req.EndDate,
 		IsCurrent:    isCurrent,
@@ -526,7 +530,7 @@ func (h *ProfileHandler) CreateExperience(c *gin.Context) {
 			continue
 		}
 		_, _ = h.bunDB.ExecContext(c.Request.Context(),
-			`INSERT INTO skills (name) VALUES ($1) ON CONFLICT (name) DO NOTHING`, skill)
+			`INSERT INTO skills (name) VALUES (?) ON CONFLICT (name) DO NOTHING`, skill)
 	}
 
 	c.JSON(http.StatusCreated, mapExperience(*exp))
@@ -668,7 +672,7 @@ func (h *ProfileHandler) UpdateExperience(c *gin.Context) {
 				continue
 			}
 			_, _ = h.bunDB.ExecContext(c.Request.Context(),
-				`INSERT INTO skills (name) VALUES ($1) ON CONFLICT (name) DO NOTHING`, skill)
+				`INSERT INTO skills (name) VALUES (?) ON CONFLICT (name) DO NOTHING`, skill)
 		}
 	}
 

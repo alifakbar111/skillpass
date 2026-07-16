@@ -58,6 +58,21 @@ export function JobseekerProfile() {
     },
   });
 
+  /** Reset the shared experience form to empty defaults for a given section type. */
+  const resetExpForm = (type: ExperienceForm['type'] = 'employment') =>
+    expForm.reset({
+      type,
+      title: '',
+      organization: '',
+      startDate: '',
+      endDate: '',
+      isCurrent: false,
+      description: '',
+      industry: '',
+      skills: '',
+      url: '',
+    });
+
   const {
     data: profile,
     error: loadError,
@@ -113,18 +128,7 @@ export function JobseekerProfile() {
     onSuccess: () => {
       invalidateProfileViews();
       setShowFormType(null);
-      expForm.reset({
-        type: 'employment',
-        title: '',
-        organization: '',
-        startDate: '',
-        endDate: '',
-        isCurrent: false,
-        description: '',
-        industry: '',
-        skills: '',
-        url: '',
-      });
+      resetExpForm('employment');
     },
     onError: (err) => {
       setError(err instanceof ApiError ? (err.serverMessage ?? err.message) : 'Failed to add experience');
@@ -167,18 +171,7 @@ export function JobseekerProfile() {
       invalidateProfileViews();
       setEditingId(null);
       setShowFormType(null);
-      expForm.reset({
-        type: 'employment',
-        title: '',
-        organization: '',
-        startDate: '',
-        endDate: '',
-        isCurrent: false,
-        description: '',
-        industry: '',
-        skills: '',
-        url: '',
-      });
+      resetExpForm('employment');
     },
     onError: (err) => {
       setError(err instanceof ApiError ? (err.serverMessage ?? err.message) : 'Failed to update experience');
@@ -198,18 +191,7 @@ export function JobseekerProfile() {
   const cancelForm = () => {
     setShowFormType(null);
     setEditingId(null);
-    expForm.reset({
-      type: 'employment',
-      title: '',
-      organization: '',
-      startDate: '',
-      endDate: '',
-      isCurrent: false,
-      description: '',
-      industry: '',
-      skills: '',
-      url: '',
-    });
+    resetExpForm('employment');
   };
 
   if (loading) return <LoadingFallback text="Loading profile" />;
@@ -275,10 +257,10 @@ export function JobseekerProfile() {
         open={importOpen}
         onToggle={setImportOpen}
         onExperienceAdded={(added) => {
-          if (!profile) return;
-          queryClient.setQueryData(['profile', 'me'], {
-            ...profile,
-            experiences: [...(profile.experiences ?? []), added],
+          // Updater function reads the latest cache, not a stale closure.
+          queryClient.setQueryData<Profile>(['profile', 'me'], (old) => {
+            if (!old) return old;
+            return { ...old, experiences: [...(old.experiences ?? []), added] };
           });
           queryClient.invalidateQueries({ queryKey: ['passport', user?.username] });
         }}
@@ -288,18 +270,7 @@ export function JobseekerProfile() {
       <WorkHistorySection
         experiences={(profile?.experiences ?? []).filter((e) => e.type === 'employment' || e.type === 'gig')}
         onAdd={() => {
-          expForm.reset({
-            type: 'employment',
-            title: '',
-            organization: '',
-            startDate: '',
-            endDate: '',
-            isCurrent: false,
-            description: '',
-            industry: '',
-            skills: '',
-            url: '',
-          });
+          resetExpForm('employment');
           setShowFormType('work');
         }}
         onEdit={(id) => {
@@ -359,18 +330,7 @@ export function JobseekerProfile() {
       <EducationSection
         experiences={(profile?.experiences ?? []).filter((e) => e.type === 'education')}
         onAdd={() => {
-          expForm.reset({
-            type: 'education',
-            title: '',
-            organization: '',
-            startDate: '',
-            endDate: '',
-            isCurrent: false,
-            description: '',
-            industry: '',
-            skills: '',
-            url: '',
-          });
+          resetExpForm('education');
           setShowFormType('education');
         }}
         onEdit={(id) => {
@@ -425,17 +385,7 @@ export function JobseekerProfile() {
       <CertificationSection
         experiences={(profile?.experiences ?? []).filter((e) => e.type === 'certification')}
         onAdd={() => {
-          expForm.reset({
-            type: 'certification',
-            title: '',
-            organization: '',
-            startDate: '',
-            endDate: '',
-            description: '',
-            industry: '',
-            skills: '',
-            url: '',
-          });
+          resetExpForm('certification');
           setShowFormType('certification');
         }}
         onEdit={(id) => {
@@ -490,17 +440,7 @@ export function JobseekerProfile() {
       <ProjectSection
         experiences={(profile?.experiences ?? []).filter((e) => e.type === 'project')}
         onAdd={() => {
-          expForm.reset({
-            type: 'project',
-            title: '',
-            organization: '',
-            startDate: '',
-            endDate: '',
-            description: '',
-            industry: '',
-            skills: '',
-            url: '',
-          });
+          resetExpForm('project');
           setShowFormType('project');
         }}
         onEdit={(id) => {
@@ -555,18 +495,7 @@ export function JobseekerProfile() {
       <VolunteeringSection
         experiences={(profile?.experiences ?? []).filter((e) => e.type === 'volunteering')}
         onAdd={() => {
-          expForm.reset({
-            type: 'volunteering',
-            title: '',
-            organization: '',
-            startDate: '',
-            endDate: '',
-            isCurrent: false,
-            description: '',
-            industry: '',
-            skills: '',
-            url: '',
-          });
+          resetExpForm('volunteering');
           setShowFormType('volunteering');
         }}
         onEdit={(id) => {

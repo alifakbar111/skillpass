@@ -255,14 +255,14 @@ func (h *AuthHandler) Register(c *gin.Context) {
 		}
 	}
 
-	if err = tx.Commit(); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to commit"})
-		return
-	}
-
 	accessToken, _, _, err := h.signTokens(c, tx, user.ID.String(), user.Role)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to sign token"})
+		return
+	}
+
+	if err = tx.Commit(); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to commit"})
 		return
 	}
 
