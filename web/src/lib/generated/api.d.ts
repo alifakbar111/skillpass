@@ -4211,7 +4211,8 @@ export interface components {
             endDate?: string;
             industry?: string;
             isCurrent?: boolean;
-            organization: string;
+            /** @description not required — project/volunteering may have no org; fallback to title */
+            organization?: string;
             skillsUsed?: string[];
             startDate: string;
             title: string;

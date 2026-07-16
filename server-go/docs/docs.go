@@ -3632,7 +3632,6 @@ const docTemplate = `{
         "CreateExperienceRequest": {
             "type": "object",
             "required": [
-                "organization",
                 "startDate",
                 "title",
                 "type"
@@ -3651,6 +3650,7 @@ const docTemplate = `{
                     "type": "boolean"
                 },
                 "organization": {
+                    "description": "not required — project/volunteering may have no org; fallback to title",
                     "type": "string"
                 },
                 "skillsUsed": {
