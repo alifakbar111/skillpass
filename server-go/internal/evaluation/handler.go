@@ -222,7 +222,16 @@ func getUserID(c *gin.Context) (string, error) {
 }
 
 func toResponse(eval *EvaluationResult) EvaluationResponse {
-	createdAt, _ := time.Parse(time.RFC3339, eval.CreatedAt)
+	createdAt, err := time.Parse(time.RFC3339, eval.CreatedAt)
+	// If the timestamp can't be parsed, treat the evaluation as fresh
+	// rather than auto-expiring it. Auto-expiring on parse failure
+	// silently drops evaluations from the UI; surfacing the record is
+	// safer than hiding it.
+	expired := err == nil && IsExpired(createdAt)
+	if err != nil {
+		slog.Warn("evaluation createdAt parse failed; treating as not expired",
+			"evaluationID", eval.ID, "createdAt", eval.CreatedAt, "error", err)
+	}
 	return EvaluationResponse{
 		ID:           eval.ID,
 		OverallScore: eval.OverallScore,
@@ -232,6 +241,6 @@ func toResponse(eval *EvaluationResult) EvaluationResponse {
 		SkillScores:  eval.SkillScores,
 		SkillCounts:  eval.SkillCounts,
 		CreatedAt:    eval.CreatedAt,
-		IsExpired:    IsExpired(createdAt),
+		IsExpired:    expired,
 	}
 }
