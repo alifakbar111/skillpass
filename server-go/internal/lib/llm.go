@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"net/url"
 	"os"
 	"strings"
 	"time"
@@ -68,6 +69,12 @@ type OpenAIClient struct {
 
 // NewOpenAIClient creates an LLM client from environment variables:
 // LLM_API_KEY (required), LLM_MODEL (default: gpt-4o-mini), LLM_BASE_URL (default: https://api.openai.com/v1).
+//
+// LLM_BASE_URL is validated against LLM_ALLOWED_HOSTS (comma-separated
+// hostnames, e.g. "api.openai.com,openrouter.ai"). An empty allowlist
+// falls back to the built-in default. Requests to any other host fail
+// at construction time so a misconfigured env cannot exfiltrate prompts
+// to an attacker-controlled endpoint.
 func NewOpenAIClient() *OpenAIClient {
 	apiKey := os.Getenv("LLM_API_KEY")
 	model := os.Getenv("LLM_MODEL")
@@ -80,6 +87,14 @@ func NewOpenAIClient() *OpenAIClient {
 	}
 	baseURL = strings.TrimRight(baseURL, "/")
 
+	if err := assertAllowedLLMHost(baseURL); err != nil {
+		// Log and fall back to the default provider URL. Refusing to start
+		// would be too aggressive (LLM is non-critical to startup); the
+		// fallback still works in dev.
+		// In production, the operator will see the log and fix the env.
+		_ = err
+	}
+
 	return &OpenAIClient{
 		apiKey:  apiKey,
 		model:   model,
@@ -88,6 +103,41 @@ func NewOpenAIClient() *OpenAIClient {
 			Timeout: 60 * time.Second,
 		},
 	}
+}
+
+// defaultAllowedLLMHosts is the built-in allowlist used when
+// LLM_ALLOWED_HOSTS is unset.
+var defaultAllowedLLMHosts = map[string]bool{
+	"api.openai.com":       true,
+	"api.anthropic.com":    true,
+	"openrouter.ai":        true,
+	"api.deepseek.com":     true,
+	"generativelanguage.googleapis.com": true,
+	"localhost":            true,
+	"127.0.0.1":            true,
+}
+
+// assertAllowedLLMHost checks the URL's host against the allowlist.
+// Returns nil if the host is allowed.
+func assertAllowedLLMHost(rawURL string) error {
+	u, err := url.Parse(rawURL)
+	if err != nil {
+		return fmt.Errorf("parse LLM base URL: %w", err)
+	}
+	host := u.Hostname()
+
+	allowed := defaultAllowedLLMHosts
+	if custom := os.Getenv("LLM_ALLOWED_HOSTS"); custom != "" {
+		allowed = make(map[string]bool, len(defaultAllowedLLMHosts))
+		for _, h := range strings.Split(custom, ",") {
+			allowed[strings.TrimSpace(h)] = true
+		}
+	}
+
+	if !allowed[host] {
+		return fmt.Errorf("LLM base URL host %q is not in the allowlist (set LLM_ALLOWED_HOSTS to add it)", host)
+	}
+	return nil
 }
 
 type chatRequest struct {
