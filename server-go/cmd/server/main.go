@@ -86,6 +86,7 @@ func main() {
 	}))
 
 	authRL := middleware.NewRateLimiter(5, 10)
+	defer authRL.Stop()
 
 	// WebSocket upgrader uses an allow-list driven by CORS_ORIGIN so
 	// production deployments can drop the dev-only localhost entries.
