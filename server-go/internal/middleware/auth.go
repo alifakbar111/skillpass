@@ -266,18 +266,21 @@ func getAuthDB() *bun.DB {
 func AuthRequired(jwtSecret string) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		auth := c.GetHeader("Authorization")
-		// EventSource cannot set custom headers cross-browser. The accepted
-		// way to authenticate an SSE stream is now the exchange-ticket flow
-		// (?exchange=<nonce>) handled by SSERedeemMiddleware on the stream
-		// route itself. AuthRequired no longer accepts ?token= as a fallback
-		// because tokens in URLs leak into server logs, browser history, and
-		// Referer headers.
-		if !strings.HasPrefix(auth, "Bearer ") {
+		// PR-22: prefer the HttpOnly access token cookie over the
+		// Authorization header when no Bearer is present. The cookie path
+		// is XSS-safe; the header path is kept for API clients (mobile,
+		// server-to-server).
+		tokenStr := ""
+		if strings.HasPrefix(auth, "Bearer ") {
+			tokenStr = auth[7:]
+		} else if cookie, err := c.Cookie("accessToken"); err == nil && cookie != "" {
+			tokenStr = cookie
+		} else {
 			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "Unauthorized"})
 			return
 		}
 
-		token, err := jwt.ParseWithClaims(auth[7:], &Claims{}, func(token *jwt.Token) (any, error) {
+		token, err := jwt.ParseWithClaims(tokenStr, &Claims{}, func(token *jwt.Token) (any, error) {
 			if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
 				return nil, jwt.ErrTokenSignatureInvalid
 			}

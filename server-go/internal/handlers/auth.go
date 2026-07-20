@@ -70,6 +70,40 @@ func constantTimeEqualize(password string) {
 	_ = bcrypt.CompareHashAndPassword([]byte(getDummyBcryptHash()), []byte(password))
 }
 
+// accessTokenCookie is the name of the HttpOnly cookie that mirrors the
+// access token. The web client uses it via credentials: 'include', which
+// removes the need to keep the token in localStorage (XSS-readable).
+const accessTokenCookie = "accessToken"
+
+// setAccessTokenCookie writes the access token as an HttpOnly,
+// SameSite=Strict cookie. The Secure flag is set when GIN_MODE=release.
+func setAccessTokenCookie(c *gin.Context, token string, ttl time.Duration) {
+	secure := os.Getenv("GIN_MODE") == "release"
+	http.SetCookie(c.Writer, &http.Cookie{
+		Name:     accessTokenCookie,
+		Value:    token,
+		Path:     "/",
+		HttpOnly: true,
+		Secure:   secure,
+		SameSite: http.SameSiteStrictMode,
+		MaxAge:   int(ttl.Seconds()),
+	})
+}
+
+// clearAccessTokenCookie expires the access token cookie. Called on
+// logout.
+func clearAccessTokenCookie(c *gin.Context) {
+	http.SetCookie(c.Writer, &http.Cookie{
+		Name:     accessTokenCookie,
+		Value:    "",
+		Path:     "/",
+		HttpOnly: true,
+		Secure:   os.Getenv("GIN_MODE") == "release",
+		SameSite: http.SameSiteStrictMode,
+		MaxAge:   -1,
+	})
+}
+
 type LoginRequest struct {
 	Email    string `json:"email"`
 	Password string `json:"password"`
@@ -384,6 +418,7 @@ func (h *AuthHandler) Register(c *gin.Context) {
 	// Best-effort: send the welcome + email-verification mail.
 	h.sendVerificationEmail(c.Request.Context(), user.ID.String(), user.Email, user.Name)
 
+	setAccessTokenCookie(c, accessToken, accessTokenTTL)
 	c.JSON(http.StatusCreated, LoginResponse{
 		AccessToken: accessToken,
 		User: UserResponse{
@@ -436,6 +471,11 @@ func (h *AuthHandler) Login(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to sign token"})
 		return
 	}
+
+	// PR-22: also set the access token as an HttpOnly cookie so the web
+	// client does not have to keep it in localStorage (XSS-readable).
+	// SameSite=Strict blocks cross-site requests from sending the cookie.
+	setAccessTokenCookie(c, accessToken, accessTokenTTL)
 
 	c.JSON(http.StatusOK, LoginResponse{
 		AccessToken: accessToken,
@@ -493,6 +533,7 @@ func (h *AuthHandler) Refresh(c *gin.Context) {
 		revokeAllForUser(c.Request.Context(), tx, rt.UserID)
 		_ = tx.Commit()
 		clearRefreshCookie(c)
+	clearAccessTokenCookie(c)
 		c.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid refresh token"})
 		return
 	}
@@ -517,6 +558,7 @@ func (h *AuthHandler) Refresh(c *gin.Context) {
 		return
 	}
 
+	setAccessTokenCookie(c, accessToken, accessTokenTTL)
 	c.JSON(http.StatusOK, RefreshResponse{AccessToken: accessToken})
 }
 
@@ -532,12 +574,14 @@ func (h *AuthHandler) Logout(c *gin.Context) {
 	userIDVal, exists := c.Get("userId")
 	if !exists {
 		clearRefreshCookie(c)
+	clearAccessTokenCookie(c)
 		c.JSON(http.StatusOK, MessageResponse{Message: "Logged out"})
 		return
 	}
 	userIDStr, ok := userIDVal.(string)
 	if !ok {
 		clearRefreshCookie(c)
+	clearAccessTokenCookie(c)
 		c.JSON(http.StatusOK, MessageResponse{Message: "Logged out"})
 		return
 	}
@@ -547,6 +591,8 @@ func (h *AuthHandler) Logout(c *gin.Context) {
 		return
 	}
 	clearRefreshCookie(c)
+	clearAccessTokenCookie(c)
+	clearAccessTokenCookie(c)
 	c.JSON(http.StatusOK, MessageResponse{Message: "Logged out"})
 }
 
