@@ -702,6 +702,40 @@ const docTemplate = `{
                 }
             }
         },
+        "/auth/sse-ticket": {
+            "post": {
+                "description": "Exchanges a Bearer access token for a short-lived, single-use opaque ticket that can authenticate an EventSource stream. The ticket is bound to the caller's userId and expires after 60 seconds. Intended for clients that cannot set Authorization headers (e.g. browser EventSource).",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "auth"
+                ],
+                "summary": "Issue an SSE exchange ticket",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/internal_handlers.SSETicketResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ]
+            }
+        },
         "/auth/verify-email": {
             "get": {
                 "description": "Consume an email-verification token (from the emailed link) and mark the account verified.",
@@ -4916,6 +4950,18 @@ const docTemplate = `{
                     "type": "integer"
                 },
                 "yearsPoints": {
+                    "type": "integer"
+                }
+            }
+        },
+        "internal_handlers.SSETicketResponse": {
+            "description": "Short-lived single-use exchange ticket for authenticating an SSE stream. Pass as ?exchange=\u003cticket\u003e to the stream endpoint.",
+            "type": "object",
+            "properties": {
+                "exchange": {
+                    "type": "string"
+                },
+                "expiresIn": {
                     "type": "integer"
                 }
             }
