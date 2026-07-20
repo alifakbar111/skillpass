@@ -3,28 +3,45 @@ package attendance
 import (
 	"log"
 	"net/http"
+	"strings"
 	"sync"
 
 	"github.com/gin-gonic/gin"
 	"github.com/gorilla/websocket"
 )
 
+// upgrader is configured at startup via SetAllowedOrigins. The default
+// allows only localhost dev origins; production deployments MUST set
+// this via cfg.CORSOrigin (see cmd/server/main.go).
 var upgrader = websocket.Upgrader{
 	CheckOrigin: func(r *http.Request) bool {
 		origin := r.Header.Get("Origin")
-		// Allow development and production origins
-		allowedOrigins := []string{
-			"http://localhost:4200",
-			"https://localhost:4200",
-			"http://127.0.0.1:4200",
+		if origin == "" {
+			return true // non-browser clients (no Origin header) are allowed
 		}
 		for _, o := range allowedOrigins {
-			if origin == o {
+			if strings.EqualFold(o, origin) {
 				return true
 			}
 		}
 		return false
 	},
+}
+
+var allowedOrigins = []string{
+	"http://localhost:4200",
+	"https://localhost:4200",
+	"http://127.0.0.1:4200",
+}
+
+// SetAllowedOrigins replaces the allow-list used by the WebSocket
+// upgrader. Called once at startup from cmd/server/main.go so the
+// list reflects cfg.CORSOrigin rather than being hard-coded.
+func SetAllowedOrigins(origins []string) {
+	if len(origins) == 0 {
+		return
+	}
+	allowedOrigins = append([]string(nil), origins...)
 }
 
 type Hub struct {

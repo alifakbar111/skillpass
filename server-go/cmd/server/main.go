@@ -85,6 +85,10 @@ func main() {
 
 	authRL := middleware.NewRateLimiter(5, 10)
 
+	// WebSocket upgrader uses an allow-list driven by CORS_ORIGIN so
+	// production deployments can drop the dev-only localhost entries.
+	attendance.SetAllowedOrigins([]string{cfg.CORSOrigin})
+
 	api := r.Group("/api/v1")
 
 	ref := handlers.NewReferenceHandler(bunDB)
