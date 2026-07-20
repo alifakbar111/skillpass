@@ -171,8 +171,8 @@ func main() {
 	api.POST("/auth/logout", middleware.AuthRequired(cfg.JWTSecret), auth.Logout)
 	api.GET("/auth/me", middleware.AuthRequired(cfg.JWTSecret), auth.Me)
 	api.POST("/auth/sse-ticket", middleware.AuthRequired(cfg.JWTSecret), auth.CreateSSETicket)
-	api.GET("/auth/verify-email", auth.VerifyEmail)
-	api.POST("/auth/resend-verification", middleware.AuthRequired(cfg.JWTSecret), auth.ResendVerification)
+	api.GET("/auth/verify-email", authRL.Middleware(), auth.VerifyEmail)
+	api.POST("/auth/resend-verification", authRL.Middleware(), middleware.AuthRequired(cfg.JWTSecret), auth.ResendVerification)
 	api.POST("/auth/forgot-password", authRL.Middleware(), auth.ForgotPassword)
 	api.POST("/auth/reset-password", authRL.Middleware(), auth.ResetPassword)
 
