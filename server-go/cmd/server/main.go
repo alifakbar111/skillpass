@@ -337,7 +337,7 @@ func main() {
 
 	// ── HRIS routes ──
 	rbacService := rbac.NewService(database)
-	empHandler := employee.NewHandler(database)
+	empHandler := employee.NewHandler(database, rbacService)
 	orgHandler := org.NewHandler(database)
 
 	hris := api.Group("/hris")
