@@ -164,60 +164,35 @@ func (h *CompanyHandler) UpdateProfile(c *gin.Context) {
 		return
 	}
 
-	// blind_mode is not part of the Bun model; update it via raw SQL.
-	if req.BlindMode != nil {
-		if _, err := h.db.ExecContext(c.Request.Context(),
-			`UPDATE companies SET blind_mode = $1 WHERE user_id = $2`,
-			*req.BlindMode, userIDStr,
-		); err != nil {
-			slog.Error("failed to update blind_mode", "error", err)
-			c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to update company"})
-			return
-		}
-	}
-
 	var company models.Company
-	hasProfileFields := req.CompanyName != nil || req.Website != nil || req.Industry != nil || req.Description != nil
-	if hasProfileFields {
-		query := h.bunDB.NewUpdate().Model((*models.Company)(nil))
-		if req.CompanyName != nil {
-			query = query.Set("company_name = ?", *req.CompanyName)
-		}
-		if req.Website != nil {
-			query = query.Set("website = ?", *req.Website)
-		}
-		if req.Industry != nil {
-			query = query.Set("industry = ?", *req.Industry)
-		}
-		if req.Description != nil {
-			query = query.Set("description = ?", *req.Description)
-		}
-		err = query.Where("user_id = ?", userUUID).Returning("*").Scan(c.Request.Context())
-		if err != nil {
-			if errors.Is(err, sql.ErrNoRows) {
-				c.JSON(http.StatusNotFound, gin.H{"error": "Company not found"})
-				return
-			}
-			slog.Error("failed to update company", "error", err)
-			c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to update company"})
+	query := h.bunDB.NewUpdate().Model((*models.Company)(nil))
+	if req.CompanyName != nil {
+		query = query.Set("company_name = ?", *req.CompanyName)
+	}
+	if req.Website != nil {
+		query = query.Set("website = ?", *req.Website)
+	}
+	if req.Industry != nil {
+		query = query.Set("industry = ?", *req.Industry)
+	}
+	if req.Description != nil {
+		query = query.Set("description = ?", *req.Description)
+	}
+	if req.BlindMode != nil {
+		query = query.Set("blind_mode = ?", *req.BlindMode)
+	}
+	err = query.Where("user_id = ?", userUUID).Returning("*").Scan(c.Request.Context(), &company)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			c.JSON(http.StatusNotFound, gin.H{"error": "Company not found"})
 			return
 		}
-	} else {
-		// Only blind_mode changed — re-read the row for the response.
-		err = h.bunDB.NewSelect().Model(&company).Where("user_id = ?", userUUID).Scan(c.Request.Context())
-		if err != nil {
-			if errors.Is(err, sql.ErrNoRows) {
-				c.JSON(http.StatusNotFound, gin.H{"error": "Company not found"})
-				return
-			}
-			slog.Error("failed to load company", "error", err)
-			c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to load company"})
-			return
-		}
+		slog.Error("failed to update company", "error", err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to update company"})
+		return
 	}
 
 	resp := companyFromModel(company)
-	resp.BlindMode = CompanyBlindMode(c.Request.Context(), h.db, company.ID.String())
 	c.JSON(http.StatusOK, resp)
 }
 

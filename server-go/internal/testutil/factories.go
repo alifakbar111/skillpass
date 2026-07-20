@@ -3,18 +3,27 @@ package testutil
 import (
 	"context"
 	"crypto/sha256"
+	"database/sql"
 	"encoding/hex"
 	"fmt"
 	"time"
 
 	"github.com/google/uuid"
 	"github.com/uptrace/bun"
+	"github.com/uptrace/bun/dialect/pgdialect"
 
 	"skillpass-server-go/internal/lib"
 	"skillpass-server-go/internal/models"
 )
 
-func CreateUser(db bun.IDB, email, username, password, name, role string) (uuid.UUID, error) {
+// bunFor wraps a *sql.DB in a *bun.DB. Factories take *sql.DB (the return
+// type of SetupTestDB) and convert internally so test code does not have to
+// hold two handles.
+func bunFor(db *sql.DB) *bun.DB {
+	return bun.NewDB(db, pgdialect.New())
+}
+
+func CreateUser(db *sql.DB, email, username, password, name, role string) (uuid.UUID, error) {
 	hash, err := lib.HashPassword(password)
 	if err != nil {
 		return uuid.Nil, fmt.Errorf("hash password: %w", err)
@@ -27,14 +36,14 @@ func CreateUser(db bun.IDB, email, username, password, name, role string) (uuid.
 		Role:         role,
 		CreatedAt:    time.Now(),
 	}
-	_, err = db.NewInsert().Model(user).Returning("id").Exec(context.Background())
+	_, err = bunFor(db).NewInsert().Model(user).Returning("id").Exec(context.Background())
 	if err != nil {
 		return uuid.Nil, fmt.Errorf("insert user: %w", err)
 	}
 	return user.ID, nil
 }
 
-func CreateJobseeker(db bun.IDB, email, username, password, name string) (uuid.UUID, uuid.UUID, error) {
+func CreateJobseeker(db *sql.DB, email, username, password, name string) (uuid.UUID, uuid.UUID, error) {
 	userID, err := CreateUser(db, email, username, password, name, "jobseeker")
 	if err != nil {
 		return uuid.Nil, uuid.Nil, err
@@ -44,14 +53,14 @@ func CreateJobseeker(db bun.IDB, email, username, password, name string) (uuid.U
 		UserID: userID,
 		Slug:   username,
 	}
-	_, err = db.NewInsert().Model(profile).Exec(context.Background())
+	_, err = bunFor(db).NewInsert().Model(profile).Exec(context.Background())
 	if err != nil {
 		return uuid.Nil, uuid.Nil, fmt.Errorf("insert profile: %w", err)
 	}
 	return userID, profile.ID, nil
 }
 
-func CreateCompanyUser(db bun.IDB, email, username, password, companyName string, verified bool) (uuid.UUID, uuid.UUID, error) {
+func CreateCompanyUser(db *sql.DB, email, username, password, companyName string, verified bool) (uuid.UUID, uuid.UUID, error) {
 	userID, err := CreateUser(db, email, username, password, companyName, "company")
 	if err != nil {
 		return uuid.Nil, uuid.Nil, err
@@ -71,12 +80,13 @@ func CreateCompanyUser(db bun.IDB, email, username, password, companyName string
 		VerificationStatus: verificationStatus,
 		CreatedAt:          time.Now(),
 	}
-	_, err = db.NewInsert().Model(company).Exec(context.Background())
+	bunDB := bunFor(db)
+	_, err = bunDB.NewInsert().Model(company).Exec(context.Background())
 	if err != nil {
 		return uuid.Nil, uuid.Nil, fmt.Errorf("insert company: %w", err)
 	}
 	if verified {
-		_, err = db.NewUpdate().Model(&models.User{}).Set("is_verified = ?", true).Where("id = ?", userID).Exec(context.Background())
+		_, err = bunDB.NewUpdate().Model(&models.User{}).Set("is_verified = ?", true).Where("id = ?", userID).Exec(context.Background())
 		if err != nil {
 			return uuid.Nil, uuid.Nil, fmt.Errorf("mark verified: %w", err)
 		}
@@ -84,11 +94,11 @@ func CreateCompanyUser(db bun.IDB, email, username, password, companyName string
 	return userID, companyID, nil
 }
 
-func CreateAdmin(db bun.IDB, email, username, password string) (uuid.UUID, error) {
+func CreateAdmin(db *sql.DB, email, username, password string) (uuid.UUID, error) {
 	return CreateUser(db, email, username, password, "Admin", "admin")
 }
 
-func CreateJob(db bun.IDB, companyID uuid.UUID, title, industry string, open bool) (uuid.UUID, error) {
+func CreateJob(db *sql.DB, companyID uuid.UUID, title, industry string, open bool) (uuid.UUID, error) {
 	jobID := uuid.New()
 	status := "open"
 	if !open {
@@ -104,11 +114,11 @@ func CreateJob(db bun.IDB, companyID uuid.UUID, title, industry string, open boo
 		CreatedAt:   time.Now(),
 		UpdatedAt:   time.Now(),
 	}
-	_, err := db.NewInsert().Model(job).Exec(context.Background())
+	_, err := bunFor(db).NewInsert().Model(job).Exec(context.Background())
 	return jobID, err
 }
 
-func CreateExperience(db bun.IDB, profileID uuid.UUID, expType, title, org string) (uuid.UUID, error) {
+func CreateExperience(db *sql.DB, profileID uuid.UUID, expType, title, org string) (uuid.UUID, error) {
 	expID := uuid.New()
 	exp := &models.JobExperience{
 		ID:           expID,
@@ -119,11 +129,11 @@ func CreateExperience(db bun.IDB, profileID uuid.UUID, expType, title, org strin
 		StartDate:    "2020-01",
 		IsCurrent:    true,
 	}
-	_, err := db.NewInsert().Model(exp).Exec(context.Background())
+	_, err := bunFor(db).NewInsert().Model(exp).Exec(context.Background())
 	return expID, err
 }
 
-func InsertRefreshToken(db bun.IDB, tokenID uuid.UUID, userID uuid.UUID, tokenStr string, expiresAt time.Time) error {
+func InsertRefreshToken(db *sql.DB, tokenID uuid.UUID, userID uuid.UUID, tokenStr string, expiresAt time.Time) error {
 	hash := sha256.Sum256([]byte(tokenStr))
 	tokenHash := hex.EncodeToString(hash[:])
 	rt := &models.RefreshToken{
@@ -133,20 +143,20 @@ func InsertRefreshToken(db bun.IDB, tokenID uuid.UUID, userID uuid.UUID, tokenSt
 		ExpiresAt: expiresAt,
 		CreatedAt: time.Now(),
 	}
-	_, err := db.NewInsert().Model(rt).Exec(context.Background())
+	_, err := bunFor(db).NewInsert().Model(rt).Exec(context.Background())
 	return err
 }
 
-func CreateIndustry(db bun.IDB, name, description string) error {
+func CreateIndustry(db *sql.DB, name, description string) error {
 	industry := &models.IndustryCategory{
 		Name:        name,
 		Description: &description,
 	}
-	_, err := db.NewInsert().Model(industry).Exec(context.Background())
+	_, err := bunFor(db).NewInsert().Model(industry).Exec(context.Background())
 	return err
 }
 
-func CreateTag(db bun.IDB, name, industryID string) error {
+func CreateTag(db *sql.DB, name, industryID string) error {
 	uid, err := uuid.Parse(industryID)
 	if err != nil {
 		return fmt.Errorf("parse industry id: %w", err)
@@ -155,11 +165,11 @@ func CreateTag(db bun.IDB, name, industryID string) error {
 		Name:               name,
 		IndustryCategoryID: &uid,
 	}
-	_, err = db.NewInsert().Model(tag).Exec(context.Background())
+	_, err = bunFor(db).NewInsert().Model(tag).Exec(context.Background())
 	return err
 }
 
-func CreateAIEvaluation(db bun.IDB, profileID uuid.UUID, overallScore int) error {
+func CreateAIEvaluation(db *sql.DB, profileID uuid.UUID, overallScore int) error {
 	eval := &models.Evaluation{
 		ID:           uuid.New(),
 		ProfileID:    profileID,
@@ -171,11 +181,11 @@ func CreateAIEvaluation(db bun.IDB, profileID uuid.UUID, overallScore int) error
 		CreatedAt:    time.Now(),
 		IsCurrent:    true,
 	}
-	_, err := db.NewInsert().Model(eval).Exec(context.Background())
+	_, err := bunFor(db).NewInsert().Model(eval).Exec(context.Background())
 	return err
 }
 
-func CreateApplication(db bun.IDB, profileID, jobPostingID uuid.UUID, status string) (uuid.UUID, error) {
+func CreateApplication(db *sql.DB, profileID, jobPostingID uuid.UUID, status string) (uuid.UUID, error) {
 	app := &models.Application{
 		ID:           uuid.New(),
 		JobseekerID:  profileID,
@@ -184,6 +194,6 @@ func CreateApplication(db bun.IDB, profileID, jobPostingID uuid.UUID, status str
 		CreatedAt:    time.Now(),
 		UpdatedAt:    time.Now(),
 	}
-	_, err := db.NewInsert().Model(app).Exec(context.Background())
+	_, err := bunFor(db).NewInsert().Model(app).Exec(context.Background())
 	return app.ID, err
 }

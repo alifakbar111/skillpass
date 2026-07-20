@@ -234,6 +234,43 @@ func TestUpdateCompanyProfile(t *testing.T) {
 	})
 }
 
+func TestUpdateProfileReturnsUpdatedRow(t *testing.T) {
+	sqlDB := testutil.SetupTestDB()
+	bunDB := db.NewBunDB(sqlDB)
+
+	uID, cID, _ := testutil.CreateCompanyUser(sqlDB, "returnrow@ex.com", "returnrow", "pass123", "Acme Inc", true)
+	tok := testutil.GenerateToken(uID.String(), "company", 15*time.Minute)
+
+	router := gin.New()
+	h := NewCompanyHandler(sqlDB, bunDB)
+	g := router.Group("/api/v1/company")
+	g.Use(middleware.AuthRequired(testutil.TestJWTSecret), middleware.RequireRole("company"))
+	g.PUT("/profile", h.UpdateProfile)
+
+	w := httptest.NewRecorder()
+	req := httptest.NewRequest("PUT", "/api/v1/company/profile", bytes.NewBufferString(`{"companyName":"Acme Inc"}`))
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Authorization", "Bearer "+tok)
+	router.ServeHTTP(w, req)
+	if w.Code != http.StatusOK {
+		t.Fatalf("expected 200, got %d: %s", w.Code, w.Body.String())
+	}
+
+	var resp CompanyResponse
+	if err := json.Unmarshal(w.Body.Bytes(), &resp); err != nil {
+		t.Fatalf("unmarshal: %v", err)
+	}
+	if resp.CompanyName != "Acme Inc" {
+		t.Fatalf("expected companyName 'Acme Inc', got %q (RETURNING row not scanned into response)", resp.CompanyName)
+	}
+	if resp.ID != cID.String() {
+		t.Fatalf("expected id %q, got %q (RETURNING row not scanned into response)", cID.String(), resp.ID)
+	}
+	if resp.UserID != uID.String() {
+		t.Fatalf("expected userId %q, got %q (RETURNING row not scanned into response)", uID.String(), resp.UserID)
+	}
+}
+
 func TestSubmitVerification(t *testing.T) {
 	sqlDB := testutil.SetupTestDB()
 	bunDB := db.NewBunDB(sqlDB)
