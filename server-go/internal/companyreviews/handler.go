@@ -71,6 +71,8 @@ func (h *Handler) PostReview(c *gin.Context) {
 			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		case errors.Is(err, ErrCompanyNotFound):
 			c.JSON(http.StatusNotFound, gin.H{"error": "Company not found"})
+		case errors.Is(err, ErrNotEligible):
+			c.JSON(http.StatusForbidden, gin.H{"error": err.Error()})
 		default:
 			slog.Error("failed to create review", "error", err)
 			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create review"})
