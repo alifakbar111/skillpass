@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"context"
+	"crypto/rand"
 	"crypto/sha256"
 	"database/sql"
 	"encoding/hex"
@@ -9,12 +10,14 @@ import (
 	"errors"
 	"net/http"
 	"os"
+	"sync"
 	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/google/uuid"
 	"github.com/uptrace/bun"
+	"golang.org/x/crypto/bcrypt"
 
 	"skillpass-server-go/internal/authtoken"
 	"skillpass-server-go/internal/email"
@@ -29,6 +32,42 @@ const (
 	minPasswordLen  = 8
 	refreshCookie   = "refreshToken"
 )
+
+// dummyBcryptHash is a real bcrypt hash of an unguessable random value,
+// computed once at package init. Used to equalize the timing of
+// ForgotPassword and any other "compare a secret" path so an attacker
+// cannot distinguish "user exists" from "user does not exist" by
+// measuring response time.
+var (
+	dummyBcryptHashOnce sync.Once
+	dummyBcryptHash     string
+)
+
+func getDummyBcryptHash() string {
+	dummyBcryptHashOnce.Do(func() {
+		// A random 32-byte value that is never a real password.
+		buf := make([]byte, 32)
+		if _, err := rand.Read(buf); err != nil {
+			// Fall back to a static hash if the RNG fails (extremely unlikely).
+			dummyBcryptHash = "$2a$12$abcdefghijklmnopqrstuvwxyz0123456789ABCDEFGHIJKLMNOPQRSTUV"
+			return
+		}
+		hash, err := bcrypt.GenerateFromPassword(buf, 12)
+		if err != nil {
+			dummyBcryptHash = "$2a$12$abcdefghijklmnopqrstuvwxyz0123456789ABCDEFGHIJKLMNOPQRSTUV"
+			return
+		}
+		dummyBcryptHash = string(hash)
+	})
+	return dummyBcryptHash
+}
+
+// constantTimeEqualize runs a bcrypt compare against a dummy hash so the
+// caller takes ~the same time whether or not the secret matches. The
+// compare will always fail; the goal is only to equalize wall-clock.
+func constantTimeEqualize(password string) {
+	_ = bcrypt.CompareHashAndPassword([]byte(getDummyBcryptHash()), []byte(password))
+}
 
 type LoginRequest struct {
 	Email    string `json:"email"`
