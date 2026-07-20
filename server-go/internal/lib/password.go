@@ -11,7 +11,11 @@ import (
 	"golang.org/x/crypto/bcrypt"
 )
 
-const BcryptCost = 10
+// BcryptCost is the cost factor for bcrypt password hashing. 12 is the
+// current OWASP recommendation (2024+) — high enough to make brute-force
+// attacks expensive, low enough to keep login latency under 250 ms on
+// modern hardware. Existing hashes at lower cost are still verified.
+const BcryptCost = 12
 
 func HashPassword(password string) (string, error) {
 	hash, err := bcrypt.GenerateFromPassword([]byte(password), BcryptCost)

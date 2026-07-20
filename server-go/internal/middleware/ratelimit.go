@@ -22,6 +22,7 @@ type RateLimiter struct {
 	rate     float64
 	burst    float64
 	interval time.Duration
+	done     chan struct{}
 }
 
 func NewRateLimiter(rps float64, burst int) *RateLimiter {
@@ -30,23 +31,39 @@ func NewRateLimiter(rps float64, burst int) *RateLimiter {
 		rate:     rps,
 		burst:    float64(burst),
 		interval: time.Minute,
+		done:     make(chan struct{}),
 	}
 	go rl.gc()
 	return rl
 }
 
+// Stop terminates the background GC goroutine. Safe to call multiple times.
+func (rl *RateLimiter) Stop() {
+	select {
+	case <-rl.done:
+		// already stopped
+	default:
+		close(rl.done)
+	}
+}
+
 func (rl *RateLimiter) gc() {
 	ticker := time.NewTicker(rl.interval)
 	defer ticker.Stop()
-	for range ticker.C {
-		rl.mu.Lock()
-		now := time.Now()
-		for ip, b := range rl.buckets {
-			if now.Sub(b.lastCheck) > 5*time.Minute {
-				delete(rl.buckets, ip)
+	for {
+		select {
+		case <-rl.done:
+			return
+		case <-ticker.C:
+			rl.mu.Lock()
+			now := time.Now()
+			for ip, b := range rl.buckets {
+				if now.Sub(b.lastCheck) > 5*time.Minute {
+					delete(rl.buckets, ip)
+				}
 			}
+			rl.mu.Unlock()
 		}
-		rl.mu.Unlock()
 	}
 }
 

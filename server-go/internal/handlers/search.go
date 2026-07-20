@@ -3,6 +3,7 @@ package handlers
 import (
 	"database/sql"
 	"fmt"
+	"log/slog"
 	"net/http"
 	"strconv"
 	"strings"
@@ -98,7 +99,8 @@ func (h *SearchHandler) SearchCandidates(c *gin.Context) {
 
 	rows, err := h.db.QueryContext(c.Request.Context(), query, args...)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": fmt.Sprintf("search failed: %v", err)})
+		slog.Error("search failed", "error", err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "search failed"})
 		return
 	}
 	defer rows.Close()
@@ -116,13 +118,15 @@ func (h *SearchHandler) SearchCandidates(c *gin.Context) {
 	for rows.Next() {
 		var r candidateRow
 		if err := rows.Scan(&r.ID, &r.Name, &r.AvatarURL, &r.Headline, &r.About, &r.YearsOfExperience, &r.Slug); err != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{"error": fmt.Sprintf("scan failed: %v", err)})
+			slog.Error("scan failed", "error", err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "scan failed"})
 			return
 		}
 		profileRows = append(profileRows, r)
 	}
 	if err := rows.Err(); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": fmt.Sprintf("rows error: %v", err)})
+		slog.Error("rows error", "error", err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "rows error"})
 		return
 	}
 
@@ -157,7 +161,8 @@ func (h *SearchHandler) SearchCandidates(c *gin.Context) {
 		)
 		eRows, err := h.db.QueryContext(c.Request.Context(), expQuery, expArgs...)
 		if err != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{"error": fmt.Sprintf("failed to load experiences: %v", err)})
+			slog.Error("failed to load experiences", "error", err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to load experiences"})
 			return
 		}
 		for eRows.Next() {
@@ -168,7 +173,8 @@ func (h *SearchHandler) SearchCandidates(c *gin.Context) {
 			}
 			if err := eRows.Scan(&e.ProfileID, &e.Industry, &e.SkillsRaw); err != nil {
 				eRows.Close()
-				c.JSON(http.StatusInternalServerError, gin.H{"error": fmt.Sprintf("scan experience: %v", err)})
+				slog.Error("scan experience", "error", err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "scan experience"})
 				return
 			}
 			expRows = append(expRows, e)

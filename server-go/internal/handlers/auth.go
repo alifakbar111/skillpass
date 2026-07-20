@@ -2,19 +2,23 @@ package handlers
 
 import (
 	"context"
+	"crypto/rand"
 	"crypto/sha256"
 	"database/sql"
 	"encoding/hex"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"net/http"
 	"os"
+	"sync"
 	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/google/uuid"
 	"github.com/uptrace/bun"
+	"golang.org/x/crypto/bcrypt"
 
 	"skillpass-server-go/internal/authtoken"
 	"skillpass-server-go/internal/email"
@@ -29,6 +33,76 @@ const (
 	minPasswordLen  = 8
 	refreshCookie   = "refreshToken"
 )
+
+// dummyBcryptHash is a real bcrypt hash of an unguessable random value,
+// computed once at package init. Used to equalize the timing of
+// ForgotPassword and any other "compare a secret" path so an attacker
+// cannot distinguish "user exists" from "user does not exist" by
+// measuring response time.
+var (
+	dummyBcryptHashOnce sync.Once
+	dummyBcryptHash     string
+)
+
+func getDummyBcryptHash() string {
+	dummyBcryptHashOnce.Do(func() {
+		// A random 32-byte value that is never a real password.
+		buf := make([]byte, 32)
+		if _, err := rand.Read(buf); err != nil {
+			// Fall back to a static hash if the RNG fails (extremely unlikely).
+			dummyBcryptHash = "$2a$12$abcdefghijklmnopqrstuvwxyz0123456789ABCDEFGHIJKLMNOPQRSTUV"
+			return
+		}
+		hash, err := bcrypt.GenerateFromPassword(buf, 12)
+		if err != nil {
+			dummyBcryptHash = "$2a$12$abcdefghijklmnopqrstuvwxyz0123456789ABCDEFGHIJKLMNOPQRSTUV"
+			return
+		}
+		dummyBcryptHash = string(hash)
+	})
+	return dummyBcryptHash
+}
+
+// constantTimeEqualize runs a bcrypt compare against a dummy hash so the
+// caller takes ~the same time whether or not the secret matches. The
+// compare will always fail; the goal is only to equalize wall-clock.
+func constantTimeEqualize(password string) {
+	_ = bcrypt.CompareHashAndPassword([]byte(getDummyBcryptHash()), []byte(password))
+}
+
+// accessTokenCookie is the name of the HttpOnly cookie that mirrors the
+// access token. The web client uses it via credentials: 'include', which
+// removes the need to keep the token in localStorage (XSS-readable).
+const accessTokenCookie = "accessToken"
+
+// setAccessTokenCookie writes the access token as an HttpOnly,
+// SameSite=Strict cookie. The Secure flag is set when GIN_MODE=release.
+func setAccessTokenCookie(c *gin.Context, token string, ttl time.Duration) {
+	secure := os.Getenv("GIN_MODE") == "release"
+	http.SetCookie(c.Writer, &http.Cookie{
+		Name:     accessTokenCookie,
+		Value:    token,
+		Path:     "/",
+		HttpOnly: true,
+		Secure:   secure,
+		SameSite: http.SameSiteStrictMode,
+		MaxAge:   int(ttl.Seconds()),
+	})
+}
+
+// clearAccessTokenCookie expires the access token cookie. Called on
+// logout.
+func clearAccessTokenCookie(c *gin.Context) {
+	http.SetCookie(c.Writer, &http.Cookie{
+		Name:     accessTokenCookie,
+		Value:    "",
+		Path:     "/",
+		HttpOnly: true,
+		Secure:   os.Getenv("GIN_MODE") == "release",
+		SameSite: http.SameSiteStrictMode,
+		MaxAge:   -1,
+	})
+}
 
 type LoginRequest struct {
 	Email    string `json:"email"`
@@ -101,11 +175,23 @@ type tokenClaims struct {
 
 func (h *AuthHandler) signTokens(c *gin.Context, db bun.IDB, userID, role string) (accessToken, refreshToken string, refreshID uuid.UUID, err error) {
 	now := time.Now()
+	// Read the current token_version so admin-initiated role changes
+	// (which bump the column) immediately invalidate outstanding tokens.
+	var tokenVersion int
+	if err = db.NewSelect().
+		Model((*models.User)(nil)).
+		Column("token_version").
+		Where("id = ?", userID).
+		Scan(c.Request.Context(), &tokenVersion); err != nil {
+		return "", "", uuid.Nil, fmt.Errorf("lookup token version: %w", err)
+	}
+
 	accessToken, err = jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
-		"userId": userID,
-		"role":   role,
-		"iat":    now.Unix(),
-		"exp":    now.Add(accessTokenTTL).Unix(),
+		"userId":       userID,
+		"role":         role,
+		"tokenVersion": tokenVersion,
+		"iat":          now.Unix(),
+		"exp":          now.Add(accessTokenTTL).Unix(),
 	}).SignedString([]byte(h.jwtSecret))
 	if err != nil {
 		return "", "", uuid.Nil, err
@@ -114,12 +200,13 @@ func (h *AuthHandler) signTokens(c *gin.Context, db bun.IDB, userID, role string
 	refreshID = uuid.New()
 	refreshExpires := now.Add(refreshTokenTTL)
 	refreshToken, err = jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
-		"jti":    refreshID.String(),
-		"userId": userID,
-		"role":   role,
-		"type":   "refresh",
-		"iat":    now.Unix(),
-		"exp":    refreshExpires.Unix(),
+		"jti":          refreshID.String(),
+		"userId":       userID,
+		"role":         role,
+		"tokenVersion": tokenVersion,
+		"type":         "refresh",
+		"iat":          now.Unix(),
+		"exp":          refreshExpires.Unix(),
 	}).SignedString([]byte(h.jwtSecret))
 	if err != nil {
 		return "", "", uuid.Nil, err
@@ -331,6 +418,7 @@ func (h *AuthHandler) Register(c *gin.Context) {
 	// Best-effort: send the welcome + email-verification mail.
 	h.sendVerificationEmail(c.Request.Context(), user.ID.String(), user.Email, user.Name)
 
+	setAccessTokenCookie(c, accessToken, accessTokenTTL)
 	c.JSON(http.StatusCreated, LoginResponse{
 		AccessToken: accessToken,
 		User: UserResponse{
@@ -383,6 +471,11 @@ func (h *AuthHandler) Login(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to sign token"})
 		return
 	}
+
+	// PR-22: also set the access token as an HttpOnly cookie so the web
+	// client does not have to keep it in localStorage (XSS-readable).
+	// SameSite=Strict blocks cross-site requests from sending the cookie.
+	setAccessTokenCookie(c, accessToken, accessTokenTTL)
 
 	c.JSON(http.StatusOK, LoginResponse{
 		AccessToken: accessToken,
@@ -440,6 +533,7 @@ func (h *AuthHandler) Refresh(c *gin.Context) {
 		revokeAllForUser(c.Request.Context(), tx, rt.UserID)
 		_ = tx.Commit()
 		clearRefreshCookie(c)
+	clearAccessTokenCookie(c)
 		c.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid refresh token"})
 		return
 	}
@@ -464,6 +558,7 @@ func (h *AuthHandler) Refresh(c *gin.Context) {
 		return
 	}
 
+	setAccessTokenCookie(c, accessToken, accessTokenTTL)
 	c.JSON(http.StatusOK, RefreshResponse{AccessToken: accessToken})
 }
 
@@ -479,12 +574,14 @@ func (h *AuthHandler) Logout(c *gin.Context) {
 	userIDVal, exists := c.Get("userId")
 	if !exists {
 		clearRefreshCookie(c)
+	clearAccessTokenCookie(c)
 		c.JSON(http.StatusOK, MessageResponse{Message: "Logged out"})
 		return
 	}
 	userIDStr, ok := userIDVal.(string)
 	if !ok {
 		clearRefreshCookie(c)
+	clearAccessTokenCookie(c)
 		c.JSON(http.StatusOK, MessageResponse{Message: "Logged out"})
 		return
 	}
@@ -494,6 +591,8 @@ func (h *AuthHandler) Logout(c *gin.Context) {
 		return
 	}
 	clearRefreshCookie(c)
+	clearAccessTokenCookie(c)
+	clearAccessTokenCookie(c)
 	c.JSON(http.StatusOK, MessageResponse{Message: "Logged out"})
 }
 

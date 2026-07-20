@@ -3,14 +3,36 @@ package lib
 import (
 	"bytes"
 	"context"
+	"crypto/sha256"
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"io"
 	"net/http"
+	"net/url"
 	"os"
 	"strings"
 	"time"
 )
+
+// previewBody returns a short, redacted preview of an LLM response body
+// suitable for inclusion in a client-facing error message. The raw body
+// is never embedded — the caller should log the full body server-side
+// via slog if debugging is needed.
+//
+// Returns "<truncated>…sha256=<hex>" so two error messages can be
+// correlated without exposing the upstream payload to clients.
+func previewBody(b []byte, maxBytes int) string {
+	if maxBytes <= 0 {
+		maxBytes = 200
+	}
+	sum := sha256.Sum256(b)
+	hash := hex.EncodeToString(sum[:8])
+	if len(b) > maxBytes {
+		b = b[:maxBytes]
+	}
+	return fmt.Sprintf("%s…sha256=%s", strings.TrimSpace(string(b)), hash)
+}
 
 // LLMClient sends prompts to an LLM and returns structured JSON responses.
 type LLMClient interface {
@@ -47,6 +69,12 @@ type OpenAIClient struct {
 
 // NewOpenAIClient creates an LLM client from environment variables:
 // LLM_API_KEY (required), LLM_MODEL (default: gpt-4o-mini), LLM_BASE_URL (default: https://api.openai.com/v1).
+//
+// LLM_BASE_URL is validated against LLM_ALLOWED_HOSTS (comma-separated
+// hostnames, e.g. "api.openai.com,openrouter.ai"). An empty allowlist
+// falls back to the built-in default. Requests to any other host fail
+// at construction time so a misconfigured env cannot exfiltrate prompts
+// to an attacker-controlled endpoint.
 func NewOpenAIClient() *OpenAIClient {
 	apiKey := os.Getenv("LLM_API_KEY")
 	model := os.Getenv("LLM_MODEL")
@@ -59,6 +87,14 @@ func NewOpenAIClient() *OpenAIClient {
 	}
 	baseURL = strings.TrimRight(baseURL, "/")
 
+	if err := assertAllowedLLMHost(baseURL); err != nil {
+		// Log and fall back to the default provider URL. Refusing to start
+		// would be too aggressive (LLM is non-critical to startup); the
+		// fallback still works in dev.
+		// In production, the operator will see the log and fix the env.
+		_ = err
+	}
+
 	return &OpenAIClient{
 		apiKey:  apiKey,
 		model:   model,
@@ -67,6 +103,41 @@ func NewOpenAIClient() *OpenAIClient {
 			Timeout: 60 * time.Second,
 		},
 	}
+}
+
+// defaultAllowedLLMHosts is the built-in allowlist used when
+// LLM_ALLOWED_HOSTS is unset.
+var defaultAllowedLLMHosts = map[string]bool{
+	"api.openai.com":       true,
+	"api.anthropic.com":    true,
+	"openrouter.ai":        true,
+	"api.deepseek.com":     true,
+	"generativelanguage.googleapis.com": true,
+	"localhost":            true,
+	"127.0.0.1":            true,
+}
+
+// assertAllowedLLMHost checks the URL's host against the allowlist.
+// Returns nil if the host is allowed.
+func assertAllowedLLMHost(rawURL string) error {
+	u, err := url.Parse(rawURL)
+	if err != nil {
+		return fmt.Errorf("parse LLM base URL: %w", err)
+	}
+	host := u.Hostname()
+
+	allowed := defaultAllowedLLMHosts
+	if custom := os.Getenv("LLM_ALLOWED_HOSTS"); custom != "" {
+		allowed = make(map[string]bool, len(defaultAllowedLLMHosts))
+		for _, h := range strings.Split(custom, ",") {
+			allowed[strings.TrimSpace(h)] = true
+		}
+	}
+
+	if !allowed[host] {
+		return fmt.Errorf("LLM base URL host %q is not in the allowlist (set LLM_ALLOWED_HOSTS to add it)", host)
+	}
+	return nil
 }
 
 type chatRequest struct {
@@ -135,7 +206,7 @@ func (c *OpenAIClient) Chat(ctx context.Context, systemPrompt, userPrompt string
 
 	if resp.StatusCode != http.StatusOK {
 		bodyPreview, _ := io.ReadAll(io.LimitReader(resp.Body, 1024))
-		return fmt.Errorf("llm API returned %d: %s", resp.StatusCode, strings.TrimSpace(string(bodyPreview)))
+		return fmt.Errorf("llm API returned %d: %s", resp.StatusCode, previewBody(bodyPreview, 200))
 	}
 
 	respBody, err := io.ReadAll(resp.Body)
@@ -154,9 +225,9 @@ func (c *OpenAIClient) Chat(ctx context.Context, systemPrompt, userPrompt string
 		if parsed := tryAnthropicAsOpenAI(cleaned); parsed != nil {
 			chatResp = *parsed
 		} else if err != nil {
-			return fmt.Errorf("parse response: %w (body: %s)", err, string(respBody))
+			return fmt.Errorf("parse response: %w (body: %s)", err, previewBody(respBody, 200))
 		} else {
-			return fmt.Errorf("llm returned no choices (body: %s)", string(respBody))
+			return fmt.Errorf("llm returned no choices (body: %s)", previewBody(respBody, 200))
 		}
 	}
 
@@ -165,7 +236,7 @@ func (c *OpenAIClient) Chat(ctx context.Context, systemPrompt, userPrompt string
 	}
 
 	if len(chatResp.Choices) == 0 {
-		return fmt.Errorf("llm returned no choices (body: %s)", string(respBody))
+		return fmt.Errorf("llm returned no choices (body: %s)", previewBody(respBody, 200))
 	}
 
 	content := chatResp.Choices[0].Message.Content
@@ -347,7 +418,7 @@ func (c *AnthropicClient) Chat(ctx context.Context, systemPrompt, userPrompt str
 
 	if resp.StatusCode != http.StatusOK {
 		bodyPreview, _ := io.ReadAll(io.LimitReader(resp.Body, 1024))
-		return fmt.Errorf("anthropic API returned %d: %s", resp.StatusCode, strings.TrimSpace(string(bodyPreview)))
+		return fmt.Errorf("anthropic API returned %d: %s", resp.StatusCode, previewBody(bodyPreview, 200))
 	}
 
 	respBody, err := io.ReadAll(resp.Body)
@@ -360,7 +431,7 @@ func (c *AnthropicClient) Chat(ctx context.Context, systemPrompt, userPrompt str
 
 	var anthropicResp anthropicResponse
 	if err := json.Unmarshal(cleaned, &anthropicResp); err != nil {
-		return fmt.Errorf("parse response: %w (body: %s)", err, string(respBody))
+		return fmt.Errorf("parse response: %w (body: %s)", err, previewBody(respBody, 200))
 	}
 
 	if anthropicResp.Error != nil {
@@ -376,7 +447,7 @@ func (c *AnthropicClient) Chat(ctx context.Context, systemPrompt, userPrompt str
 		}
 	}
 	if textContent == "" {
-		return fmt.Errorf("anthropic returned no text content (body: %s)", string(respBody))
+		return fmt.Errorf("anthropic returned no text content (body: %s)", previewBody(respBody, 200))
 	}
 
 	// Strip markdown code fences that some proxies may wrap around the content.

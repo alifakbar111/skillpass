@@ -73,7 +73,13 @@ func main() {
 	bunDB := db.NewBunDB(database)
 	defer bunDB.Close()
 
+	// PR-20: register the DB with the auth middleware so it can verify
+	// the token_version JWT claim against the DB on every request.
+	middleware.SetAuthDB(bunDB)
+
 	r := gin.Default()
+
+	r.Use(middleware.SecurityHeaders())
 
 	r.Use(cors.New(cors.Config{
 		AllowOrigins:     []string{cfg.CORSOrigin},
@@ -84,6 +90,7 @@ func main() {
 	}))
 
 	authRL := middleware.NewRateLimiter(5, 10)
+	defer authRL.Stop()
 
 	// WebSocket upgrader uses an allow-list driven by CORS_ORIGIN so
 	// production deployments can drop the dev-only localhost entries.

@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"log/slog"
 	"net/http"
 	"net/url"
 	"regexp"
@@ -186,7 +187,8 @@ func (h *ProfileHandler) GetMyProfile(c *gin.Context) {
 
 	userUUID, err := lib.ParseUUID(userIDStr)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": fmt.Sprintf("Invalid user ID: %v", err)})
+		slog.Warn("invalid user ID", "raw", c.Param("id"), "error", err)
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid user ID"})
 		return
 	}
 
@@ -271,7 +273,8 @@ func (h *ProfileHandler) UpdateMyProfile(c *gin.Context) {
 
 	userUUID, err := lib.ParseUUID(userIDStr)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": fmt.Sprintf("Invalid user ID: %v", err)})
+		slog.Warn("invalid user ID", "raw", c.Param("id"), "error", err)
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid user ID"})
 		return
 	}
 
@@ -457,7 +460,8 @@ func (h *ProfileHandler) CreateExperience(c *gin.Context) {
 
 	userUUID, err := lib.ParseUUID(userIDStr)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": fmt.Sprintf("Invalid user ID: %v", err)})
+		slog.Warn("invalid user ID", "raw", c.Param("id"), "error", err)
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid user ID"})
 		return
 	}
 
@@ -564,14 +568,16 @@ func (h *ProfileHandler) UpdateExperience(c *gin.Context) {
 
 	userUUID, err := lib.ParseUUID(userIDStr)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": fmt.Sprintf("Invalid user ID: %v", err)})
+		slog.Warn("invalid user ID", "raw", c.Param("id"), "error", err)
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid user ID"})
 		return
 	}
 
 	expID := c.Param("id")
 	expUUID, err := lib.ParseUUID(expID)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": fmt.Sprintf("Invalid experience ID: %v", err)})
+		slog.Warn("invalid experience ID", "error", err)
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid experience ID"})
 		return
 	}
 
@@ -705,14 +711,16 @@ func (h *ProfileHandler) DeleteExperience(c *gin.Context) {
 
 	userUUID, err := lib.ParseUUID(userIDStr)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": fmt.Sprintf("Invalid user ID: %v", err)})
+		slog.Warn("invalid user ID", "raw", c.Param("id"), "error", err)
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid user ID"})
 		return
 	}
 
 	expID := c.Param("id")
 	expUUID, err := lib.ParseUUID(expID)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": fmt.Sprintf("Invalid experience ID: %v", err)})
+		slog.Warn("invalid experience ID", "error", err)
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid experience ID"})
 		return
 	}
 

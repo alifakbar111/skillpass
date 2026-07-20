@@ -17,8 +17,15 @@ import (
 )
 
 const (
-	verificationTTL  = 24 * time.Hour
-	passwordResetTTL = 1 * time.Hour
+	// verificationTTL caps how long a verification link is valid. The
+	// link still contains the token in the URL, so the TTL must be
+	// short enough to limit the value of a leaked link (logs, referer,
+	// link previews) and short enough that the consume-on-first-use
+	// guarantee is useful.
+	verificationTTL = 15 * time.Minute
+	// passwordResetTTL — see above; the token-in-URL exposure is the
+	// same as for verification.
+	passwordResetTTL = 15 * time.Minute
 )
 
 // ErrInvalidToken covers unknown, expired, and already-used tokens. Handlers

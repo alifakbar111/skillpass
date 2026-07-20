@@ -2,7 +2,7 @@ package handlers
 
 import (
 	"database/sql"
-	"fmt"
+	"log/slog"
 	"net/http"
 	"regexp"
 	"strconv"
@@ -216,7 +216,8 @@ func (h *JobHandler) GetJob(c *gin.Context) {
 	id := c.Param("id")
 	jobUUID, err := lib.ParseUUID(id)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": fmt.Sprintf("Invalid job ID: %v", err)})
+		slog.Warn("invalid job ID", "raw", c.Param("id"), "error", err)
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid job ID"})
 		return
 	}
 
@@ -256,7 +257,8 @@ func (h *JobHandler) ListMyJobs(c *gin.Context) {
 
 	companyUUID, err := lib.ParseUUID(companyIDStr)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": fmt.Sprintf("Invalid company ID: %v", err)})
+		slog.Warn("invalid company ID", "raw", c.Param("id"), "error", err)
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid company ID"})
 		return
 	}
 
@@ -303,7 +305,8 @@ func (h *JobHandler) CreateJob(c *gin.Context) {
 
 	companyUUID, err := lib.ParseUUID(companyIDStr)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": fmt.Sprintf("Invalid company ID: %v", err)})
+		slog.Warn("invalid company ID", "raw", c.Param("id"), "error", err)
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid company ID"})
 		return
 	}
 
@@ -356,7 +359,8 @@ func (h *JobHandler) UpdateJob(c *gin.Context) {
 	id := c.Param("id")
 	jobUUID, err := lib.ParseUUID(id)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": fmt.Sprintf("Invalid job ID: %v", err)})
+		slog.Warn("invalid job ID", "raw", c.Param("id"), "error", err)
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid job ID"})
 		return
 	}
 	companyIDVal, ok := c.Get("companyId")
@@ -372,7 +376,8 @@ func (h *JobHandler) UpdateJob(c *gin.Context) {
 
 	companyUUID, err := lib.ParseUUID(companyIDStr)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": fmt.Sprintf("Invalid company ID: %v", err)})
+		slog.Warn("invalid company ID", "raw", c.Param("id"), "error", err)
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid company ID"})
 		return
 	}
 
@@ -480,7 +485,8 @@ func (h *JobHandler) DeleteJob(c *gin.Context) {
 	id := c.Param("id")
 	jobUUID, err := lib.ParseUUID(id)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": fmt.Sprintf("Invalid job ID: %v", err)})
+		slog.Warn("invalid job ID", "raw", c.Param("id"), "error", err)
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid job ID"})
 		return
 	}
 	companyIDVal, ok := c.Get("companyId")
@@ -496,7 +502,8 @@ func (h *JobHandler) DeleteJob(c *gin.Context) {
 
 	companyUUID, err := lib.ParseUUID(companyIDStr)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": fmt.Sprintf("Invalid company ID: %v", err)})
+		slog.Warn("invalid company ID", "raw", c.Param("id"), "error", err)
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid company ID"})
 		return
 	}
 

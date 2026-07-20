@@ -1,6 +1,7 @@
 package webhook
 
 import (
+	"errors"
 	"log/slog"
 	"net/http"
 
@@ -80,6 +81,10 @@ func (h *Handler) Create(c *gin.Context) {
 
 	created, err := h.service.Create(c.Request.Context(), companyID, req.URL)
 	if err != nil {
+		if errors.Is(err, ErrTooManyWebhooks) {
+			c.JSON(http.StatusForbidden, gin.H{"error": err.Error()})
+			return
+		}
 		// URL validation errors are user errors.
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return

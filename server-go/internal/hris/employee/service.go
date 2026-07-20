@@ -416,7 +416,10 @@ func (s *Service) Update(ctx context.Context, companyID, employeeID uuid.UUID, r
 	if err != nil {
 		return nil, err
 	}
-	rows, _ := result.RowsAffected()
+	rows, err := result.RowsAffected()
+	if err != nil {
+		return nil, fmt.Errorf("rows affected: %w", err)
+	}
 	if rows == 0 {
 		return nil, sql.ErrNoRows
 	}

@@ -170,6 +170,11 @@ func (h *AuthHandler) ForgotPassword(c *gin.Context) {
 		if !errors.Is(err, sql.ErrNoRows) {
 			slog.Error("create password reset failed", "error", err)
 		}
+		// Equalize timing: run a dummy bcrypt compare so a "no such user"
+		// response takes ~the same time as the happy path. This blocks the
+		// account-enumeration timing channel even though the user message
+		// is already generic.
+		constantTimeEqualize(req.Email)
 		// Same response whether or not the account exists.
 		c.JSON(http.StatusOK, gin.H{"message": genericMsg})
 		return
