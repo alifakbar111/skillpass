@@ -11,9 +11,10 @@ import (
 )
 
 var (
-	ErrCompanyNotFound = errors.New("company not found")
-	ErrInvalidRating   = errors.New("rating must be between 1 and 5")
+	ErrCompanyNotFound  = errors.New("company not found")
+	ErrInvalidRating    = errors.New("rating must be between 1 and 5")
 	ErrInvalidInteraction = errors.New("interaction type must be 'applied' or 'interviewed'")
+	ErrNotEligible      = errors.New("you can only review companies you have applied to or interviewed with")
 )
 
 type Service struct {
@@ -64,6 +65,23 @@ func (s *Service) Create(ctx context.Context, companyID, candidateID string, req
 		return nil, ErrCompanyNotFound
 	}
 
+	// C2: candidate must have applied to or interviewed with a job at this company
+	var eligible bool
+	err = s.db.QueryRowContext(ctx, `
+		SELECT EXISTS(
+			SELECT 1
+			FROM applications a
+			JOIN job_postings jp ON a.job_posting_id = jp.id
+			WHERE a.jobseeker_id = $1
+			  AND jp.company_id = $2
+		)`, candidateID, companyID).Scan(&eligible)
+	if err != nil {
+		return nil, fmt.Errorf("check review eligibility: %w", err)
+	}
+	if !eligible {
+		return nil, ErrNotEligible
+	}
+
 	var id string
 	var createdAt time.Time
 	err = s.db.QueryRowContext(ctx,
@@ -72,8 +90,7 @@ func (s *Service) Create(ctx context.Context, companyID, candidateID string, req
 		 ON CONFLICT (company_id, candidate_id)
 		 DO UPDATE SET rating = EXCLUDED.rating,
 		               review = EXCLUDED.review,
-		               interaction_type = EXCLUDED.interaction_type,
-		               created_at = now()
+		               interaction_type = EXCLUDED.interaction_type
 		 RETURNING id, created_at`,
 		companyID, candidateID, req.Rating, req.Review, req.InteractionType,
 	).Scan(&id, &createdAt)

@@ -823,6 +823,56 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/auth/sse-ticket": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Issue an SSE exchange ticket
+         * @description Exchanges a Bearer access token for a short-lived, single-use opaque ticket that can authenticate an EventSource stream. The ticket is bound to the caller's userId and expires after 60 seconds. Intended for clients that cannot set Authorization headers (e.g. browser EventSource).
+         */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["internal_handlers.SSETicketResponse"];
+                    };
+                };
+                /** @description Unauthorized */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            [key: string]: string;
+                        };
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/auth/verify-email": {
         parameters: {
             query?: never;
@@ -4599,6 +4649,11 @@ export interface components {
             skill?: string;
             urlPoints?: number;
             yearsPoints?: number;
+        };
+        /** @description Short-lived single-use exchange ticket for authenticating an SSE stream. Pass as ?exchange=<ticket> to the stream endpoint. */
+        "internal_handlers.SSETicketResponse": {
+            exchange?: string;
+            expiresIn?: number;
         };
         "internal_matching.SkillsGap": {
             hasEvaluation?: boolean;

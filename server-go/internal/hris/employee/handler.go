@@ -2,19 +2,23 @@ package employee
 
 import (
 	"database/sql"
+	"log/slog"
 	"net/http"
 	"strconv"
 
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
+
+	"skillpass-server-go/internal/rbac"
 )
 
 type Handler struct {
-	svc *Service
+	svc   *Service
+	rbacS *rbac.Service
 }
 
-func NewHandler(db *sql.DB) *Handler {
-	return &Handler{svc: NewService(db)}
+func NewHandler(db *sql.DB, rbacS *rbac.Service) *Handler {
+	return &Handler{svc: NewService(db), rbacS: rbacS}
 }
 
 func mustParseCompanyID(c *gin.Context) (uuid.UUID, bool) {
@@ -70,17 +74,21 @@ func (h *Handler) Get(c *gin.Context) {
 	}
 
 	if employeeID != requesterUUID {
-		emp, err := h.svc.Get(c.Request.Context(), companyID, requesterUUID)
+		// C6: requesting another employee's record. The requester must
+		// have an elevated permission beyond `view_self` — otherwise any
+		// employee could read PII (national ID, NPWP, bank account,
+		// salary) of any other employee by passing the target ID.
+		has, err := h.rbacS.HasAnyPermission(c.Request.Context(), requesterUUID, []string{
+			"employee.view",
+			"employee.view_team",
+		})
 		if err != nil {
-			if err == sql.ErrNoRows {
-				c.JSON(http.StatusUnauthorized, gin.H{"error": "Employee not found"})
-				return
-			}
-			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to verify permissions"})
+			slog.Error("permission check failed", "requester", requesterUUID, "error", err)
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Permission check failed"})
 			return
 		}
-		if emp == nil {
-			c.JSON(http.StatusUnauthorized, gin.H{"error": "Unauthorized"})
+		if !has {
+			c.JSON(http.StatusForbidden, gin.H{"error": "Insufficient permissions to view other employees"})
 			return
 		}
 	}

@@ -21,9 +21,12 @@ import (
 
 // Service manages company webhooks and dispatches signed events.
 type Service struct {
-	db   *sql.DB
-	http *http.Client
+	db     *sql.DB
+	http   *http.Client
+	deliverSlots chan struct{} // bounded semaphore for in-flight deliveries
 }
+
+const defaultMaxInflightDeliveries = 16
 
 func NewService(db *sql.DB) *Service {
 	return &Service{
@@ -31,6 +34,7 @@ func NewService(db *sql.DB) *Service {
 		http: &http.Client{
 			Timeout: 10 * time.Second,
 		},
+		deliverSlots: make(chan struct{}, defaultMaxInflightDeliveries),
 	}
 }
 
@@ -221,9 +225,20 @@ func (s *Service) DispatchApplicationReceived(ctx context.Context, jobPostingID,
 		Data:      data,
 	})
 
-	// Fire-and-forget: deliver outside the request lifecycle.
+	// Fire-and-forget: deliver outside the request lifecycle, but
+	// bound concurrency so a verified company cannot exhaust the
+	// HTTP connection pool with a flood of webhook targets.
 	for _, t := range targets {
-		go s.deliver(t.url, t.secret, payload)
+		select {
+		case s.deliverSlots <- struct{}{}:
+		default:
+			slog.Warn("webhook delivery slot full; dropping event", "url", t.url)
+			continue
+		}
+		go func(targetURL, secret string) {
+			defer func() { <-s.deliverSlots }()
+			s.deliver(targetURL, secret, payload)
+		}(t.url, t.secret)
 	}
 	return nil
 }

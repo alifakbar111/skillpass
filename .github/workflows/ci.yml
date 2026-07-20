@@ -23,35 +23,42 @@ jobs:
           --health-interval 5s
           --health-timeout 5s
           --health-retries 10
+    defaults:
+      run:
+        working-directory: server-go
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-go@v5
+      - uses: actions/checkout@v5
+      - uses: actions/setup-go@v6
         with:
           go-version-file: server-go/go.mod
           cache-dependency-path: server-go/go.sum
       - name: Generate Swagger docs
         run: |
           go install github.com/swaggo/swag/cmd/swag@latest
-          cd server-go && swag init -g cmd/server/main.go --parseDependency
+          swag init -g cmd/server/main.go --parseDependency
       # -p 1: test packages share one DB and truncate tables for isolation,
       # so they must not run in parallel.
       # ./docs/... is swag-generated code with no tests — exclude it.
       - name: Run tests
-        run: go -C server-go test -p 1 $(go -C server-go list ./... | grep -v '/docs$')
+        run: |
+          set -euo pipefail
+          PACKAGES=$(go list ./... | grep -v '/docs$' | tr '\n' ' ')
+          echo "Testing packages: $PACKAGES"
+          go test -p 1 $PACKAGES
 
   web:
     name: Web typecheck, tests, build
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - uses: oven-sh/setup-bun@v2
         with:
           bun-version: latest
       # vitest workers need a Node runtime (Bun runs the CLI fine, but its
       # worker_threads shim cannot host vitest's pools).
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v5
         with:
-          node-version: 22
+          node-version: 24
       - name: Install dependencies
         run: |
           bun install --frozen-lockfile

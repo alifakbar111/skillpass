@@ -50,6 +50,43 @@ func (s *CategoryService) GetJobCategoryWeights(ctx context.Context, jobPostingI
 	return weights, nil
 }
 
+// GetWeightsForJobs fetches all category weights for a batch of job
+// postings in a single query, returning a map keyed by job posting ID.
+// Used by the matcher to avoid an N+1 query when scoring many jobs.
+func (s *CategoryService) GetWeightsForJobs(ctx context.Context, jobIDs []uuid.UUID) (map[uuid.UUID]map[string]int, error) {
+	if len(jobIDs) == 0 {
+		return map[uuid.UUID]map[string]int{}, nil
+	}
+	var rows []struct {
+		JobID  string `bun:"job_posting_id"`
+		Name   string `bun:"name"`
+		Weight int    `bun:"weight"`
+	}
+	err := s.bun.NewRaw(`
+		SELECT jcw.job_posting_id, sc.name, jcw.weight
+		FROM job_category_weights jcw
+		INNER JOIN skill_categories sc ON sc.id = jcw.category_id
+		WHERE jcw.job_posting_id = ANY(?)
+	`, bun.In(jobIDs)).Scan(ctx, &rows)
+	if err != nil {
+		return nil, err
+	}
+	out := make(map[uuid.UUID]map[string]int, len(jobIDs))
+	for _, r := range rows {
+		jobUUID, err := uuid.Parse(r.JobID)
+		if err != nil {
+			continue
+		}
+		bucket, ok := out[jobUUID]
+		if !ok {
+			bucket = make(map[string]int)
+			out[jobUUID] = bucket
+		}
+		bucket[r.Name] = r.Weight
+	}
+	return out, nil
+}
+
 type SkillCountEntry struct {
 	Skill string `json:"skill"`
 	Count int    `json:"count"`

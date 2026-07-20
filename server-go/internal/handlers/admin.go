@@ -149,7 +149,11 @@ func (h *AdminHandler) HandleVerification(c *gin.Context) {
 		c.JSON(http.StatusUnauthorized, gin.H{"error": "Unauthorized"})
 		return
 	}
-	adminIDStr, _ := adminIDVal.(string)
+	adminIDStr, ok := adminIDVal.(string)
+	if !ok || adminIDStr == "" {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "Unauthorized"})
+		return
+	}
 	adminUUID, err := uuid.Parse(adminIDStr)
 	if err != nil {
 		c.JSON(http.StatusUnauthorized, gin.H{"error": "Unauthorized"})

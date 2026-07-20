@@ -46,7 +46,11 @@ func (h *Handler) MatchJobs(c *gin.Context) {
 		c.JSON(http.StatusUnauthorized, gin.H{"error": "Unauthorized"})
 		return
 	}
-	userIDStr := userID.(string)
+	userIDStr, ok := userID.(string)
+	if !ok || userIDStr == "" {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "Unauthorized"})
+		return
+	}
 
 	profileID, err := h.lookupProfileID(c, userIDStr)
 	if err != nil {
@@ -86,7 +90,11 @@ func (h *Handler) SkillsGap(c *gin.Context) {
 		c.JSON(http.StatusUnauthorized, gin.H{"error": "Unauthorized"})
 		return
 	}
-	userIDStr := userID.(string)
+	userIDStr, ok := userID.(string)
+	if !ok || userIDStr == "" {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "Unauthorized"})
+		return
+	}
 
 	jobPostingID := c.Param("id")
 	if _, err := uuid.Parse(jobPostingID); err != nil {

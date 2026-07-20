@@ -72,6 +72,11 @@ type jobMatchRow struct {
 	CompanyName     string
 }
 
+type scored struct {
+	row   jobMatchRow
+	score float64
+}
+
 func (s *Service) MatchJobs(ctx context.Context, profileID string) ([]JobMatch, error) {
 	eval, err := s.getLatestEvaluation(ctx, profileID)
 	if err != nil {
@@ -121,18 +126,7 @@ func (s *Service) MatchJobs(ctx context.Context, profileID string) ([]JobMatch, 
 		return nil, err
 	}
 
-	type scored struct {
-		row   jobMatchRow
-		score float64
-	}
-	var scoredJobs []scored
-
-	for _, row := range rows {
-		score := s.computeJobMatchScore(ctx, candidateMap, []string(row.RequiredSkills), row.ID.String())
-		if score > 0 {
-			scoredJobs = append(scoredJobs, scored{row: row, score: score})
-		}
-	}
+	scoredJobs := s.scoreJobsWithBatchWeights(ctx, rows, candidateMap)
 
 	sort.Slice(scoredJobs, func(i, j int) bool {
 		return scoredJobs[i].score > scoredJobs[j].score
@@ -158,6 +152,81 @@ func (s *Service) MatchJobs(ctx context.Context, profileID string) ([]JobMatch, 
 	}
 
 	return results, nil
+}
+
+// scoreJobsWithBatchWeights scores all jobs in a single pass, fetching
+// per-job category weights in one query instead of one-per-job.
+func (s *Service) scoreJobsWithBatchWeights(ctx context.Context, rows []jobMatchRow, candidateMap map[string]bool) []scored {
+	if len(rows) == 0 {
+		return nil
+	}
+	// Pre-fetch weights for all candidate jobs in one query (avoids N+1).
+	var weightsByJob map[uuid.UUID]map[string]int
+	if s.categoryService != nil {
+		ids := make([]uuid.UUID, len(rows))
+		for i, r := range rows {
+			ids[i] = r.ID
+		}
+		if w, err := s.categoryService.GetWeightsForJobs(ctx, ids); err == nil {
+			weightsByJob = w
+		} else {
+			slog.Warn("batch weight fetch failed; falling back to per-row scoring", "error", err)
+		}
+	}
+
+	var scoredJobs []scored
+	for _, row := range rows {
+		var score float64
+		if s.categoryService != nil {
+			weights := weightsByJob[row.ID]
+			if weights == nil {
+				weights = map[string]int{} // no weights configured → unweighted sum
+			}
+			score = computeWeightedScoreWithMap(candidateMap, []string(row.RequiredSkills), weights)
+		} else {
+			score = computeMatchScoreWithMap(candidateMap, []string(row.RequiredSkills))
+		}
+		if score > 0 {
+			scoredJobs = append(scoredJobs, scored{row: row, score: score})
+		}
+	}
+	return scoredJobs
+}
+
+// computeWeightedScoreWithMap mirrors computeJobMatchScore but takes a
+// pre-fetched weights map instead of hitting the DB per row.
+func computeWeightedScoreWithMap(candidateMap map[string]bool, targetSkills []string, weights map[string]int) float64 {
+	var matched []SkillCountEntry
+	for _, t := range targetSkills {
+		if candidateMap[normalizeSkill(t)] {
+			matched = append(matched, SkillCountEntry{Skill: t, Count: 1})
+		}
+	}
+	if len(matched) == 0 {
+		return 0
+	}
+	if len(weights) == 0 {
+		var total float64
+		for _, sc := range matched {
+			total += float64(sc.Count)
+		}
+		return total
+	}
+	skillNames := make([]string, len(matched))
+	for i, sc := range matched {
+		skillNames[i] = sc.Skill
+	}
+	categories := AssignSkillsToCategory(skillNames)
+	var total float64
+	for _, sc := range matched {
+		cat := categories[sc.Skill]
+		w := weights[cat]
+		if w == 0 {
+			w = 1
+		}
+		total += float64(sc.Count) * float64(w)
+	}
+	return total
 }
 
 func (s *Service) MatchCandidates(ctx context.Context, jobPostingID string) ([]CandidateMatch, error) {

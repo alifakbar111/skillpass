@@ -2,13 +2,13 @@ package testutil
 
 import (
 	"context"
+	"database/sql"
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/uptrace/bun"
 )
 
-func CreateDepartment(db bun.IDB, companyID uuid.UUID, name string) (uuid.UUID, error) {
+func CreateDepartment(db *sql.DB, companyID uuid.UUID, name string) (uuid.UUID, error) {
 	id := uuid.New()
 	_, err := db.ExecContext(context.Background(),
 		`INSERT INTO departments (id, company_id, name, created_at, updated_at)
@@ -18,7 +18,7 @@ func CreateDepartment(db bun.IDB, companyID uuid.UUID, name string) (uuid.UUID, 
 	return id, err
 }
 
-func CreatePosition(db bun.IDB, companyID uuid.UUID, name string, departmentID uuid.UUID) (uuid.UUID, error) {
+func CreatePosition(db *sql.DB, companyID uuid.UUID, name string, departmentID uuid.UUID) (uuid.UUID, error) {
 	id := uuid.New()
 	_, err := db.ExecContext(context.Background(),
 		`INSERT INTO positions (id, company_id, name, department_id, created_at, updated_at)
@@ -28,7 +28,7 @@ func CreatePosition(db bun.IDB, companyID uuid.UUID, name string, departmentID u
 	return id, err
 }
 
-func CreateBranch(db bun.IDB, companyID uuid.UUID, name string) (uuid.UUID, error) {
+func CreateBranch(db *sql.DB, companyID uuid.UUID, name string) (uuid.UUID, error) {
 	id := uuid.New()
 	_, err := db.ExecContext(context.Background(),
 		`INSERT INTO branches (id, company_id, name, branch_type, address, created_at, updated_at)
@@ -38,7 +38,7 @@ func CreateBranch(db bun.IDB, companyID uuid.UUID, name string) (uuid.UUID, erro
 	return id, err
 }
 
-func CreateEmployee(db bun.IDB, companyID uuid.UUID, firstName, lastName, email string) (uuid.UUID, error) {
+func CreateEmployee(db *sql.DB, companyID uuid.UUID, firstName, lastName, email string) (uuid.UUID, error) {
 	id := uuid.New()
 	empNum := "EMP-" + id.String()[:8]
 	_, err := db.ExecContext(context.Background(),
@@ -50,7 +50,7 @@ func CreateEmployee(db bun.IDB, companyID uuid.UUID, firstName, lastName, email 
 	return id, err
 }
 
-func CreateAttendanceLog(db bun.IDB, companyID, employeeID uuid.UUID, date string) (uuid.UUID, error) {
+func CreateAttendanceLog(db *sql.DB, companyID, employeeID uuid.UUID, date string) (uuid.UUID, error) {
 	id := uuid.New()
 	_, err := db.ExecContext(context.Background(),
 		`INSERT INTO attendance_logs (id, company_id, employee_id, date, clock_in, attendance_code, created_at)
@@ -60,7 +60,7 @@ func CreateAttendanceLog(db bun.IDB, companyID, employeeID uuid.UUID, date strin
 	return id, err
 }
 
-func CreateLeaveType(db bun.IDB, companyID uuid.UUID, name, code string, daysPerYear int) (uuid.UUID, error) {
+func CreateLeaveType(db *sql.DB, companyID uuid.UUID, name, code string, daysPerYear int) (uuid.UUID, error) {
 	id := uuid.New()
 	_, err := db.ExecContext(context.Background(),
 		`INSERT INTO leave_types (id, company_id, name, code, default_days_per_year, is_paid, requires_attachment, is_active, created_at)
@@ -70,7 +70,7 @@ func CreateLeaveType(db bun.IDB, companyID uuid.UUID, name, code string, daysPer
 	return id, err
 }
 
-func InitLeaveBalance(db bun.IDB, employeeID, leaveTypeID uuid.UUID, year, totalDays int) error {
+func InitLeaveBalance(db *sql.DB, employeeID, leaveTypeID uuid.UUID, year, totalDays int) error {
 	_, err := db.ExecContext(context.Background(),
 		`INSERT INTO leave_balances (id, employee_id, leave_type_id, year, total_days, used_days, carry_over_days, created_at)
 		 VALUES ($1, $2, $3, $4, $5, 0, 0, NOW())
@@ -80,7 +80,7 @@ func InitLeaveBalance(db bun.IDB, employeeID, leaveTypeID uuid.UUID, year, total
 	return err
 }
 
-func CreateHoliday(db bun.IDB, companyID uuid.UUID, name, date string, isRecurring bool) (uuid.UUID, error) {
+func CreateHoliday(db *sql.DB, companyID uuid.UUID, name, date string, isRecurring bool) (uuid.UUID, error) {
 	id := uuid.New()
 	_, err := db.ExecContext(context.Background(),
 		`INSERT INTO holidays (id, company_id, name, date, is_recurring, created_at)

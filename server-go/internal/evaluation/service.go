@@ -165,8 +165,9 @@ Return the extracted facts as JSON per the system prompt schema.`,
 	if err != nil {
 		return nil, fmt.Errorf("marshal skillScores: %w", err)
 	}
-	rawAnalysis := fmt.Sprintf("system: %s\n\nuser: %s\n\nllm_facts: %s",
-		systemPrompt, userPrompt, mustMarshal(llmResult.Skills))
+	// HIGH-005: do not persist the system prompt, user prompt, or PII.
+	// Store a short, non-PII fingerprint of skill counts only.
+	rawAnalysis := mustMarshal(skillScores)
 
 	// 6. Insert evaluation with is_current lifecycle management
 	var newID uuid.UUID

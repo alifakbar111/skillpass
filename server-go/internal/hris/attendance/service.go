@@ -197,10 +197,12 @@ func (s *Service) GetDashboard(ctx context.Context, companyID uuid.UUID, date st
 	}
 
 	// Query employees on approved leave for this date
-	s.db.QueryRowContext(ctx,
+	if err := s.db.QueryRowContext(ctx,
 		`SELECT COUNT(DISTINCT employee_id) FROM leave_requests
 		 WHERE company_id=$1 AND $2::date BETWEEN start_date AND end_date AND status='approved'`,
-		companyID, date).Scan(&stats.OnLeave)
+		companyID, date).Scan(&stats.OnLeave); err != nil {
+		return nil, nil, err
+	}
 
 	stats.Absent = stats.TotalEmployees - stats.Present - stats.Late - stats.OnLeave
 	if stats.Absent < 0 {
