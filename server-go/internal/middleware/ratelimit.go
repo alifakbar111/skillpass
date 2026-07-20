@@ -3,6 +3,7 @@ package middleware
 import (
 	"net"
 	"net/http"
+	"os"
 	"strings"
 	"sync"
 	"time"
@@ -84,15 +85,52 @@ func (rl *RateLimiter) Middleware() gin.HandlerFunc {
 }
 
 func clientIP(c *gin.Context) string {
-	if xff := c.GetHeader("X-Forwarded-For"); xff != "" {
+	// Prefer the connection's remote address. Only honor X-Forwarded-For
+	// if the request came from a trusted proxy CIDR — without this guard
+	// an attacker can rotate XFF to bypass per-IP rate limits.
+	host, _, err := net.SplitHostPort(c.Request.RemoteAddr)
+	if err != nil {
+		host = c.Request.RemoteAddr
+	}
+	if xff := c.GetHeader("X-Forwarded-For"); xff != "" && isTrustedProxy(host) {
 		if i := strings.IndexByte(xff, ','); i >= 0 {
 			return strings.TrimSpace(xff[:i])
 		}
 		return strings.TrimSpace(xff)
 	}
-	host, _, err := net.SplitHostPort(c.Request.RemoteAddr)
-	if err != nil {
-		return c.Request.RemoteAddr
-	}
 	return host
+}
+
+// trustedProxyCIDRs is populated from TRUSTED_PROXY_CIDRS (comma-sep).
+// Empty by default — XFF is only honored when explicitly configured.
+var (
+	trustedProxyCIDRsOnce sync.Once
+	trustedProxyCIDRs     []*net.IPNet
+)
+
+func isTrustedProxy(ip string) bool {
+	trustedProxyCIDRsOnce.Do(func() {
+		for _, cidr := range strings.Split(os.Getenv("TRUSTED_PROXY_CIDRS"), ",") {
+			cidr = strings.TrimSpace(cidr)
+			if cidr == "" {
+				continue
+			}
+			if _, ipNet, err := net.ParseCIDR(cidr); err == nil {
+				trustedProxyCIDRs = append(trustedProxyCIDRs, ipNet)
+			}
+		}
+	})
+	if len(trustedProxyCIDRs) == 0 {
+		return false
+	}
+	parsed := net.ParseIP(ip)
+	if parsed == nil {
+		return false
+	}
+	for _, ipNet := range trustedProxyCIDRs {
+		if ipNet.Contains(parsed) {
+			return true
+		}
+	}
+	return false
 }

@@ -3,6 +3,7 @@ package middleware
 import (
 	"net/http"
 	"net/http/httptest"
+	"sync"
 	"testing"
 
 	"github.com/gin-gonic/gin"
@@ -90,7 +91,33 @@ func TestRateLimiter429(t *testing.T) {
 }
 
 func TestClientIP(t *testing.T) {
-	t.Run("uses X-Forwarded-For", func(t *testing.T) {
+	// Reset the sync.Once-driven trusted-proxy cache so the test can
+	// control which CIDRs are trusted.
+	trustedProxyCIDRsOnce = sync.Once{}
+	trustedProxyCIDRs = nil
+
+	t.Run("ignores XFF when proxy is untrusted", func(t *testing.T) {
+		t.Setenv("TRUSTED_PROXY_CIDRS", "")
+		trustedProxyCIDRsOnce = sync.Once{}
+		trustedProxyCIDRs = nil
+
+		w := httptest.NewRecorder()
+		c, _ := gin.CreateTestContext(w)
+		c.Request = httptest.NewRequest("GET", "/", nil)
+		c.Request.Header.Set("X-Forwarded-For", "203.0.113.1, 10.0.0.1")
+		c.Request.RemoteAddr = "10.0.0.1:12345"
+
+		ip := clientIP(c)
+		if ip != "10.0.0.1" {
+			t.Fatalf("expected 10.0.0.1 (RemoteAddr), got %s", ip)
+		}
+	})
+
+	t.Run("honors XFF when proxy is trusted", func(t *testing.T) {
+		t.Setenv("TRUSTED_PROXY_CIDRS", "10.0.0.0/8")
+		trustedProxyCIDRsOnce = sync.Once{}
+		trustedProxyCIDRs = nil
+
 		w := httptest.NewRecorder()
 		c, _ := gin.CreateTestContext(w)
 		c.Request = httptest.NewRequest("GET", "/", nil)
@@ -99,11 +126,15 @@ func TestClientIP(t *testing.T) {
 
 		ip := clientIP(c)
 		if ip != "203.0.113.1" {
-			t.Fatalf("expected 203.0.113.1, got %s", ip)
+			t.Fatalf("expected 203.0.113.1 (from XFF), got %s", ip)
 		}
 	})
 
-	t.Run("falls back to RemoteAddr", func(t *testing.T) {
+	t.Run("falls back to RemoteAddr when no XFF", func(t *testing.T) {
+		t.Setenv("TRUSTED_PROXY_CIDRS", "")
+		trustedProxyCIDRsOnce = sync.Once{}
+		trustedProxyCIDRs = nil
+
 		w := httptest.NewRecorder()
 		c, _ := gin.CreateTestContext(w)
 		c.Request = httptest.NewRequest("GET", "/", nil)
