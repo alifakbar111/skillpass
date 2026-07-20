@@ -87,22 +87,17 @@ func (h *PassportHandler) GetProfile(c *gin.Context) {
 		experiences[i] = mapExperience(exp)
 	}
 
-	profileUUID := profile.ID.String()
-	var viewCount int
-	if err := h.bunDB.QueryRowContext(c.Request.Context(),
-		`UPDATE jobseeker_profiles SET view_count = view_count + 1 WHERE id = $1 RETURNING view_count`,
-		profileUUID,
-	).Scan(&viewCount); err != nil {
-		slog.Warn("failed to increment view count", "error", err)
-	}
-
+	// view_count is intentionally not written on public GETs. The previous
+	// behavior issued an UPDATE on every unauthenticated request — a DoS
+	// amplifier and trivially gameable. A dedicated authenticated stats
+	// endpoint backed by the profile_views table is the path forward.
 	c.JSON(http.StatusOK, PublicProfileResponse{
 		Name:        user.Name,
 		AvatarURL:   user.AvatarURL,
 		Headline:    profile.Headline,
 		About:       profile.About,
 		YearsOfExp:  int32ToIntPtr(profile.YearsOfExperience),
-		ViewCount:   viewCount,
+		ViewCount:   0,
 		Experiences: experiences,
 	})
 }
