@@ -203,8 +203,16 @@ func (h *AuthHandler) CreateSSETicket(c *gin.Context) {
 		c.JSON(http.StatusUnauthorized, gin.H{"error": "Unauthorized"})
 		return
 	}
-	roleVal, _ := c.Get("role")
-	role, _ := roleVal.(string)
+	roleVal, ok := c.Get("role")
+	if !ok {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "Unauthorized"})
+		return
+	}
+	role, ok := roleVal.(string)
+	if !ok {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "Unauthorized"})
+		return
+	}
 
 	nonce, err := h.sseStore.Issue(userID, role, middleware.DefaultSSEExchangeTTL)
 	if err != nil {
