@@ -31,7 +31,10 @@ export function NotificationBell() {
   useEffect(() => {
     load();
 
-    const es = subscribeToNotifications((event: MessageEvent) => {
+    let cancelled = false;
+    let es: EventSource | null = null;
+
+    subscribeToNotifications((event: MessageEvent) => {
       try {
         const parsed = JSON.parse(event.data);
         if (parsed.type === 'init' && parsed.data) {
@@ -43,9 +46,22 @@ export function NotificationBell() {
       } catch {
         // Ignore malformed SSE events.
       }
-    });
+    })
+      .then((source) => {
+        if (cancelled) {
+          source.close();
+        } else {
+          es = source;
+        }
+      })
+      .catch(() => {
+        // Silent — bell is non-critical UI.
+      });
 
-    return () => es.close();
+    return () => {
+      cancelled = true;
+      es?.close();
+    };
   }, [load]);
 
   useEffect(() => {
