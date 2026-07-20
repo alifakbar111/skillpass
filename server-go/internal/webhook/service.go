@@ -9,6 +9,7 @@ import (
 	"database/sql"
 	"encoding/hex"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"log/slog"
 	"net"
@@ -27,6 +28,13 @@ type Service struct {
 }
 
 const defaultMaxInflightDeliveries = 16
+
+// MaxWebhooksPerCompany caps how many webhook targets a single company
+// can register. Prevents a single verified company from creating
+// unbounded webhook targets that would DoS the delivery pool.
+const MaxWebhooksPerCompany = 50
+
+var ErrTooManyWebhooks = errors.New("company has reached the maximum number of webhooks")
 
 func NewService(db *sql.DB) *Service {
 	return &Service{
@@ -90,6 +98,18 @@ func validateURL(raw string) error {
 func (s *Service) Create(ctx context.Context, companyID, rawURL string) (*Webhook, error) {
 	if err := validateURL(rawURL); err != nil {
 		return nil, err
+	}
+
+	// Cap total webhooks per company. Checked before secret generation so
+	// we don't waste entropy on a request that will be rejected.
+	var count int
+	if err := s.db.QueryRowContext(ctx,
+		`SELECT COUNT(*) FROM company_webhooks WHERE company_id = $1`, companyID,
+	).Scan(&count); err != nil {
+		return nil, fmt.Errorf("count webhooks: %w", err)
+	}
+	if count >= MaxWebhooksPerCompany {
+		return nil, ErrTooManyWebhooks
 	}
 
 	secret, err := generateSecret()
