@@ -14,12 +14,19 @@ import (
 )
 
 type Service struct {
-	db  *sql.DB
-	llm lib.LLMClient
+	db      *sql.DB
+	llm     lib.LLMClient
+	aiSlots chan struct{} // bounded semaphore for in-flight AI generations
 }
 
+const defaultMaxInflightAI = 8
+
 func NewService(db *sql.DB, llm lib.LLMClient) *Service {
-	return &Service{db: db, llm: llm}
+	return &Service{
+		db:      db,
+		llm:     llm,
+		aiSlots: make(chan struct{}, defaultMaxInflightAI),
+	}
 }
 
 type RatingArea struct {
@@ -78,7 +85,16 @@ func (s *Service) Create(ctx context.Context, profileID, companyID string, req *
 		CreatedAt:     now.Format(time.RFC3339),
 	}
 
-	go s.generateAISuggestions(feedbackID.String(), profileID)
+	select {
+	case s.aiSlots <- struct{}{}:
+	default:
+		slog.Warn("AI suggestion slot full; skipping background generation", "feedbackID", feedbackID)
+		return fb, nil
+	}
+	go func(id, profile string) {
+		defer func() { <-s.aiSlots }()
+		s.generateAISuggestions(id, profile)
+	}(feedbackID.String(), profileID)
 
 	return fb, nil
 }
