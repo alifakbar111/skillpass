@@ -243,3 +243,59 @@ func TestLogout(t *testing.T) {
 		}
 	})
 }
+
+func TestCreateSSETicket(t *testing.T) {
+	sqlDB := testutil.SetupTestDB()
+	bunDB := db.NewBunDB(sqlDB)
+
+	uid, _, _ := testutil.CreateJobseeker(sqlDB, "sseticket@ex.com", "sseticket", "pass123", "SSE User")
+	tok := testutil.GenerateToken(uid.String(), "jobseeker", 15*time.Minute)
+
+	sseStore := middleware.NewStreamExchangeStore()
+
+	router := gin.New()
+	h := NewAuthHandler(sqlDB, testutil.TestJWTSecret, bunDB)
+	h.SetSSEStore(sseStore)
+	router.POST("/api/v1/auth/sse-ticket", middleware.AuthRequired(testutil.TestJWTSecret), h.CreateSSETicket)
+
+	t.Run("issues a non-empty exchange ticket", func(t *testing.T) {
+		w := httptest.NewRecorder()
+		req := httptest.NewRequest("POST", "/api/v1/auth/sse-ticket", nil)
+		req.Header.Set("Authorization", "Bearer "+tok)
+		router.ServeHTTP(w, req)
+		if w.Code != http.StatusOK {
+			t.Fatalf("expected 200, got %d: %s", w.Code, w.Body.String())
+		}
+		var resp SSETicketResponse
+		if err := json.Unmarshal(w.Body.Bytes(), &resp); err != nil {
+			t.Fatalf("unmarshal: %v", err)
+		}
+		if len(resp.Exchange) < 32 {
+			t.Fatalf("expected a long opaque exchange ticket, got %q (len %d)", resp.Exchange, len(resp.Exchange))
+		}
+		if resp.ExpiresIn != 60 {
+			t.Fatalf("expected expiresIn 60, got %d", resp.ExpiresIn)
+		}
+		if sseStore.Size() != 1 {
+			t.Fatalf("expected store to have 1 entry, has %d", sseStore.Size())
+		}
+	})
+
+	t.Run("rejects request without auth", func(t *testing.T) {
+		w := httptest.NewRecorder()
+		req := httptest.NewRequest("POST", "/api/v1/auth/sse-ticket", nil)
+		router.ServeHTTP(w, req)
+		if w.Code != http.StatusUnauthorized {
+			t.Fatalf("expected 401, got %d", w.Code)
+		}
+	})
+
+	t.Run("rejects request with query token (no longer accepted)", func(t *testing.T) {
+		w := httptest.NewRecorder()
+		req := httptest.NewRequest("POST", "/api/v1/auth/sse-ticket?token="+tok, nil)
+		router.ServeHTTP(w, req)
+		if w.Code != http.StatusUnauthorized {
+			t.Fatalf("expected 401 for ?token= on the ticket endpoint, got %d", w.Code)
+		}
+	})
+}

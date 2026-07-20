@@ -90,6 +90,8 @@ func main() {
 	ref := handlers.NewReferenceHandler(bunDB)
 	jobs := handlers.NewJobHandler(bunDB)
 	auth := handlers.NewAuthHandler(database, cfg.JWTSecret, bunDB)
+	sseStore := middleware.NewStreamExchangeStore()
+	auth.SetSSEStore(sseStore)
 	profiles := handlers.NewProfileHandler(database, bunDB)
 	passport := handlers.NewPassportHandler(database, bunDB)
 	companies := handlers.NewCompanyHandler(database, bunDB)
@@ -168,6 +170,7 @@ func main() {
 	api.POST("/auth/refresh", authRL.Middleware(), auth.Refresh)
 	api.POST("/auth/logout", middleware.AuthRequired(cfg.JWTSecret), auth.Logout)
 	api.GET("/auth/me", middleware.AuthRequired(cfg.JWTSecret), auth.Me)
+	api.POST("/auth/sse-ticket", middleware.AuthRequired(cfg.JWTSecret), auth.CreateSSETicket)
 	api.GET("/auth/verify-email", auth.VerifyEmail)
 	api.POST("/auth/resend-verification", middleware.AuthRequired(cfg.JWTSecret), auth.ResendVerification)
 	api.POST("/auth/forgot-password", authRL.Middleware(), auth.ForgotPassword)
@@ -265,10 +268,16 @@ func main() {
 	notifGroup := api.Group("/notifications")
 	notifGroup.Use(middleware.AuthRequired(cfg.JWTSecret))
 	notifGroup.GET("/me", notifHandler.ListMine)
-	notifGroup.GET("/stream", notifHandler.StreamNotifications)
 	notifGroup.PUT("/read-all", notifHandler.MarkAllRead)
 	notifGroup.DELETE("", notifHandler.ClearAll)
 	notifGroup.PUT("/:id/read", notifHandler.MarkRead)
+
+	// SSE stream is the only endpoint that still accepts an opaque
+	// ?exchange= ticket because EventSource cannot set custom headers.
+	// Clients first POST /auth/sse-ticket with the Bearer token to
+	// exchange it for a short-lived single-use ticket, then open the
+	// stream with ?exchange=<ticket>.
+	api.GET("/notifications/stream", middleware.SSERedeemMiddleware(sseStore), notifHandler.StreamNotifications)
 
 	// ── Matching routes ──
 	matchesJobseekerGroup := api.Group("/jobs")

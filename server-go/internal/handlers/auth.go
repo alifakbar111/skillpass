@@ -19,6 +19,7 @@ import (
 	"skillpass-server-go/internal/authtoken"
 	"skillpass-server-go/internal/email"
 	"skillpass-server-go/internal/lib"
+	"skillpass-server-go/internal/middleware"
 	"skillpass-server-go/internal/models"
 )
 
@@ -67,6 +68,7 @@ type AuthHandler struct {
 	jwtSecret string
 	emailer   email.Sender
 	tokens    *authtoken.Service
+	sseStore  *middleware.StreamExchangeStore
 }
 
 func NewAuthHandler(db *sql.DB, jwtSecret string, bunDB *bun.DB) *AuthHandler {
@@ -83,6 +85,12 @@ func (h *AuthHandler) SetEmailer(e email.Sender) {
 // Optional — when nil, verification and reset flows are disabled.
 func (h *AuthHandler) SetTokenService(t *authtoken.Service) {
 	h.tokens = t
+}
+
+// SetSSEStore attaches the in-memory store for short-lived SSE exchange
+// tickets. Required only if /auth/sse-ticket is exposed.
+func (h *AuthHandler) SetSSEStore(s *middleware.StreamExchangeStore) {
+	h.sseStore = s
 }
 
 type tokenClaims struct {
@@ -161,6 +169,52 @@ func clearRefreshCookie(c *gin.Context) {
 func hashToken(token string) string {
 	sum := sha256.Sum256([]byte(token))
 	return hex.EncodeToString(sum[:])
+}
+
+// SSETicketResponse	godoc
+// @Description	Short-lived single-use exchange ticket for authenticating an SSE stream. Pass as ?exchange=<ticket> to the stream endpoint.
+// @name			SSETicketResponse
+type SSETicketResponse struct {
+	Exchange  string `json:"exchange"`
+	ExpiresIn int    `json:"expiresIn"`
+}
+
+// CreateSSETicket	godoc
+// @Summary		Issue an SSE exchange ticket
+// @Description	Exchanges a Bearer access token for a short-lived, single-use opaque ticket that can authenticate an EventSource stream. The ticket is bound to the caller's userId and expires after 60 seconds. Intended for clients that cannot set Authorization headers (e.g. browser EventSource).
+// @Tags		auth
+// @Produce		json
+// @Security	BearerAuth
+// @Success		200 {object} SSETicketResponse
+// @Failure		401 {object} map[string]string
+// @Router		/auth/sse-ticket [post]
+func (h *AuthHandler) CreateSSETicket(c *gin.Context) {
+	if h.sseStore == nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "SSE exchange store not configured"})
+		return
+	}
+	userIDVal, ok := c.Get("userId")
+	if !ok {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "Unauthorized"})
+		return
+	}
+	userID, ok := userIDVal.(string)
+	if !ok || userID == "" {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "Unauthorized"})
+		return
+	}
+	roleVal, _ := c.Get("role")
+	role, _ := roleVal.(string)
+
+	nonce, err := h.sseStore.Issue(userID, role, middleware.DefaultSSEExchangeTTL)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to issue exchange ticket"})
+		return
+	}
+	c.JSON(http.StatusOK, SSETicketResponse{
+		Exchange:  nonce,
+		ExpiresIn: int(middleware.DefaultSSEExchangeTTL.Seconds()),
+	})
 }
 
 // Register		godoc

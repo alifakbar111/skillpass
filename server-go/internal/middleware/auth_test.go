@@ -88,6 +88,24 @@ func TestAuthRequired(t *testing.T) {
 			t.Fatalf("expected 401, got %d", w.Code)
 		}
 	})
+
+	t.Run("query token is rejected", func(t *testing.T) {
+		// HIGH-001 / C4: tokens in URL query strings leak into server
+		// access logs, browser history, and HTTP referer headers. AuthRequired
+		// must no longer accept them — SSE clients must use the exchange-ticket
+		// flow instead.
+		w := httptest.NewRecorder()
+		c, _ := gin.CreateTestContext(w)
+		c.Request = httptest.NewRequest("GET", "/notifications/stream?token=eyJhbGciOiJIUzI1NiJ9.eyJ1c2VySWQiOiJ1Ii.wrong", nil)
+
+		AuthRequired("secret")(c)
+		if w.Code != http.StatusUnauthorized {
+			t.Fatalf("expected 401 when ?token= is supplied, got %d", w.Code)
+		}
+		if c.IsAborted() != true {
+			t.Fatal("expected request to be aborted when ?token= is supplied")
+		}
+	})
 }
 
 func TestRequireRole(t *testing.T) {
@@ -135,6 +153,87 @@ func TestRequireRole(t *testing.T) {
 		RequireRole("admin")(c)
 		if c.IsAborted() {
 			t.Fatal("should not abort when all middleware match")
+		}
+	})
+}
+
+func TestSSERedeemMiddleware(t *testing.T) {
+	t.Run("missing exchange ticket returns 401", func(t *testing.T) {
+		store := NewStreamExchangeStore()
+		w := httptest.NewRecorder()
+		c, _ := gin.CreateTestContext(w)
+		c.Request = httptest.NewRequest("GET", "/notifications/stream", nil)
+
+		SSERedeemMiddleware(store)(c)
+		if w.Code != http.StatusUnauthorized {
+			t.Fatalf("expected 401 for missing exchange ticket, got %d", w.Code)
+		}
+	})
+
+	t.Run("invalid exchange ticket returns 401", func(t *testing.T) {
+		store := NewStreamExchangeStore()
+		w := httptest.NewRecorder()
+		c, _ := gin.CreateTestContext(w)
+		c.Request = httptest.NewRequest("GET", "/notifications/stream?exchange=not-a-real-ticket", nil)
+
+		SSERedeemMiddleware(store)(c)
+		if w.Code != http.StatusUnauthorized {
+			t.Fatalf("expected 401 for invalid exchange ticket, got %d", w.Code)
+		}
+	})
+
+	t.Run("valid exchange ticket sets userId and role, single-use", func(t *testing.T) {
+		store := NewStreamExchangeStore()
+		nonce, err := store.Issue("user-123", "jobseeker", time.Minute)
+		if err != nil {
+			t.Fatalf("issue ticket: %v", err)
+		}
+
+		// First request: ticket is valid.
+		w := httptest.NewRecorder()
+		c, _ := gin.CreateTestContext(w)
+		c.Request = httptest.NewRequest("GET", "/notifications/stream?exchange="+nonce, nil)
+		SSERedeemMiddleware(store)(c)
+		if w.Code != http.StatusOK {
+			t.Fatalf("expected 200 for valid exchange ticket, got %d", w.Code)
+		}
+		if c.IsAborted() {
+			t.Fatal("valid ticket must not abort")
+		}
+		uid, _ := c.Get("userId")
+		if uid != "user-123" {
+			t.Fatalf("expected userId=user-123, got %v", uid)
+		}
+		role, _ := c.Get("role")
+		if role != "jobseeker" {
+			t.Fatalf("expected role=jobseeker, got %v", role)
+		}
+
+		// Second request with the same nonce: must be rejected (single-use).
+		w2 := httptest.NewRecorder()
+		c2, _ := gin.CreateTestContext(w2)
+		c2.Request = httptest.NewRequest("GET", "/notifications/stream?exchange="+nonce, nil)
+		SSERedeemMiddleware(store)(c2)
+		if w2.Code != http.StatusUnauthorized {
+			t.Fatalf("expected 401 for replayed exchange ticket, got %d", w2.Code)
+		}
+	})
+
+	t.Run("expired exchange ticket returns 401", func(t *testing.T) {
+		store := NewStreamExchangeStore()
+		nonce, err := store.Issue("user-456", "company", time.Microsecond)
+		if err != nil {
+			t.Fatalf("issue ticket: %v", err)
+		}
+		// Wait past the ttl.
+		time.Sleep(10 * time.Millisecond)
+
+		w := httptest.NewRecorder()
+		c, _ := gin.CreateTestContext(w)
+		c.Request = httptest.NewRequest("GET", "/notifications/stream?exchange="+nonce, nil)
+		SSERedeemMiddleware(store)(c)
+		if w.Code != http.StatusUnauthorized {
+			t.Fatalf("expected 401 for expired exchange ticket, got %d", w.Code)
 		}
 	})
 }
