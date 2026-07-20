@@ -15,6 +15,7 @@ import (
 	"net"
 	"net/http"
 	"net/url"
+	"os"
 	"time"
 
 	"github.com/google/uuid"
@@ -68,8 +69,9 @@ func validateURL(raw string) error {
 	if err != nil {
 		return fmt.Errorf("invalid URL")
 	}
-	if u.Scheme != "http" && u.Scheme != "https" {
-		return fmt.Errorf("URL must use http or https")
+	// Require https in release; allow http only in dev for local webhook testing.
+	if u.Scheme != "https" && (os.Getenv("GIN_MODE") == "release" || u.Scheme != "http") {
+		return fmt.Errorf("URL must use https in production")
 	}
 	if u.Host == "" {
 		return fmt.Errorf("URL must have a host")
@@ -86,11 +88,64 @@ func validateURL(raw string) error {
 		if ip == nil {
 			continue
 		}
-		if ip.IsPrivate() || ip.IsLoopback() || ip.IsLinkLocalUnicast() || ip.IsLinkLocalMulticast() {
+		if isBlockedIP(ip) {
 			return fmt.Errorf("URL must not point to a private or internal network address")
 		}
 	}
 	return nil
+}
+
+// assertWebhookHost re-resolves the webhook URL at delivery time and
+// rejects requests to private, loopback, link-local, CGNAT, or
+// unspecified addresses. This catches DNS rebinding attacks where the
+// hostname resolved to a public IP at registration but a private IP at
+// delivery time.
+func assertWebhookHost(rawURL string) error {
+	u, err := url.Parse(rawURL)
+	if err != nil {
+		return fmt.Errorf("parse URL: %w", err)
+	}
+	host := u.Hostname()
+	ips, err := net.LookupHost(host)
+	if err != nil {
+		return fmt.Errorf("resolve host: %w", err)
+	}
+	for _, ipStr := range ips {
+		ip := net.ParseIP(ipStr)
+		if ip == nil {
+			continue
+		}
+		if isBlockedIP(ip) {
+			return fmt.Errorf("host %q resolves to blocked address %s", host, ip)
+		}
+	}
+	return nil
+}
+
+// isBlockedIP returns true for addresses that should never receive
+// outbound webhook traffic: private, loopback, link-local, CGNAT, and
+// the unspecified address.
+func isBlockedIP(ip net.IP) bool {
+	if ip.IsLoopback() || ip.IsLinkLocalUnicast() || ip.IsLinkLocalMulticast() {
+		return true
+	}
+	if ip.IsPrivate() {
+		return true
+	}
+	if ip.IsUnspecified() {
+		return true
+	}
+	// CGNAT 100.64.0.0/10 — not caught by IsPrivate in older Go.
+	if ip4 := ip.To4(); ip4 != nil {
+		if ip4[0] == 100 && ip4[1] >= 64 && ip4[1] <= 127 {
+			return true
+		}
+		// 0.0.0.0/8 — already caught by IsUnspecified, but defensive.
+		if ip4[0] == 0 {
+			return true
+		}
+	}
+	return false
 }
 
 // Create registers a webhook for a company. The generated secret is returned
@@ -266,6 +321,15 @@ func (s *Service) DispatchApplicationReceived(ctx context.Context, jobPostingID,
 // deliver posts the payload with an HMAC-SHA256 signature header.
 // Receivers verify with: hex(hmac_sha256(secret, body)).
 func (s *Service) deliver(targetURL, secret string, payload []byte) {
+	// SSRF re-check at delivery time. The webhook URL was validated at
+	// registration, but DNS records can change between then and now
+	// (DNS rebinding), and the host may have started resolving to an
+	// internal address. Block private/loopback/link-local ranges here.
+	if err := assertWebhookHost(targetURL); err != nil {
+		slog.Warn("webhook delivery blocked by SSRF check", "url", targetURL, "error", err)
+		return
+	}
+
 	mac := hmac.New(sha256.New, []byte(secret))
 	mac.Write(payload)
 	signature := hex.EncodeToString(mac.Sum(nil))
