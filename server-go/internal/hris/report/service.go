@@ -205,10 +205,12 @@ func (s *Service) GetHeadcountStats(ctx context.Context, companyID uuid.UUID) (*
 		return nil, err
 	}
 
-	s.db.QueryRowContext(ctx, `
+	if err := s.db.QueryRowContext(ctx, `
 		SELECT COALESCE(AVG(EXTRACT(EPOCH FROM (now() - join_date))/2592000), 0)
 		FROM employees WHERE company_id = $1 AND employment_status = 'active' AND join_date IS NOT NULL
-	`, companyID).Scan(&stats.AvgTenure)
+	`, companyID).Scan(&stats.AvgTenure); err != nil {
+		return nil, err
+	}
 
 	genderRows, err := s.db.QueryContext(ctx, `
 		SELECT COALESCE(NULLIF(gender, ''), 'Not specified'), COUNT(*)

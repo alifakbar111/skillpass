@@ -183,7 +183,9 @@ func (s *Service) AssignChecklist(ctx context.Context, companyID, employeeID, te
 	}
 
 	// Clear old items on reassign
-	tx.ExecContext(ctx, `DELETE FROM onboarding_checklist_items WHERE checklist_id = $1`, checklistID)
+	if _, err := tx.ExecContext(ctx, `DELETE FROM onboarding_checklist_items WHERE checklist_id = $1`, checklistID); err != nil {
+		return nil, err
+	}
 
 	for i, task := range tmpl.Tasks {
 		var dueDate *string

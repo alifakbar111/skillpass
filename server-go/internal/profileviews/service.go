@@ -29,10 +29,12 @@ func (s *Service) RecordView(ctx context.Context, profileID, viewerID uuid.UUID,
 	// Prevent duplicate views per day per company
 	if companyID != nil {
 		var todayExists bool
-		_ = s.db.QueryRowContext(ctx,
+		if err := s.db.QueryRowContext(ctx,
 			`SELECT EXISTS(SELECT 1 FROM profile_views WHERE profile_id = $1 AND company_id = $2 AND viewed_at::date = CURRENT_DATE)`,
 			profileID, *companyID,
-		).Scan(&todayExists)
+		).Scan(&todayExists); err != nil {
+			return err
+		}
 		if todayExists {
 			return nil // already recorded today
 		}
