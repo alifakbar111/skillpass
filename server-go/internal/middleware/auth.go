@@ -137,6 +137,35 @@ func SSERedeemMiddleware(store *StreamExchangeStore) gin.HandlerFunc {
 	}
 }
 
+// GetUserID extracts the authenticated userId from the gin context.
+// Returns ("", false) if the key is missing, not a string, or empty.
+// Prefer this over the comma-ok idiom in every handler.
+func GetUserID(c *gin.Context) (string, bool) {
+	v, ok := c.Get("userId")
+	if !ok {
+		return "", false
+	}
+	s, ok := v.(string)
+	if !ok || s == "" {
+		return "", false
+	}
+	return s, true
+}
+
+// GetRole extracts the authenticated role from the gin context.
+// Returns ("", false) if the key is missing, not a string, or empty.
+func GetRole(c *gin.Context) (string, bool) {
+	v, ok := c.Get("role")
+	if !ok {
+		return "", false
+	}
+	s, ok := v.(string)
+	if !ok || s == "" {
+		return "", false
+	}
+	return s, true
+}
+
 func AuthRequired(jwtSecret string) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		auth := c.GetHeader("Authorization")
