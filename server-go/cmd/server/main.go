@@ -75,6 +75,8 @@ func main() {
 
 	r := gin.Default()
 
+	r.Use(middleware.SecurityHeaders())
+
 	r.Use(cors.New(cors.Config{
 		AllowOrigins:     []string{cfg.CORSOrigin},
 		AllowCredentials: true,
