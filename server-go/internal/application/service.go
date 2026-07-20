@@ -403,7 +403,13 @@ func (s *Service) AddMessage(ctx context.Context, applicationID, companyID, send
 	}
 
 	var senderName string
-	_ = s.db.QueryRowContext(ctx, `SELECT name FROM users WHERE id = $1`, senderUserID).Scan(&senderName)
+	if err := s.db.QueryRowContext(ctx, `SELECT name FROM users WHERE id = $1`, senderUserID).Scan(&senderName); err != nil {
+		if !errors.Is(err, sql.ErrNoRows) {
+			return nil, fmt.Errorf("lookup sender name: %w", err)
+		}
+		// Sender user not found — leave name empty rather than fail the
+		// whole message insert (the message itself is the source of truth).
+	}
 
 	return &Message{
 		ID:         id.String(),
