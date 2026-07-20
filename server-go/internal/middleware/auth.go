@@ -23,8 +23,9 @@ import (
 )
 
 type Claims struct {
-	UserID string `json:"userId"`
-	Role   string `json:"role"`
+	UserID       string `json:"userId"`
+	Role         string `json:"role"`
+	TokenVersion int    `json:"tokenVersion"`
 	jwt.RegisteredClaims
 }
 
@@ -240,6 +241,28 @@ func lookupVerifiedCompany(ctx context.Context, bunDB *bun.DB, userID string) (s
 	return company.ID.String(), verified, true
 }
 
+// authDB is the optional DB handle for token_version checks. If nil,
+// the check is skipped (older deployments without the migration). Set
+// from cmd/server/main.go via SetAuthDB.
+var (
+	authDBMu sync.RWMutex
+	authDB   *bun.DB
+)
+
+// SetAuthDB registers a DB for the AuthRequired middleware to check
+// token_version claims against. Safe to call once at startup.
+func SetAuthDB(db *bun.DB) {
+	authDBMu.Lock()
+	authDB = db
+	authDBMu.Unlock()
+}
+
+func getAuthDB() *bun.DB {
+	authDBMu.RLock()
+	defer authDBMu.RUnlock()
+	return authDB
+}
+
 func AuthRequired(jwtSecret string) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		auth := c.GetHeader("Authorization")
@@ -269,6 +292,28 @@ func AuthRequired(jwtSecret string) gin.HandlerFunc {
 		if !ok {
 			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "Unauthorized"})
 			return
+		}
+
+		// PR-20: verify the token_version claim against the user's current
+		// DB value. If an admin demoted the user, all outstanding tokens
+		// are rejected with 401. The check is skipped if SetAuthDB was
+		// not called (older deployments).
+		if db := getAuthDB(); db != nil && claims.UserID != "" {
+			userUUID, parseErr := uuid.Parse(claims.UserID)
+			if parseErr == nil {
+				var currentVersion int
+				scanErr := db.NewSelect().
+					Model((*models.User)(nil)).
+					Column("token_version").
+					Where("id = ?", userUUID).
+					Scan(c.Request.Context(), &currentVersion)
+				if scanErr == nil && currentVersion != claims.TokenVersion {
+					slog.Info("token_version mismatch; token rejected",
+						"userId", claims.UserID, "claim", claims.TokenVersion, "db", currentVersion)
+					c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "Unauthorized"})
+					return
+				}
+			}
 		}
 
 		c.Set("userId", claims.UserID)

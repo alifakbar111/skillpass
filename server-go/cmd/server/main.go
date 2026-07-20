@@ -73,6 +73,10 @@ func main() {
 	bunDB := db.NewBunDB(database)
 	defer bunDB.Close()
 
+	// PR-20: register the DB with the auth middleware so it can verify
+	// the token_version JWT claim against the DB on every request.
+	middleware.SetAuthDB(bunDB)
+
 	r := gin.Default()
 
 	r.Use(middleware.SecurityHeaders())

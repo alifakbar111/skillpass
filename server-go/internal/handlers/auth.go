@@ -8,6 +8,7 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"net/http"
 	"os"
 	"sync"
@@ -140,11 +141,23 @@ type tokenClaims struct {
 
 func (h *AuthHandler) signTokens(c *gin.Context, db bun.IDB, userID, role string) (accessToken, refreshToken string, refreshID uuid.UUID, err error) {
 	now := time.Now()
+	// Read the current token_version so admin-initiated role changes
+	// (which bump the column) immediately invalidate outstanding tokens.
+	var tokenVersion int
+	if err = db.NewSelect().
+		Model((*models.User)(nil)).
+		Column("token_version").
+		Where("id = ?", userID).
+		Scan(c.Request.Context(), &tokenVersion); err != nil {
+		return "", "", uuid.Nil, fmt.Errorf("lookup token version: %w", err)
+	}
+
 	accessToken, err = jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
-		"userId": userID,
-		"role":   role,
-		"iat":    now.Unix(),
-		"exp":    now.Add(accessTokenTTL).Unix(),
+		"userId":       userID,
+		"role":         role,
+		"tokenVersion": tokenVersion,
+		"iat":          now.Unix(),
+		"exp":          now.Add(accessTokenTTL).Unix(),
 	}).SignedString([]byte(h.jwtSecret))
 	if err != nil {
 		return "", "", uuid.Nil, err
@@ -153,12 +166,13 @@ func (h *AuthHandler) signTokens(c *gin.Context, db bun.IDB, userID, role string
 	refreshID = uuid.New()
 	refreshExpires := now.Add(refreshTokenTTL)
 	refreshToken, err = jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
-		"jti":    refreshID.String(),
-		"userId": userID,
-		"role":   role,
-		"type":   "refresh",
-		"iat":    now.Unix(),
-		"exp":    refreshExpires.Unix(),
+		"jti":          refreshID.String(),
+		"userId":       userID,
+		"role":         role,
+		"tokenVersion": tokenVersion,
+		"type":         "refresh",
+		"iat":          now.Unix(),
+		"exp":          refreshExpires.Unix(),
 	}).SignedString([]byte(h.jwtSecret))
 	if err != nil {
 		return "", "", uuid.Nil, err
