@@ -3,6 +3,8 @@ package lib
 import (
 	"bytes"
 	"context"
+	"crypto/sha256"
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -11,6 +13,25 @@ import (
 	"strings"
 	"time"
 )
+
+// previewBody returns a short, redacted preview of an LLM response body
+// suitable for inclusion in a client-facing error message. The raw body
+// is never embedded — the caller should log the full body server-side
+// via slog if debugging is needed.
+//
+// Returns "<truncated>…sha256=<hex>" so two error messages can be
+// correlated without exposing the upstream payload to clients.
+func previewBody(b []byte, maxBytes int) string {
+	if maxBytes <= 0 {
+		maxBytes = 200
+	}
+	sum := sha256.Sum256(b)
+	hash := hex.EncodeToString(sum[:8])
+	if len(b) > maxBytes {
+		b = b[:maxBytes]
+	}
+	return fmt.Sprintf("%s…sha256=%s", strings.TrimSpace(string(b)), hash)
+}
 
 // LLMClient sends prompts to an LLM and returns structured JSON responses.
 type LLMClient interface {
@@ -135,7 +156,7 @@ func (c *OpenAIClient) Chat(ctx context.Context, systemPrompt, userPrompt string
 
 	if resp.StatusCode != http.StatusOK {
 		bodyPreview, _ := io.ReadAll(io.LimitReader(resp.Body, 1024))
-		return fmt.Errorf("llm API returned %d: %s", resp.StatusCode, strings.TrimSpace(string(bodyPreview)))
+		return fmt.Errorf("llm API returned %d: %s", resp.StatusCode, previewBody(bodyPreview, 200))
 	}
 
 	respBody, err := io.ReadAll(resp.Body)
@@ -154,9 +175,9 @@ func (c *OpenAIClient) Chat(ctx context.Context, systemPrompt, userPrompt string
 		if parsed := tryAnthropicAsOpenAI(cleaned); parsed != nil {
 			chatResp = *parsed
 		} else if err != nil {
-			return fmt.Errorf("parse response: %w (body: %s)", err, string(respBody))
+			return fmt.Errorf("parse response: %w (body: %s)", err, previewBody(respBody, 200))
 		} else {
-			return fmt.Errorf("llm returned no choices (body: %s)", string(respBody))
+			return fmt.Errorf("llm returned no choices (body: %s)", previewBody(respBody, 200))
 		}
 	}
 
@@ -165,7 +186,7 @@ func (c *OpenAIClient) Chat(ctx context.Context, systemPrompt, userPrompt string
 	}
 
 	if len(chatResp.Choices) == 0 {
-		return fmt.Errorf("llm returned no choices (body: %s)", string(respBody))
+		return fmt.Errorf("llm returned no choices (body: %s)", previewBody(respBody, 200))
 	}
 
 	content := chatResp.Choices[0].Message.Content
@@ -347,7 +368,7 @@ func (c *AnthropicClient) Chat(ctx context.Context, systemPrompt, userPrompt str
 
 	if resp.StatusCode != http.StatusOK {
 		bodyPreview, _ := io.ReadAll(io.LimitReader(resp.Body, 1024))
-		return fmt.Errorf("anthropic API returned %d: %s", resp.StatusCode, strings.TrimSpace(string(bodyPreview)))
+		return fmt.Errorf("anthropic API returned %d: %s", resp.StatusCode, previewBody(bodyPreview, 200))
 	}
 
 	respBody, err := io.ReadAll(resp.Body)
@@ -360,7 +381,7 @@ func (c *AnthropicClient) Chat(ctx context.Context, systemPrompt, userPrompt str
 
 	var anthropicResp anthropicResponse
 	if err := json.Unmarshal(cleaned, &anthropicResp); err != nil {
-		return fmt.Errorf("parse response: %w (body: %s)", err, string(respBody))
+		return fmt.Errorf("parse response: %w (body: %s)", err, previewBody(respBody, 200))
 	}
 
 	if anthropicResp.Error != nil {
@@ -376,7 +397,7 @@ func (c *AnthropicClient) Chat(ctx context.Context, systemPrompt, userPrompt str
 		}
 	}
 	if textContent == "" {
-		return fmt.Errorf("anthropic returned no text content (body: %s)", string(respBody))
+		return fmt.Errorf("anthropic returned no text content (body: %s)", previewBody(respBody, 200))
 	}
 
 	// Strip markdown code fences that some proxies may wrap around the content.
