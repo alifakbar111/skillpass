@@ -3150,8 +3150,7 @@
                         "content": {
                             "application/json": {
                                 "schema": {
-                                    "type": "object",
-                                    "additionalProperties": true
+                                    "$ref": "#/components/schemas/MyPermissionsResponse"
                                 }
                             }
                         }
@@ -6246,6 +6245,23 @@
                 "properties": {
                     "message": {
                         "type": "string"
+                    }
+                }
+            },
+            "MyPermissionsResponse": {
+                "type": "object",
+                "properties": {
+                    "permissions": {
+                        "type": "array",
+                        "items": {
+                            "type": "string"
+                        }
+                    },
+                    "roles": {
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/RoleResponse"
+                        }
                     }
                 }
             },

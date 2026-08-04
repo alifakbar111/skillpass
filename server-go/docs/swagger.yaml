@@ -570,6 +570,17 @@ definitions:
       message:
         type: string
     type: object
+  MyPermissionsResponse:
+    properties:
+      permissions:
+        items:
+          type: string
+        type: array
+      roles:
+        items:
+          $ref: '#/definitions/RoleResponse'
+        type: array
+    type: object
   PendingCompany:
     properties:
       companyName:
@@ -3191,8 +3202,7 @@ paths:
         "200":
           description: OK
           schema:
-            additionalProperties: true
-            type: object
+            $ref: '#/definitions/MyPermissionsResponse'
         "400":
           description: Bad Request
           schema:

@@ -3193,9 +3193,7 @@ export interface paths {
                         [name: string]: unknown;
                     };
                     content: {
-                        "application/json": {
-                            [key: string]: unknown;
-                        };
+                        "application/json": components["schemas"]["MyPermissionsResponse"];
                     };
                 };
                 /** @description Bad Request */
@@ -5665,6 +5663,10 @@ export interface components {
         };
         MessageResponse: {
             message?: string;
+        };
+        MyPermissionsResponse: {
+            permissions?: string[];
+            roles?: components["schemas"]["RoleResponse"][];
         };
         PendingCompany: {
             companyName?: string;

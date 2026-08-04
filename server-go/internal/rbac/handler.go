@@ -50,6 +50,12 @@ type RolePermissionsResponse struct {
 	PermissionIDs []string `json:"permissionIds,omitempty"`
 } //@name RolePermissionsResponse
 
+// MyPermissionsResponse is the shape of GET /hris/me/permissions.
+type MyPermissionsResponse struct {
+	Permissions []string       `json:"permissions"`
+	Roles       []RoleResponse `json:"roles"`
+} //@name MyPermissionsResponse
+
 // SetRolePermissionsRequest is the body for PUT /hris/roles/:roleId/permissions.
 type SetRolePermissionsRequest struct {
 	PermissionIDs []string `json:"permissionIds,omitempty"`
@@ -439,7 +445,7 @@ func (h *Handler) RemoveRole(c *gin.Context) {
 // @Tags         rbac
 // @Produce      json
 // @Security     BearerAuth
-// @Success      200 {object} map[string]any
+// @Success      200 {object} MyPermissionsResponse
 // @Failure      400 {object} map[string]string
 // @Failure      500 {object} map[string]string
 // @Router       /hris/me/permissions [get]
@@ -472,5 +478,5 @@ func (h *Handler) GetMyPermissions(c *gin.Context) {
 	if perms == nil {
 		perms = []string{}
 	}
-	c.JSON(http.StatusOK, gin.H{"permissions": perms, "roles": roleResp})
+	c.JSON(http.StatusOK, MyPermissionsResponse{Permissions: perms, Roles: roleResp})
 }
