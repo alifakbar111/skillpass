@@ -394,7 +394,7 @@ func (s *Service) seedRolePermissions(ctx context.Context, companyID uuid.UUID) 
 			"performance.view", "performance.manage", "performance.review",
 			"ats.view", "ats.manage", "ats.scorecard",
 			"analytics.view", "analytics.view_exec", "analytics.export",
-			"documents.view", "documents.manage",
+			"documents.view", "documents.manage", "documents.upload", "documents.delete", "documents.audit_log",
 			"org.view", "org.manage", "roles.manage", "settings.manage",
 		},
 		"HR Admin": {
@@ -405,7 +405,7 @@ func (s *Service) seedRolePermissions(ctx context.Context, companyID uuid.UUID) 
 			"performance.view", "performance.manage", "performance.review",
 			"ats.view",
 			"analytics.view", "analytics.export",
-			"documents.view", "documents.manage",
+			"documents.view", "documents.manage", "documents.upload", "documents.delete", "documents.audit_log",
 			"org.view", "org.manage",
 		},
 		"Payroll Admin": {

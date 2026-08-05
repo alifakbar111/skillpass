@@ -131,3 +131,42 @@ export function getMyPayslips(): Promise<Payslip[]> {
 export function getPayslip(payslipId: string): Promise<Payslip> {
   return api<Payslip>(`/hris/payslips/${payslipId}`);
 }
+
+// ── BPJS config + statutory exports (Sprint 4) ──
+import { getAccessToken } from '@/lib/api';
+
+export interface BpjsConfig {
+  kesehatanCap: number;
+  kesehatanEmployee: number;
+  kesehatanEmployer: number;
+  jhtEmployee: number;
+  jhtEmployer: number;
+  jkkEmployer: number;
+  jkmEmployer: number;
+  jpCap: number;
+  jpEmployee: number;
+  jpEmployer: number;
+}
+
+export function getBpjsConfig(): Promise<BpjsConfig> {
+  return api<BpjsConfig>('/hris/payroll/bpjs-config');
+}
+
+export function updateBpjsConfig(cfg: BpjsConfig): Promise<BpjsConfig> {
+  return api<BpjsConfig>('/hris/payroll/bpjs-config', { method: 'PUT', body: cfg });
+}
+
+// Downloads a payroll CSV export (bank transfer or SPT Masa PPh21).
+export async function downloadPayrollExport(runId: string, kind: 'bank' | 'spt-masa'): Promise<void> {
+  const res = await fetch(`/api/v1/hris/payroll-runs/${runId}/export/${kind}`, {
+    headers: { Authorization: `Bearer ${getAccessToken() ?? ''}` },
+  });
+  if (!res.ok) throw new Error('Export failed');
+  const blob = await res.blob();
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = kind === 'bank' ? 'bank-transfer.csv' : 'spt-masa-pph21.csv';
+  a.click();
+  URL.revokeObjectURL(url);
+}

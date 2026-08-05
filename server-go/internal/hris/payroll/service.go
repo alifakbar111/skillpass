@@ -1,10 +1,13 @@
 package payroll
 
 import (
+	"bytes"
 	"context"
 	"database/sql"
+	"encoding/csv"
 	"encoding/json"
 	"fmt"
+	"strconv"
 	"time"
 
 	"github.com/google/uuid"
@@ -77,6 +80,9 @@ type Payslip struct {
 	GrossPay        float64       `json:"grossPay"`
 	TotalDeductions float64       `json:"totalDeductions"`
 	NetPay          float64       `json:"netPay"`
+	BpjsEmployee    float64       `json:"bpjsEmployee"`
+	BpjsEmployer    float64       `json:"bpjsEmployer"`
+	Pph21           float64       `json:"pph21"`
 	Breakdown       []PayslipLine `json:"breakdown,omitempty"`
 	CreatedAt       time.Time     `json:"createdAt"`
 	PeriodStart     string        `json:"periodStart,omitempty"`
@@ -267,13 +273,19 @@ func (s *Service) CalculateRun(ctx context.Context, companyID, runID uuid.UUID) 
 		return fmt.Errorf("can only calculate runs in draft status")
 	}
 
-	_, err = tx.ExecContext(ctx, `DELETE FROM payslips WHERE payroll_run_id = $1`, runID)
-	if err != nil {
+	if _, err = tx.ExecContext(ctx, `DELETE FROM payslips WHERE payroll_run_id = $1`, runID); err != nil {
+		return err
+	}
+	if _, err = tx.ExecContext(ctx, `DELETE FROM bank_transfers WHERE payroll_run_id = $1`, runID); err != nil {
 		return err
 	}
 
+	bpjsCfg := s.loadBPJSConfig(ctx, tx, companyID)
+
 	rows, err := tx.QueryContext(ctx,
-		`SELECT e.id, e.employee_id_number, e.first_name, e.last_name
+		`SELECT e.id, e.employee_id_number, e.first_name, e.last_name,
+		        COALESCE(e.base_salary, 0), COALESCE(e.ptkp_status, 'TK/0'),
+		        COALESCE(e.bank_name, ''), COALESCE(e.bank_account_number, ''), COALESCE(e.bank_account_holder, '')
 		 FROM employees e
 		 WHERE e.company_id = $1 AND e.employment_status = 'active'
 		 ORDER BY e.first_name, e.last_name`, companyID)
@@ -282,15 +294,16 @@ func (s *Service) CalculateRun(ctx context.Context, companyID, runID uuid.UUID) 
 	}
 
 	type empInfo struct {
-		id        uuid.UUID
-		code      string
-		firstName string
-		lastName  string
+		id                              uuid.UUID
+		code, firstName, lastName       string
+		ptkp, bankName, bankAcc, holder string
+		baseSalary                      float64
 	}
 	var employees []empInfo
 	for rows.Next() {
 		var e empInfo
-		if err := rows.Scan(&e.id, &e.code, &e.firstName, &e.lastName); err != nil {
+		if err := rows.Scan(&e.id, &e.code, &e.firstName, &e.lastName,
+			&e.baseSalary, &e.ptkp, &e.bankName, &e.bankAcc, &e.holder); err != nil {
 			rows.Close()
 			return err
 		}
@@ -301,10 +314,18 @@ func (s *Service) CalculateRun(ctx context.Context, companyID, runID uuid.UUID) 
 		return err
 	}
 
-	var totalGross, totalDeductions, totalNet float64
+	var totalGross, totalDeductions, totalNet, totalBpjsEmp, totalBpjsEr, totalPph21 float64
 	employeeCount := 0
 
 	for _, emp := range employees {
+		var lines []PayslipLine
+		var earnings, otherDeductions float64
+
+		if emp.baseSalary > 0 {
+			lines = append(lines, PayslipLine{ComponentName: "Basic Salary", ComponentCode: "BASIC", Type: "earning", Amount: emp.baseSalary})
+			earnings += emp.baseSalary
+		}
+
 		salaryRows, err := tx.QueryContext(ctx,
 			`SELECT sc.name, sc.code, sc.type, es.amount
 			 FROM employee_salary es
@@ -314,9 +335,6 @@ func (s *Service) CalculateRun(ctx context.Context, companyID, runID uuid.UUID) 
 		if err != nil {
 			return err
 		}
-
-		var lines []PayslipLine
-		var gross, deductions float64
 		for salaryRows.Next() {
 			var line PayslipLine
 			if err := salaryRows.Scan(&line.ComponentName, &line.ComponentCode, &line.Type, &line.Amount); err != nil {
@@ -325,9 +343,9 @@ func (s *Service) CalculateRun(ctx context.Context, companyID, runID uuid.UUID) 
 			}
 			lines = append(lines, line)
 			if line.Type == "earning" {
-				gross += line.Amount
+				earnings += line.Amount
 			} else {
-				deductions += line.Amount
+				otherDeductions += line.Amount
 			}
 		}
 		salaryRows.Close()
@@ -335,39 +353,164 @@ func (s *Service) CalculateRun(ctx context.Context, companyID, runID uuid.UUID) 
 			return err
 		}
 
-		if len(lines) == 0 {
-			continue
+		if earnings == 0 {
+			continue // nothing to pay
 		}
 
+		gross := earnings
+		bpjs := bpjsCfg.Compute(gross)
+		pph21 := MonthlyPPh21TER(gross, emp.ptkp)
+
+		// Statutory deductions become breakdown lines.
+		lines = append(lines,
+			PayslipLine{ComponentName: "BPJS Kesehatan (1%)", ComponentCode: "BPJS_KES", Type: "deduction", Amount: bpjs.KesehatanEmployee},
+			PayslipLine{ComponentName: "BPJS JHT (2%)", ComponentCode: "BPJS_JHT", Type: "deduction", Amount: bpjs.JHTEmployee},
+			PayslipLine{ComponentName: "BPJS JP (1%)", ComponentCode: "BPJS_JP", Type: "deduction", Amount: bpjs.JPEmployee},
+			PayslipLine{ComponentName: "PPh21 (TER)", ComponentCode: "PPH21", Type: "deduction", Amount: pph21},
+		)
+
+		deductions := otherDeductions + bpjs.TotalEmployee + pph21
 		net := gross - deductions
+
 		breakdownJSON, err := json.Marshal(lines)
 		if err != nil {
 			return err
 		}
-
-		_, err = tx.ExecContext(ctx,
-			`INSERT INTO payslips (payroll_run_id, employee_id, gross_pay, total_deductions, net_pay, breakdown)
-			 VALUES ($1, $2, $3, $4, $5, $6)`,
-			runID, emp.id, gross, deductions, net, breakdownJSON)
-		if err != nil {
+		if _, err = tx.ExecContext(ctx,
+			`INSERT INTO payslips (payroll_run_id, employee_id, gross_pay, total_deductions, net_pay, bpjs_employee, bpjs_employer, pph21, breakdown)
+			 VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)`,
+			runID, emp.id, gross, deductions, net, bpjs.TotalEmployee, bpjs.TotalEmployer, pph21, breakdownJSON); err != nil {
+			return err
+		}
+		if _, err = tx.ExecContext(ctx,
+			`INSERT INTO bank_transfers (payroll_run_id, employee_id, bank_name, account_number, account_holder, amount)
+			 VALUES ($1,$2,NULLIF($3,''),NULLIF($4,''),NULLIF($5,''),$6)`,
+			runID, emp.id, emp.bankName, emp.bankAcc, emp.holder, net); err != nil {
 			return err
 		}
 
 		totalGross += gross
 		totalDeductions += deductions
 		totalNet += net
+		totalBpjsEmp += bpjs.TotalEmployee
+		totalBpjsEr += bpjs.TotalEmployer
+		totalPph21 += pph21
 		employeeCount++
 	}
 
-	_, err = tx.ExecContext(ctx,
-		`UPDATE payroll_runs SET status='calculated', total_gross=$1, total_deductions=$2, total_net=$3, employee_count=$4
-		 WHERE id=$5`,
-		totalGross, totalDeductions, totalNet, employeeCount, runID)
-	if err != nil {
+	if _, err = tx.ExecContext(ctx,
+		`UPDATE payroll_runs SET status='calculated', total_gross=$1, total_deductions=$2, total_net=$3, employee_count=$4,
+		        total_bpjs_employee=$5, total_bpjs_employer=$6, total_pph21=$7
+		 WHERE id=$8`,
+		totalGross, totalDeductions, totalNet, employeeCount, totalBpjsEmp, totalBpjsEr, totalPph21, runID); err != nil {
 		return err
 	}
 
 	return tx.Commit()
+}
+
+// GetBPJSConfig returns the company's BPJS config (or defaults).
+func (s *Service) GetBPJSConfig(ctx context.Context, companyID uuid.UUID) BPJSConfig {
+	cfg := DefaultBPJSConfig()
+	_ = s.db.QueryRowContext(ctx, `
+		SELECT kesehatan_cap, kesehatan_employee, kesehatan_employer,
+		       jht_employee, jht_employer, jkk_employer, jkm_employer,
+		       jp_cap, jp_employee, jp_employer
+		FROM bpjs_config WHERE company_id = $1`, companyID).Scan(
+		&cfg.KesehatanCap, &cfg.KesehatanEmployee, &cfg.KesehatanEmployer,
+		&cfg.JHTEmployee, &cfg.JHTEmployer, &cfg.JKKEmployer, &cfg.JKMEmployer,
+		&cfg.JPCap, &cfg.JPEmployee, &cfg.JPEmployer)
+	return cfg
+}
+
+// UpdateBPJSConfig upserts a company's BPJS config.
+func (s *Service) UpdateBPJSConfig(ctx context.Context, companyID uuid.UUID, cfg BPJSConfig) error {
+	_, err := s.db.ExecContext(ctx, `
+		INSERT INTO bpjs_config (company_id, kesehatan_cap, kesehatan_employee, kesehatan_employer,
+		    jht_employee, jht_employer, jkk_employer, jkm_employer, jp_cap, jp_employee, jp_employer, updated_at)
+		VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11, now())
+		ON CONFLICT (company_id) DO UPDATE SET
+		    kesehatan_cap=$2, kesehatan_employee=$3, kesehatan_employer=$4, jht_employee=$5, jht_employer=$6,
+		    jkk_employer=$7, jkm_employer=$8, jp_cap=$9, jp_employee=$10, jp_employer=$11, updated_at=now()`,
+		companyID, cfg.KesehatanCap, cfg.KesehatanEmployee, cfg.KesehatanEmployer, cfg.JHTEmployee, cfg.JHTEmployer,
+		cfg.JKKEmployer, cfg.JKMEmployer, cfg.JPCap, cfg.JPEmployee, cfg.JPEmployer)
+	return err
+}
+
+func money(v float64) string { return strconv.FormatFloat(v, 'f', 2, 64) }
+
+// ExportBankCSV builds a bank-transfer CSV for a run (company-scoped).
+func (s *Service) ExportBankCSV(ctx context.Context, companyID, runID uuid.UUID) ([]byte, error) {
+	rows, err := s.db.QueryContext(ctx, `
+		SELECT e.employee_id_number, e.first_name||' '||e.last_name,
+		       COALESCE(bt.bank_name,''), COALESCE(bt.account_number,''), COALESCE(bt.account_holder,''), bt.amount
+		FROM bank_transfers bt
+		JOIN payroll_runs pr ON pr.id = bt.payroll_run_id
+		JOIN employees e ON e.id = bt.employee_id
+		WHERE bt.payroll_run_id=$1 AND pr.company_id=$2
+		ORDER BY e.employee_id_number`, runID, companyID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var buf bytes.Buffer
+	w := csv.NewWriter(&buf)
+	_ = w.Write([]string{"Employee ID", "Name", "Bank", "Account Number", "Account Holder", "Amount"})
+	for rows.Next() {
+		var code, name, bank, acc, holder string
+		var amount float64
+		if err := rows.Scan(&code, &name, &bank, &acc, &holder, &amount); err != nil {
+			return nil, err
+		}
+		_ = w.Write([]string{code, name, bank, acc, holder, money(amount)})
+	}
+	w.Flush()
+	return buf.Bytes(), rows.Err()
+}
+
+// ExportSPTMasa builds an SPT Masa PPh21 summary CSV for a run.
+func (s *Service) ExportSPTMasa(ctx context.Context, companyID, runID uuid.UUID) ([]byte, error) {
+	rows, err := s.db.QueryContext(ctx, `
+		SELECT COALESCE(e.npwp,''), e.employee_id_number, e.first_name||' '||e.last_name,
+		       COALESCE(e.ptkp_status,'TK/0'), p.gross_pay, p.pph21
+		FROM payslips p
+		JOIN payroll_runs pr ON pr.id = p.payroll_run_id
+		JOIN employees e ON e.id = p.employee_id
+		WHERE p.payroll_run_id=$1 AND pr.company_id=$2
+		ORDER BY e.employee_id_number`, runID, companyID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var buf bytes.Buffer
+	w := csv.NewWriter(&buf)
+	_ = w.Write([]string{"NPWP", "Employee ID", "Name", "PTKP", "Bruto", "PPh21"})
+	for rows.Next() {
+		var npwp, code, name, ptkp string
+		var gross, pph float64
+		if err := rows.Scan(&npwp, &code, &name, &ptkp, &gross, &pph); err != nil {
+			return nil, err
+		}
+		_ = w.Write([]string{npwp, code, name, ptkp, money(gross), money(pph)})
+	}
+	w.Flush()
+	return buf.Bytes(), rows.Err()
+}
+
+// loadBPJSConfig returns the company's BPJS config, or defaults if none set.
+func (s *Service) loadBPJSConfig(ctx context.Context, tx *sql.Tx, companyID uuid.UUID) BPJSConfig {
+	cfg := DefaultBPJSConfig()
+	_ = tx.QueryRowContext(ctx, `
+		SELECT kesehatan_cap, kesehatan_employee, kesehatan_employer,
+		       jht_employee, jht_employer, jkk_employer, jkm_employer,
+		       jp_cap, jp_employee, jp_employer
+		FROM bpjs_config WHERE company_id = $1`, companyID).Scan(
+		&cfg.KesehatanCap, &cfg.KesehatanEmployee, &cfg.KesehatanEmployer,
+		&cfg.JHTEmployee, &cfg.JHTEmployer, &cfg.JKKEmployer, &cfg.JKMEmployer,
+		&cfg.JPCap, &cfg.JPEmployee, &cfg.JPEmployer)
+	return cfg
 }
 
 func (s *Service) ApproveRun(ctx context.Context, companyID, runID, approverID uuid.UUID) error {
@@ -407,7 +550,7 @@ func (s *Service) ListPayslips(ctx context.Context, companyID, runID uuid.UUID) 
 		`SELECT p.id, p.payroll_run_id, p.employee_id,
 		        COALESCE(e.first_name||' '||e.last_name, '') as employee_name,
 		        e.employee_id_number,
-		        p.gross_pay, p.total_deductions, p.net_pay, p.breakdown, p.created_at,
+		        p.gross_pay, p.total_deductions, p.net_pay, p.bpjs_employee, p.bpjs_employer, p.pph21, p.breakdown, p.created_at,
 		        pr.period_start::text, pr.period_end::text
 		 FROM payslips p
 		 JOIN employees e ON e.id = p.employee_id
@@ -424,7 +567,7 @@ func (s *Service) ListPayslips(ctx context.Context, companyID, runID uuid.UUID) 
 		var p Payslip
 		var breakdownJSON []byte
 		if err := rows.Scan(&p.ID, &p.PayrollRunID, &p.EmployeeID, &p.EmployeeName, &p.EmployeeCode,
-			&p.GrossPay, &p.TotalDeductions, &p.NetPay, &breakdownJSON, &p.CreatedAt,
+			&p.GrossPay, &p.TotalDeductions, &p.NetPay, &p.BpjsEmployee, &p.BpjsEmployer, &p.Pph21, &breakdownJSON, &p.CreatedAt,
 			&p.PeriodStart, &p.PeriodEnd); err != nil {
 			return nil, err
 		}
@@ -439,7 +582,7 @@ func (s *Service) ListPayslips(ctx context.Context, companyID, runID uuid.UUID) 
 func (s *Service) GetMyPayslips(ctx context.Context, companyID, employeeID uuid.UUID) ([]Payslip, error) {
 	rows, err := s.db.QueryContext(ctx,
 		`SELECT p.id, p.payroll_run_id, p.employee_id, '' as employee_name, '' as employee_id_number,
-		        p.gross_pay, p.total_deductions, p.net_pay, p.breakdown, p.created_at,
+		        p.gross_pay, p.total_deductions, p.net_pay, p.bpjs_employee, p.bpjs_employer, p.pph21, p.breakdown, p.created_at,
 		        pr.period_start::text, pr.period_end::text
 		 FROM payslips p
 		 JOIN payroll_runs pr ON pr.id = p.payroll_run_id
@@ -455,7 +598,7 @@ func (s *Service) GetMyPayslips(ctx context.Context, companyID, employeeID uuid.
 		var p Payslip
 		var breakdownJSON []byte
 		if err := rows.Scan(&p.ID, &p.PayrollRunID, &p.EmployeeID, &p.EmployeeName, &p.EmployeeCode,
-			&p.GrossPay, &p.TotalDeductions, &p.NetPay, &breakdownJSON, &p.CreatedAt,
+			&p.GrossPay, &p.TotalDeductions, &p.NetPay, &p.BpjsEmployee, &p.BpjsEmployer, &p.Pph21, &breakdownJSON, &p.CreatedAt,
 			&p.PeriodStart, &p.PeriodEnd); err != nil {
 			return nil, err
 		}
@@ -474,14 +617,14 @@ func (s *Service) GetPayslip(ctx context.Context, companyID, employeeID, payslip
 		`SELECT p.id, p.payroll_run_id, p.employee_id,
 		        COALESCE(e.first_name||' '||e.last_name, '') as employee_name,
 		        e.employee_id_number,
-		        p.gross_pay, p.total_deductions, p.net_pay, p.breakdown, p.created_at,
+		        p.gross_pay, p.total_deductions, p.net_pay, p.bpjs_employee, p.bpjs_employer, p.pph21, p.breakdown, p.created_at,
 		        pr.period_start::text, pr.period_end::text
 		 FROM payslips p
 		 JOIN employees e ON e.id = p.employee_id
 		 JOIN payroll_runs pr ON pr.id = p.payroll_run_id
 		 WHERE pr.company_id = $1 AND p.id = $2 AND ($3::uuid IS NULL OR p.employee_id = $3)`,
 		companyID, payslipID, employeeID).Scan(&p.ID, &p.PayrollRunID, &p.EmployeeID, &p.EmployeeName, &p.EmployeeCode,
-		&p.GrossPay, &p.TotalDeductions, &p.NetPay, &breakdownJSON, &p.CreatedAt,
+		&p.GrossPay, &p.TotalDeductions, &p.NetPay, &p.BpjsEmployee, &p.BpjsEmployer, &p.Pph21, &breakdownJSON, &p.CreatedAt,
 		&p.PeriodStart, &p.PeriodEnd)
 	if err != nil {
 		return nil, err

@@ -24,14 +24,16 @@ import (
 	swaggerFiles "github.com/swaggo/files"
 	ginSwagger "github.com/swaggo/gin-swagger"
 
+	_ "skillpass-server-go/docs"
 	"skillpass-server-go/internal/analytics"
 	"skillpass-server-go/internal/application"
 	"skillpass-server-go/internal/authtoken"
 	"skillpass-server-go/internal/config"
 	"skillpass-server-go/internal/db"
-	_ "skillpass-server-go/docs"
+	"skillpass-server-go/internal/documents"
 	"skillpass-server-go/internal/email"
 	"skillpass-server-go/internal/evaluation"
+	"skillpass-server-go/internal/face"
 	"skillpass-server-go/internal/handlers"
 	"skillpass-server-go/internal/hris/attendance"
 	"skillpass-server-go/internal/hris/employee"
@@ -42,13 +44,14 @@ import (
 	"skillpass-server-go/internal/hris/payroll"
 	"skillpass-server-go/internal/hris/report"
 	"skillpass-server-go/internal/hris/shift"
-	"skillpass-server-go/internal/spdid"
+	"skillpass-server-go/internal/identity"
 	"skillpass-server-go/internal/lib"
 	"skillpass-server-go/internal/matching"
 	"skillpass-server-go/internal/middleware"
 	"skillpass-server-go/internal/notification"
 	"skillpass-server-go/internal/rbac"
 	"skillpass-server-go/internal/resume"
+	"skillpass-server-go/internal/spdid"
 	"skillpass-server-go/internal/storage"
 	"skillpass-server-go/internal/webhook"
 
@@ -352,8 +355,45 @@ func main() {
 	empHandler := employee.NewHandler(database, rbacService)
 	orgHandler := org.NewHandler(database)
 
+	// Documents (Phase 2 · Sprint 1): private storage + optional ClamAV scan.
+	docStore := storage.NewLocalStoreAt(cfg.DocumentsDir)
+	docScanner := documents.NewScanner(cfg.ClamAVAddr)
+	docHandler := documents.NewHandler(documents.NewService(database, bunDB, docStore, docScanner))
+
+	// Face recognition (Phase 2 · Sprint 2): embeddings encrypted at rest.
+	faceService, err := face.NewService(database, bunDB, face.NewClient(cfg.FaceServiceURL), cfg.JWTSecret, cfg.FaceMatchThreshold, cfg.FaceReviewThreshold)
+	if err != nil {
+		log.Fatalf("Failed to init face service: %v", err)
+	}
+	faceHandler := face.NewHandler(faceService)
+
+	// Verifiable identity (Phase 2 · Sprint 3): Ed25519 signatures, no blockchain.
+	identityService := identity.NewService(database, identity.NewSigner(cfg.JWTSecret))
+	identityHandler := identity.NewHandler(identityService)
+
 	hris := api.Group("/hris")
 	hris.Use(middleware.AuthRequired(cfg.JWTSecret), rbac.RequireCompanyMember(rbacService))
+
+	hrisDocs := hris.Group("/documents")
+	hrisDocs.GET("", rbac.RequirePermission(rbacService, "documents.view", "documents.view_self"), docHandler.List)
+	hrisDocs.POST("", rbac.RequirePermission(rbacService, "documents.upload"), docHandler.Upload)
+	hrisDocs.GET("/:id/download", rbac.RequirePermission(rbacService, "documents.view", "documents.view_self"), docHandler.Download)
+	hrisDocs.DELETE("/:id", rbac.RequirePermission(rbacService, "documents.delete"), docHandler.Delete)
+	// Sibling path — /documents/audit-log would collide with /documents/:id in Gin.
+	hris.GET("/documents-audit-log", rbac.RequirePermission(rbacService, "documents.audit_log"), docHandler.AuditLog)
+
+	hrisFace := hris.Group("/face")
+	hrisFace.POST("/enroll", rbac.RequirePermission(rbacService, "face.enroll"), faceHandler.Enroll)
+	hrisFace.GET("/status", rbac.RequirePermission(rbacService, "face.view"), faceHandler.Status)
+	hrisFace.GET("/employees/:id", rbac.RequirePermission(rbacService, "face.admin"), faceHandler.EmployeeStatus)
+
+	// Verifiable identity — separate path from the Phase 1 SP-DID stub.
+	hrisIdentity := hris.Group("/identity")
+	hrisIdentity.POST("/employees/:id/did", rbac.RequirePermission(rbacService, "org.manage", "employee.update"), identityHandler.IssueDID)
+	hrisIdentity.GET("/employees/:id/did", rbac.RequirePermission(rbacService, "org.view", "employee.view"), identityHandler.GetDID)
+	hrisIdentity.GET("/employees/:id/credentials", rbac.RequirePermission(rbacService, "org.view", "employee.view"), identityHandler.ListCredentials)
+	// Public DID-document resolver (no auth).
+	api.GET("/did/:id", identityHandler.Resolve)
 
 	hrisEmployees := hris.Group("/employees")
 	hrisEmployees.GET("", rbac.RequirePermission(rbacService, "employee.view", "employee.view_team"), empHandler.List)
@@ -414,6 +454,7 @@ func main() {
 
 	// Attendance
 	attHandler := attendance.NewHandler(database)
+	attHandler.SetFaceVerifier(faceService) // face-verified clock-in (Sprint 3)
 	hrisAttendance := hris.Group("/attendance")
 	hrisAttendance.POST("/clock-in", rbac.RequirePermission(rbacService, "attendance.clock"), attHandler.ClockIn)
 	hrisAttendance.POST("/clock-out", rbac.RequirePermission(rbacService, "attendance.clock"), attHandler.ClockOut)
@@ -473,6 +514,13 @@ func main() {
 	hrisPayroll.POST("/:id/approve", rbac.RequirePermission(rbacService, "payroll.approve"), payrollHandler.ApproveRun)
 	hrisPayroll.POST("/:id/mark-paid", rbac.RequirePermission(rbacService, "payroll.approve"), payrollHandler.MarkPaid)
 	hrisPayroll.GET("/:id/payslips", rbac.RequirePermission(rbacService, "payroll.view"), payrollHandler.ListPayslips)
+	hrisPayroll.GET("/:id/export/bank", rbac.RequirePermission(rbacService, "payroll.view", "payroll.manage"), payrollHandler.ExportBank)
+	hrisPayroll.GET("/:id/export/spt-masa", rbac.RequirePermission(rbacService, "payroll.view", "payroll.manage"), payrollHandler.ExportSPT)
+
+	// BPJS config — separate group ("/payroll/bpjs-config" would collide with /payroll-runs/:id in Gin).
+	hrisPayrollCfg := hris.Group("/payroll")
+	hrisPayrollCfg.GET("/bpjs-config", rbac.RequirePermission(rbacService, "payroll.view", "payroll.manage"), payrollHandler.GetBPJSConfig)
+	hrisPayrollCfg.PUT("/bpjs-config", rbac.RequirePermission(rbacService, "payroll.manage"), payrollHandler.UpdateBPJSConfig)
 
 	hrisPayslips := hris.Group("/payslips")
 	hrisPayslips.GET("/my", rbac.RequirePermission(rbacService, "payroll.view_self"), payrollHandler.MyPayslips)

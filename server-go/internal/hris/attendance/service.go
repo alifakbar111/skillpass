@@ -3,18 +3,39 @@ package attendance
 import (
 	"context"
 	"database/sql"
+	"encoding/base64"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/google/uuid"
+
+	"skillpass-server-go/internal/face"
 )
 
 type Service struct {
-	db *sql.DB
+	db           *sql.DB
+	faceVerifier FaceVerifier
 }
 
 func NewService(db *sql.DB) *Service {
 	return &Service{db: db}
+}
+
+// FaceVerifier verifies a live image against an employee's enrolled face.
+// Implemented by *face.Service; optional (nil = face check skipped).
+type FaceVerifier interface {
+	Verify(ctx context.Context, employeeID uuid.UUID, image []byte, action, ip, ua string) (*face.Decision, error)
+}
+
+// SetFaceVerifier enables face-verified clock-in.
+func (s *Service) SetFaceVerifier(v FaceVerifier) { s.faceVerifier = v }
+
+func decodeFaceImage(s string) ([]byte, error) {
+	if i := strings.Index(s, ","); strings.HasPrefix(s, "data:") && i >= 0 {
+		s = s[i+1:]
+	}
+	return base64.StdEncoding.DecodeString(strings.TrimSpace(s))
 }
 
 type AttendanceLog struct {
@@ -40,9 +61,10 @@ type AttendanceLog struct {
 }
 
 type ClockInRequest struct {
-	Lat      float64    `json:"lat"`
-	Lng      float64    `json:"lng"`
-	BranchID *uuid.UUID `json:"branchId,omitempty"`
+	Lat       float64    `json:"lat"`
+	Lng       float64    `json:"lng"`
+	BranchID  *uuid.UUID `json:"branchId,omitempty"`
+	FaceImage *string    `json:"faceImage,omitempty"` // base64; optional face check
 }
 
 type ClockOutRequest struct {
@@ -129,18 +151,36 @@ func (s *Service) ClockIn(ctx context.Context, companyID, employeeID uuid.UUID, 
 		}
 	}
 
+	// Optional face verification. A hard "reject" blocks the clock-in;
+	// "review"/"accept" proceed (review is flagged for later audit).
+	var faceMatch *float64
+	if s.faceVerifier != nil && req.FaceImage != nil && *req.FaceImage != "" {
+		img, decErr := decodeFaceImage(*req.FaceImage)
+		if decErr != nil {
+			return nil, fmt.Errorf("invalid face image")
+		}
+		decision, verr := s.faceVerifier.Verify(ctx, employeeID, img, "clock_in", "", "")
+		if verr != nil {
+			return nil, fmt.Errorf("face verification unavailable")
+		}
+		if decision.Outcome == "reject" {
+			return nil, fmt.Errorf("face verification failed — clock-in denied")
+		}
+		faceMatch = &decision.Match
+	}
+
 	var log AttendanceLog
 	clockIn := time.Now()
 	err = s.db.QueryRowContext(ctx,
 		`INSERT INTO attendance_logs
 		  (company_id, employee_id, date, clock_in, clock_in_lat, clock_in_lng,
-		   branch_id, is_in_geofence, is_late, late_minutes, attendance_code)
-		 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, 'P')
+		   branch_id, is_in_geofence, is_late, late_minutes, attendance_code, face_match_score)
+		 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, 'P', $11)
 		 RETURNING id, company_id, employee_id, date::text, clock_in,
 		           clock_in_lat, clock_in_lng, branch_id, is_in_geofence,
 		           is_late, late_minutes, attendance_code, created_at`,
 		companyID, employeeID, today, clockIn, req.Lat, req.Lng,
-		req.BranchID, inGeofence, isLate, lateMinutes,
+		req.BranchID, inGeofence, isLate, lateMinutes, faceMatch,
 	).Scan(&log.ID, &log.CompanyID, &log.EmployeeID, &log.Date, &log.ClockIn,
 		&log.ClockInLat, &log.ClockInLng, &log.BranchID, &log.IsInGeofence,
 		&log.IsLate, &log.LateMinutes, &log.AttendanceCode, &log.CreatedAt)

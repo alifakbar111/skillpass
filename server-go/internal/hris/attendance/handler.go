@@ -21,6 +21,9 @@ func NewHandler(db *sql.DB) *Handler {
 	}
 }
 
+// SetFaceVerifier enables face-verified clock-in.
+func (h *Handler) SetFaceVerifier(v FaceVerifier) { h.svc.SetFaceVerifier(v) }
+
 func (h *Handler) Hub() *Hub {
 	return h.hub
 }

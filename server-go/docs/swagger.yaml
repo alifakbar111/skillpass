@@ -218,6 +218,46 @@ definitions:
       area:
         type: string
     type: object
+  DocumentAccessLog:
+    properties:
+      accessedByName:
+        type: string
+      action:
+        type: string
+      createdAt:
+        type: string
+      documentId:
+        type: string
+      filename:
+        type: string
+      id:
+        type: string
+      ipAddress:
+        type: string
+    type: object
+  DocumentResponse:
+    properties:
+      category:
+        type: string
+      createdAt:
+        type: string
+      employeeId:
+        type: string
+      employeeName:
+        type: string
+      fileSize:
+        type: integer
+      filename:
+        type: string
+      id:
+        type: string
+      mimeType:
+        type: string
+      scanStatus:
+        type: string
+      uploadedByName:
+        type: string
+    type: object
   EvaluationResponse:
     properties:
       createdAt:
@@ -277,6 +317,24 @@ definitions:
         type: string
       url:
         type: string
+    type: object
+  FaceEnrollResponse:
+    properties:
+      enrolled:
+        type: boolean
+      enrolledAt:
+        type: string
+      livenessScore:
+        type: number
+    type: object
+  FaceStatusResponse:
+    properties:
+      enrolled:
+        type: boolean
+      enrolledAt:
+        type: string
+      livenessScore:
+        type: number
     type: object
   Feedback:
     properties:
@@ -2417,6 +2475,156 @@ paths:
       summary: Health check
       tags:
       - health
+  /hris/documents:
+    get:
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/DocumentResponse'
+            type: array
+      security:
+      - BearerAuth: []
+      summary: List documents
+      tags:
+      - documents
+    post:
+      consumes:
+      - multipart/form-data
+      parameters:
+      - description: File (max 25MB)
+        in: formData
+        name: file
+        required: true
+        type: file
+      - description: identity|contract|certificate|payslip|tax|other
+        in: formData
+        name: category
+        type: string
+      - description: Employee to attach the document to
+        in: formData
+        name: employeeId
+        type: string
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/DocumentResponse'
+      security:
+      - BearerAuth: []
+      summary: Upload a document
+      tags:
+      - documents
+  /hris/documents/{id}:
+    delete:
+      parameters:
+      - description: Document ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses: {}
+      security:
+      - BearerAuth: []
+      summary: Delete a document
+      tags:
+      - documents
+  /hris/documents/{id}/download:
+    get:
+      parameters:
+      - description: Document ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/octet-stream
+      responses: {}
+      security:
+      - BearerAuth: []
+      summary: Download a document
+      tags:
+      - documents
+  /hris/documents/audit-log:
+    get:
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/DocumentAccessLog'
+            type: array
+      security:
+      - BearerAuth: []
+      summary: Document access audit log
+      tags:
+      - documents
+  /hris/face/employees/{id}:
+    get:
+      parameters:
+      - description: Employee ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/FaceStatusResponse'
+      security:
+      - BearerAuth: []
+      summary: A specific employee's face-enrolment status (admin)
+      tags:
+      - face
+  /hris/face/enroll:
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: '{ image: base64 }'
+        in: body
+        name: body
+        required: true
+        schema:
+          type: object
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/FaceEnrollResponse'
+      security:
+      - BearerAuth: []
+      summary: Enrol the current employee's face
+      tags:
+      - face
+  /hris/face/status:
+    get:
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/FaceStatusResponse'
+      security:
+      - BearerAuth: []
+      summary: Current employee's face-enrolment status
+      tags:
+      - face
   /industries:
     get:
       description: Get all industry categories for filtering

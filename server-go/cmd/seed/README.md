@@ -180,3 +180,50 @@ Run it with:
 ```bash
 bun run db:seed
 ```
+
+---
+
+## Phase 2 demo seeder (Sprints 1–4) — how to build it
+
+The Phase 2 demo data lives in a **git-ignored** local seeder, `cmd/seedphase2`
+(ignored via `.gitignore`, like `seeddemo`/`seedhris`). It is **not committed**
+because it produces PII-shaped data (documents, biometrics, bank amounts). Here
+is how to recreate it.
+
+### What it seeds (aligned with `seedhris`'s employees)
+| Sprint | Data |
+|--------|------|
+| S1 Documents | a handbook + per-employee documents (real files via the storage layer, `scan_status='clean'`) + access logs |
+| S2 Face | one **active enrollment per active employee** (encrypted embedding) + verification logs |
+| S3 Identity | a **DID + signed employment credential** per employee, and an **integrity anchor** per document |
+| S4 Payroll | varied `ptkp_status`, a `bpjs_config` row per company, and a **computed payroll run** per company |
+
+### Key techniques (so the seeded data actually works)
+1. **Reset-then-insert** for idempotency; scope to the demo companies
+   (`WHERE u.email LIKE 'hr%@skillpass.test'`). Delete in FK-safe order and
+   `os.RemoveAll` the document files under `DOCUMENTS_DIR`.
+2. **Documents**: write files through `storage.NewLocalStoreAt(DOCUMENTS_DIR).Save(key, r)`
+   using the same key format the app uses (`documents/<companyID>/<docID>.txt`),
+   then insert the `documents` row with the file's real SHA-256.
+3. **Face embeddings must be decryptable by the app.** Encrypt with
+   **AES-256-GCM using `sha256(JWT_SECRET)`** — identical to
+   `internal/face/crypto.go`. If the key differs, verification fails.
+4. **Reuse the real services** so production code paths run:
+   - `identity.NewService(db, identity.NewSigner(JWT_SECRET))` → `IssueDID`,
+     `IssueCredential`, `Anchor`.
+   - `payroll.NewService(db)` → `CreateRun` then `CalculateRun` (this runs the
+     **real PPh21 TER + BPJS** engine, producing correct payslips + bank transfers).
+5. **Vary `ptkp_status`** across employees so PPh21 exercises all three TER
+   categories (A/B/C).
+
+### Run it
+```bash
+docker compose up db face-service -d
+bun run db:migrate
+bun run db:seed          # reference data
+bun run db:seed:demo     # companies + jobseekers
+bun run db:seed:hris     # employees + RBAC
+bun run db:seed:phase2   # <- the Phase 2 seeder (add this script locally; do not commit it)
+```
+Add the `db:seed:phase2` script to the root `package.json` **locally only** —
+don't commit it, since it points at a git-ignored folder.

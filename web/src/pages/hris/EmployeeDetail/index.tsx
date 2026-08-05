@@ -6,6 +6,7 @@ import { usePermissions } from '@/hooks/usePermissions';
 import { getEmployee, type UpdateEmployeeRequest, updateEmployee } from '@/lib/hris/employees';
 import { listBranches, listDepartments, listPositions } from '@/lib/hris/org';
 import { EmployeeAccessPanel } from '@/pages/hris/EmployeeDetail/EmployeeAccessPanel';
+import { EmployeeIdentityPanel } from '@/pages/hris/EmployeeDetail/EmployeeIdentityPanel';
 
 export default function EmployeeDetail() {
   const { id } = useParams<{ id: string }>();
@@ -276,6 +277,7 @@ export default function EmployeeDetail() {
       </form>
 
       <EmployeeAccessPanel employeeId={id ?? ''} hasLogin={!!emp.userId} />
+      <EmployeeIdentityPanel employeeId={id ?? ''} />
     </div>
   );
 }

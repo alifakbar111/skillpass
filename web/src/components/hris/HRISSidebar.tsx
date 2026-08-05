@@ -14,12 +14,15 @@ import {
   Clock,
   ClockArrowUp,
   Download,
+  FileArchive,
   FileText,
   type LucideIcon,
   MapPin,
   Network,
   PalmtreeIcon,
+  Percent,
   Receipt,
+  ScanFace,
   Shield,
   UserCircle,
   Users,
@@ -43,6 +46,7 @@ const groups: NavGroup[] = [
     items: [
       { to: '/hris/my-info', label: 'My Info', icon: UserCircle },
       { to: '/hris/employees', label: 'Employees', icon: Users },
+      { to: '/hris/documents', label: 'Documents', icon: FileArchive },
       { to: '/hris/org-chart', label: 'Org Chart', icon: Network },
       { to: '/hris/departments', label: 'Departments', icon: Building2 },
       { to: '/hris/positions', label: 'Positions', icon: Briefcase },
@@ -73,6 +77,7 @@ const groups: NavGroup[] = [
     title: 'Payroll',
     items: [
       { to: '/hris/salary-components', label: 'Salary Config', icon: Banknote },
+      { to: '/hris/tax-config', label: 'Tax & BPJS', icon: Percent },
       { to: '/hris/payroll-runs', label: 'Payroll Runs', icon: Calculator },
       { to: '/hris/my-payslips', label: 'My Payslips', icon: Receipt },
     ],
@@ -91,6 +96,10 @@ const groups: NavGroup[] = [
       { to: '/hris/onboarding-checklists', label: 'Onboarding', icon: ClipboardCheck },
       { to: '/hris/my-onboarding', label: 'My Onboarding', icon: ClipboardCheck },
     ],
+  },
+  {
+    title: 'Trust & Security',
+    items: [{ to: '/hris/face-enrollment', label: 'Face ID', icon: ScanFace }],
   },
   {
     title: 'Settings',

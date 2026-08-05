@@ -67,6 +67,9 @@ const ClockInPage = lazy(() => import('./pages/hris/ClockIn'));
 const AttendanceDashboard = lazy(() => import('./pages/hris/AttendanceDashboard'));
 const MyAttendance = lazy(() => import('./pages/hris/MyAttendance'));
 const MyInfo = lazy(() => import('./pages/hris/MyInfo'));
+const Documents = lazy(() => import('./pages/hris/Documents'));
+const FaceEnrollment = lazy(() => import('./pages/hris/FaceEnrollment'));
+const TaxConfig = lazy(() => import('./pages/hris/TaxConfig'));
 const AttendanceExceptions = lazy(() => import('./pages/hris/AttendanceExceptions'));
 const LeaveTypes = lazy(() => import('./pages/hris/LeaveTypes'));
 const LeaveRequest = lazy(() => import('./pages/hris/LeaveRequest'));
@@ -263,6 +266,9 @@ const router = createBrowserRouter([
           { path: 'clock-in', element: <ClockInPage /> },
           { path: 'attendance', element: <AttendanceDashboard /> },
           { path: 'my-info', element: <MyInfo /> },
+          { path: 'documents', element: <Documents /> },
+          { path: 'face-enrollment', element: <FaceEnrollment /> },
+          { path: 'tax-config', element: <TaxConfig /> },
           { path: 'my-attendance', element: <MyAttendance /> },
           { path: 'attendance-exceptions', element: <AttendanceExceptions /> },
           { path: 'leave-types', element: <LeaveTypes /> },

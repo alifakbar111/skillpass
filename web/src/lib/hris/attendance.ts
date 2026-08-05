@@ -105,7 +105,12 @@ export function listEmployeeShifts(employeeId: string): Promise<EmployeeShift[]>
 }
 
 // Attendance
-export function clockIn(data: { lat: number; lng: number; branchId?: string }): Promise<AttendanceLog> {
+export function clockIn(data: {
+  lat: number;
+  lng: number;
+  branchId?: string;
+  faceImage?: string;
+}): Promise<AttendanceLog> {
   return api<AttendanceLog>('/hris/attendance/clock-in', { method: 'POST', body: JSON.stringify(data) });
 }
 

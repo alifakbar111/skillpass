@@ -61,6 +61,7 @@ services:
       APP_URL: http://localhost:4200
       UPLOAD_DIR: /app/uploads
       MARKITDOWN_URL: http://markitdown:8000
+      FACE_SERVICE_URL: http://face-service:8000
     volumes:
       - uploads:/app/uploads
 
@@ -87,6 +88,58 @@ services:
     depends_on:
       - server
 
+  # ── Phase 2 · Sprint 1 infrastructure ──────────────────────────
+  # Optional in dev: the app degrades gracefully when these are absent
+  # (scanning skipped, storage falls back to local disk, jobs run inline).
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+  minio:
+    image: minio/minio
+    command: server /data --console-address ":9001"
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    environment:
+      MINIO_ROOT_USER: minioadmin
+      MINIO_ROOT_PASSWORD: minioadmin
+    volumes:
+      - miniodata:/data
+    healthcheck:
+      test: ["CMD", "mc", "ready", "local"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  clamav:
+    image: clamav/clamav:latest
+    ports:
+      - "3310:3310"
+    healthcheck:
+      test: ["CMD", "clamdscan", "--version"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+
+  face-service:
+    build:
+      context: ./face-service
+    ports:
+      - "8001:8000"
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+
 volumes:
   pgdata:
   uploads:
+  miniodata:

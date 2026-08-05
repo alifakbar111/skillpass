@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Calculator, CheckCircle, CreditCard, Eye, Plus } from 'lucide-react';
+import { Banknote, Calculator, CheckCircle, CreditCard, Eye, FileSpreadsheet, Plus } from 'lucide-react';
 import { useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { usePermissions } from '@/hooks/usePermissions';
@@ -7,6 +7,7 @@ import {
   approvePayrollRun,
   calculatePayrollRun,
   createPayrollRun,
+  downloadPayrollExport,
   listPayrollRuns,
   markPayrollPaid,
 } from '@/lib/hris/payroll';
@@ -160,14 +161,32 @@ export default function PayrollRuns() {
                     </button>
                   )}
                   {r.status !== 'draft' && (
-                    <button
-                      type="button"
-                      className="btn btn-ghost btn-xs"
-                      title="View Payslips"
-                      onClick={() => navigate(`/hris/payroll-runs/${r.id}/payslips`)}
-                    >
-                      <Eye className="h-3 w-3" />
-                    </button>
+                    <>
+                      <button
+                        type="button"
+                        className="btn btn-ghost btn-xs"
+                        title="View Payslips"
+                        onClick={() => navigate(`/hris/payroll-runs/${r.id}/payslips`)}
+                      >
+                        <Eye className="h-3 w-3" />
+                      </button>
+                      <button
+                        type="button"
+                        className="btn btn-ghost btn-xs"
+                        title="Export bank transfer CSV"
+                        onClick={() => downloadPayrollExport(r.id, 'bank').catch(() => setError('Export failed'))}
+                      >
+                        <Banknote className="h-3 w-3" />
+                      </button>
+                      <button
+                        type="button"
+                        className="btn btn-ghost btn-xs"
+                        title="Export SPT Masa PPh21 CSV"
+                        onClick={() => downloadPayrollExport(r.id, 'spt-masa').catch(() => setError('Export failed'))}
+                      >
+                        <FileSpreadsheet className="h-3 w-3" />
+                      </button>
+                    </>
                   )}
                 </td>
               </tr>

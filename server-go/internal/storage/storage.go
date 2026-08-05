@@ -17,6 +17,11 @@ type Store interface {
 	// Save writes the content under key (e.g. "avatars/<id>.png") and returns
 	// the URL path clients can fetch it from (e.g. "/uploads/avatars/<id>.png").
 	Save(ctx context.Context, key string, r io.Reader) (string, error)
+	// Open returns the stored content for authenticated streaming (documents
+	// are private and must not be served from the public /uploads path).
+	Open(ctx context.Context, key string) (io.ReadCloser, error)
+	// Delete removes the stored object.
+	Delete(ctx context.Context, key string) error
 }
 
 var _ Store = (*LocalStore)(nil)
@@ -40,6 +45,12 @@ func NewLocalStore() *LocalStore {
 	if dir == "" {
 		dir = "./uploads"
 	}
+	return &LocalStore{dir: dir}
+}
+
+// NewLocalStoreAt roots a LocalStore at an explicit directory. Used for private
+// stores (e.g. documents) that must NOT be served under the public /uploads route.
+func NewLocalStoreAt(dir string) *LocalStore {
 	return &LocalStore{dir: dir}
 }
 
@@ -72,4 +83,30 @@ func (l *LocalStore) Save(_ context.Context, key string, r io.Reader) (string, e
 	}
 
 	return "/uploads/" + key, nil
+}
+
+func (l *LocalStore) safePath(key string) (string, error) {
+	if !keyPattern.MatchString(key) || strings.Contains(key, "..") || strings.HasPrefix(key, "/") {
+		return "", fmt.Errorf("invalid storage key %q", key)
+	}
+	return filepath.Join(l.dir, filepath.FromSlash(key)), nil
+}
+
+func (l *LocalStore) Open(_ context.Context, key string) (io.ReadCloser, error) {
+	p, err := l.safePath(key)
+	if err != nil {
+		return nil, err
+	}
+	return os.Open(p)
+}
+
+func (l *LocalStore) Delete(_ context.Context, key string) error {
+	p, err := l.safePath(key)
+	if err != nil {
+		return err
+	}
+	if err := os.Remove(p); err != nil && !os.IsNotExist(err) {
+		return err
+	}
+	return nil
 }

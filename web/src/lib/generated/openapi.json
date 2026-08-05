@@ -2327,6 +2327,260 @@
                 }
             }
         },
+        "/hris/documents": {
+            "get": {
+                "tags": [
+                    "documents"
+                ],
+                "summary": "List documents",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "array",
+                                    "items": {
+                                        "$ref": "#/components/schemas/DocumentResponse"
+                                    }
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ]
+            },
+            "post": {
+                "tags": [
+                    "documents"
+                ],
+                "summary": "Upload a document",
+                "requestBody": {
+                    "content": {
+                        "multipart/form-data": {
+                            "schema": {
+                                "type": "object",
+                                "properties": {
+                                    "file": {
+                                        "description": "File (max 25MB)",
+                                        "type": "string",
+                                        "format": "binary"
+                                    },
+                                    "category": {
+                                        "description": "identity|contract|certificate|payslip|tax|other",
+                                        "type": "string"
+                                    },
+                                    "employeeId": {
+                                        "description": "Employee to attach the document to",
+                                        "type": "string"
+                                    }
+                                },
+                                "required": [
+                                    "file"
+                                ]
+                            }
+                        }
+                    },
+                    "required": true
+                },
+                "responses": {
+                    "201": {
+                        "description": "Created",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/DocumentResponse"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/hris/documents/audit-log": {
+            "get": {
+                "tags": [
+                    "documents"
+                ],
+                "summary": "Document access audit log",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "array",
+                                    "items": {
+                                        "$ref": "#/components/schemas/DocumentAccessLog"
+                                    }
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/hris/documents/{id}": {
+            "delete": {
+                "tags": [
+                    "documents"
+                ],
+                "summary": "Delete a document",
+                "parameters": [
+                    {
+                        "description": "Document ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {},
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/hris/documents/{id}/download": {
+            "get": {
+                "tags": [
+                    "documents"
+                ],
+                "summary": "Download a document",
+                "parameters": [
+                    {
+                        "description": "Document ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {},
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/hris/face/employees/{id}": {
+            "get": {
+                "tags": [
+                    "face"
+                ],
+                "summary": "A specific employee's face-enrolment status (admin)",
+                "parameters": [
+                    {
+                        "description": "Employee ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/FaceStatusResponse"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/hris/face/enroll": {
+            "post": {
+                "tags": [
+                    "face"
+                ],
+                "summary": "Enrol the current employee's face",
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "type": "object"
+                            }
+                        }
+                    },
+                    "description": "{ image: base64 }",
+                    "required": true
+                },
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/FaceEnrollResponse"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/hris/face/status": {
+            "get": {
+                "tags": [
+                    "face"
+                ],
+                "summary": "Current employee's face-enrolment status",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/FaceStatusResponse"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ]
+            }
+        },
         "/industries": {
             "get": {
                 "description": "Get all industry categories for filtering",
@@ -4433,6 +4687,67 @@
                     }
                 }
             },
+            "DocumentAccessLog": {
+                "type": "object",
+                "properties": {
+                    "accessedByName": {
+                        "type": "string"
+                    },
+                    "action": {
+                        "type": "string"
+                    },
+                    "createdAt": {
+                        "type": "string"
+                    },
+                    "documentId": {
+                        "type": "string"
+                    },
+                    "filename": {
+                        "type": "string"
+                    },
+                    "id": {
+                        "type": "string"
+                    },
+                    "ipAddress": {
+                        "type": "string"
+                    }
+                }
+            },
+            "DocumentResponse": {
+                "type": "object",
+                "properties": {
+                    "category": {
+                        "type": "string"
+                    },
+                    "createdAt": {
+                        "type": "string"
+                    },
+                    "employeeId": {
+                        "type": "string"
+                    },
+                    "employeeName": {
+                        "type": "string"
+                    },
+                    "fileSize": {
+                        "type": "integer"
+                    },
+                    "filename": {
+                        "type": "string"
+                    },
+                    "id": {
+                        "type": "string"
+                    },
+                    "mimeType": {
+                        "type": "string"
+                    },
+                    "scanStatus": {
+                        "type": "string"
+                    },
+                    "uploadedByName": {
+                        "type": "string"
+                    }
+                }
+            },
             "EvaluationResponse": {
                 "type": "object",
                 "properties": {
@@ -4521,6 +4836,34 @@
                     },
                     "url": {
                         "type": "string"
+                    }
+                }
+            },
+            "FaceEnrollResponse": {
+                "type": "object",
+                "properties": {
+                    "enrolled": {
+                        "type": "boolean"
+                    },
+                    "enrolledAt": {
+                        "type": "string"
+                    },
+                    "livenessScore": {
+                        "type": "number"
+                    }
+                }
+            },
+            "FaceStatusResponse": {
+                "type": "object",
+                "properties": {
+                    "enrolled": {
+                        "type": "boolean"
+                    },
+                    "enrolledAt": {
+                        "type": "string"
+                    },
+                    "livenessScore": {
+                        "type": "number"
                     }
                 }
             },

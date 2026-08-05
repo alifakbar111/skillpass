@@ -23,6 +23,7 @@ const MODULE_LABELS: Record<string, string> = {
   ats: 'Recruitment (ATS)',
   analytics: 'Analytics',
   documents: 'Documents',
+  face: 'Face / Biometrics',
   org: 'Organisation & Settings',
 };
 
