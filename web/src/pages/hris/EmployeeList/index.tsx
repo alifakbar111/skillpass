@@ -124,12 +124,23 @@ export default function EmployeeList() {
   async function exportCsv() {
     setExporting(true);
     try {
-      const all = await listEmployees({
-        pageSize: 1000,
+      // The server clamps pageSize to 100 (M-6/F3), so a single request with
+      // pageSize 1000 silently truncated the CSV. Loop pages instead.
+      const perPage = 100;
+      const filters = {
+        pageSize: perPage,
         search: searchParams.get('search') ?? undefined,
         status: status || undefined,
         departmentId: departmentId || undefined,
-      });
+      };
+      const rows: Employee[] = [];
+      let pageNum = 1;
+      for (;;) {
+        const res = await listEmployees({ page: pageNum, ...filters });
+        rows.push(...res.employees);
+        if (res.employees.length < perPage || rows.length >= res.total) break;
+        pageNum++;
+      }
       const header = [
         'Employee ID',
         'First name',
@@ -142,7 +153,7 @@ export default function EmployeeList() {
         'Status',
         'Join date',
       ];
-      const lines = all.employees.map((e) =>
+      const lines = rows.map((e) =>
         [
           e.employeeIdNumber,
           e.firstName,

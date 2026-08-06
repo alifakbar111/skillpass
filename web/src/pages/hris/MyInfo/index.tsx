@@ -9,15 +9,10 @@ const EDITABLE_FIELDS: { key: keyof SelfUpdateRequest; label: string; type?: str
   { key: 'dateOfBirth', label: 'Date of birth', type: 'date' },
   { key: 'gender', label: 'Gender' },
   { key: 'maritalStatus', label: 'Marital status' },
-  { key: 'nationalId', label: 'National ID (NIK)' },
-  { key: 'npwp', label: 'NPWP' },
   { key: 'address', label: 'Address' },
   { key: 'city', label: 'City' },
   { key: 'province', label: 'Province' },
   { key: 'postalCode', label: 'Postal code' },
-  { key: 'bankName', label: 'Bank name' },
-  { key: 'bankAccountNumber', label: 'Bank account number' },
-  { key: 'bankAccountHolder', label: 'Account holder' },
 ];
 
 const EMERGENCY_FIELDS: { key: keyof SelfUpdateRequest; label: string }[] = [
@@ -47,29 +42,26 @@ export default function MyInfo() {
   const [form, setForm] = useState<SelfUpdateRequest>({});
   const [saveError, setSaveError] = useState<string | null>(null);
 
-  // Seed the form from the record whenever we enter edit mode.
+  // Seed the form once when entering edit mode. Seeding from every refetch of
+  // `emp` (window-focus refetch, invalidations) clobbered in-progress edits
+  // while the user was typing (F11).
+  // biome-ignore lint/correctness/useExhaustiveDependencies: intentionally seed only on the editing transition
   useEffect(() => {
-    if (editing && emp) {
-      setForm({
-        phone: emp.phone ?? '',
-        dateOfBirth: emp.dateOfBirth?.slice(0, 10) ?? '',
-        gender: emp.gender ?? '',
-        maritalStatus: emp.maritalStatus ?? '',
-        nationalId: emp.nationalId ?? '',
-        npwp: emp.npwp ?? '',
-        address: emp.address ?? '',
-        city: emp.city ?? '',
-        province: emp.province ?? '',
-        postalCode: emp.postalCode ?? '',
-        bankName: emp.bankName ?? '',
-        bankAccountNumber: emp.bankAccountNumber ?? '',
-        bankAccountHolder: emp.bankAccountHolder ?? '',
-        emergencyContactName: emp.emergencyContactName ?? '',
-        emergencyContactPhone: emp.emergencyContactPhone ?? '',
-        emergencyContactRelation: emp.emergencyContactRelation ?? '',
-      });
-    }
-  }, [editing, emp]);
+    if (!editing || !emp) return;
+    setForm({
+      phone: emp.phone ?? '',
+      dateOfBirth: emp.dateOfBirth?.slice(0, 10) ?? '',
+      gender: emp.gender ?? '',
+      maritalStatus: emp.maritalStatus ?? '',
+      address: emp.address ?? '',
+      city: emp.city ?? '',
+      province: emp.province ?? '',
+      postalCode: emp.postalCode ?? '',
+      emergencyContactName: emp.emergencyContactName ?? '',
+      emergencyContactPhone: emp.emergencyContactPhone ?? '',
+      emergencyContactRelation: emp.emergencyContactRelation ?? '',
+    });
+  }, [editing]);
 
   const saveMutation = useMutation({
     mutationFn: () => updateMyEmployee(form),
@@ -202,6 +194,11 @@ export default function MyInfo() {
             <Field label="Bank name" value={emp.bankName} />
             <Field label="Bank account" value={emp.bankAccountNumber} />
           </dl>
+        )}
+        {editing && (
+          <p className="mt-4 text-xs text-base-content/40">
+            Bank details and tax identifiers (NIK/NPWP) are managed by HR — contact them to update those fields.
+          </p>
         )}
       </div>
 

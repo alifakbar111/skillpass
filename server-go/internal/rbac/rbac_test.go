@@ -193,7 +193,7 @@ func TestSetRolePermissions(t *testing.T) {
 	}
 
 	// Assign role to employee and verify permission check passes
-	svc.AssignRole(context.Background(), cID, empID, role.ID)
+	svc.AssignRole(context.Background(), cID, uuid.Nil, empID, role.ID)
 
 	has, err := svc.HasPermission(context.Background(), empID, perms[0].Code)
 	if err != nil {
@@ -215,6 +215,16 @@ func TestSetRolePermissions(t *testing.T) {
 	if has {
 		t.Fatalf("expected %s permission to be revoked", perms[0].Code)
 	}
+
+	t.Run("rejects invalid permission IDs", func(t *testing.T) {
+		err := svc.SetRolePermissions(context.Background(), cID, role.ID, []string{
+			"00000000-0000-0000-0000-000000000000",
+			"ffffffff-ffff-ffff-ffff-ffffffffffff",
+		})
+		if err == nil {
+			t.Fatal("expected error for invalid permission IDs")
+		}
+	})
 }
 
 func TestHasAnyPermission(t *testing.T) {
@@ -236,7 +246,7 @@ func TestHasAnyPermission(t *testing.T) {
 		t.Fatal("Company Admin role not found")
 	}
 
-	svc.AssignRole(context.Background(), cID, empID, adminRoleID)
+	svc.AssignRole(context.Background(), cID, uuid.Nil, empID, adminRoleID)
 
 	// Test HasAnyPermission
 	has, err := svc.HasAnyPermission(context.Background(), empID, []string{"employee.view", "nonexistent"})
@@ -264,12 +274,12 @@ func TestAssignAndRemoveRole(t *testing.T) {
 		t.Fatalf("create: %v", err)
 	}
 
-	err = svc.AssignRole(context.Background(), cID, empID, role.ID)
+	err = svc.AssignRole(context.Background(), cID, uuid.Nil, empID, role.ID)
 	if err != nil {
 		t.Fatalf("AssignRole: %v", err)
 	}
 
-	employeeRoles, err := svc.GetEmployeeRoles(context.Background(), empID)
+	employeeRoles, err := svc.GetEmployeeRoles(context.Background(), cID, empID)
 	if err != nil {
 		t.Fatalf("GetEmployeeRoles: %v", err)
 	}
@@ -290,7 +300,7 @@ func TestAssignAndRemoveRole(t *testing.T) {
 		t.Fatalf("RemoveRole: %v", err)
 	}
 
-	employeeRoles, _ = svc.GetEmployeeRoles(context.Background(), empID)
+	employeeRoles, _ = svc.GetEmployeeRoles(context.Background(), cID, empID)
 	for _, r := range employeeRoles {
 		if r.ID == role.ID {
 			t.Fatal("role should have been removed")
@@ -310,14 +320,101 @@ func TestGetEmployeePermissions(t *testing.T) {
 		t.Fatal("no roles available")
 	}
 
-	svc.AssignRole(context.Background(), cID, empID, roles[0].ID)
+	svc.AssignRole(context.Background(), cID, uuid.Nil, empID, roles[0].ID)
 
-	perms, err := svc.GetEmployeePermissions(context.Background(), empID)
+	perms, err := svc.GetEmployeePermissions(context.Background(), cID, empID)
 	if err != nil {
 		t.Fatalf("GetEmployeePermissions: %v", err)
 	}
 	if len(perms) == 0 {
 		t.Fatal("expected at least one permission")
+	}
+}
+
+// TestAssignRoleGuards covers the SEC-02/SEC-03 privilege-escalation guards:
+// self-assignment is blocked, and system roles cannot have their permission
+// set rewritten.
+func TestAssignRoleGuards(t *testing.T) {
+	svc, cID, empID := setupTest(t)
+
+	t.Run("cannot assign a role to yourself", func(t *testing.T) {
+		svc.EnsureCompanyRoles(context.Background(), cID)
+		roles, _ := svc.ListRoles(context.Background(), cID)
+		if len(roles) == 0 {
+			t.Fatal("no roles seeded")
+		}
+		err := svc.AssignRole(context.Background(), cID, empID, empID, roles[0].ID)
+		if err != ErrCannotSelfAssign {
+			t.Fatalf("expected ErrCannotSelfAssign, got %v", err)
+		}
+	})
+
+	t.Run("cannot set permissions on a system role", func(t *testing.T) {
+		svc.EnsureCompanyRoles(context.Background(), cID)
+		roles, _ := svc.ListRoles(context.Background(), cID)
+		var systemRoleID uuid.UUID
+		for _, r := range roles {
+			if r.IsSystem {
+				systemRoleID = r.ID
+				break
+			}
+		}
+		if systemRoleID == uuid.Nil {
+			t.Fatal("no system role found")
+		}
+		perms, _ := svc.ListPermissions(context.Background())
+		permIDs := []string{}
+		if len(perms) > 0 {
+			permIDs = []string{perms[0].ID}
+		}
+		err := svc.SetRolePermissions(context.Background(), cID, systemRoleID, permIDs)
+		if err != ErrSystemRole {
+			t.Fatalf("expected ErrSystemRole, got %v", err)
+		}
+	})
+
+	t.Run("assign role from another company rejected", func(t *testing.T) {
+		_, otherCID, _ := testutil.CreateCompanyUser(svc.db, testutil.UniqueEmail("other"), "other", "pass123", "Other Co", true)
+		role, err := svc.CreateRole(context.Background(), cID, "Local Role", nil)
+		if err != nil {
+			t.Fatalf("create role: %v", err)
+		}
+		// Role belongs to cID; the same role ID must not resolve inside
+		// another company's scope.
+		err = svc.AssignRole(context.Background(), otherCID, uuid.Nil, empID, role.ID)
+		if err != ErrRoleNotFound {
+			t.Fatalf("expected ErrRoleNotFound for cross-company role, got %v", err)
+		}
+	})
+}
+
+// TestGetEmployeeRolesCompanyScoped verifies a company cannot read another
+// company's employee role assignments via the shared GET endpoint (M-1/SEC-04).
+func TestGetEmployeeRolesCompanyScoped(t *testing.T) {
+	svc, cID, empID := setupTest(t)
+	svc.EnsureCompanyRoles(context.Background(), cID)
+	roles, _ := svc.ListRoles(context.Background(), cID)
+	if err := svc.AssignRole(context.Background(), cID, uuid.Nil, empID, roles[0].ID); err != nil {
+		t.Fatalf("assign: %v", err)
+	}
+
+	// Same company: role visible.
+	got, err := svc.GetEmployeeRoles(context.Background(), cID, empID)
+	if err != nil {
+		t.Fatalf("GetEmployeeRoles: %v", err)
+	}
+	if len(got) == 0 {
+		t.Fatal("expected roles for own company")
+	}
+
+	// Different company: the same employee must resolve to no roles.
+	_, otherCID, _ := testutil.CreateCompanyUser(svc.db, testutil.UniqueEmail("scope"), "scope", "pass123", "Scope Co", true)
+	got, err = svc.GetEmployeeRoles(context.Background(), otherCID, empID)
+	if err != nil {
+		t.Fatalf("GetEmployeeRoles (other company): %v", err)
+	}
+	if len(got) != 0 {
+		t.Fatalf("expected no roles across companies, got %d", len(got))
 	}
 }
 

@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 	"time"
 
@@ -511,6 +512,195 @@ func TestListCompanyApplications(t *testing.T) {
 		router.ServeHTTP(w, req)
 		if w.Code != http.StatusUnauthorized {
 			t.Fatalf("expected 401, got %d", w.Code)
+		}
+	})
+}
+
+func TestScheduleInterview(t *testing.T) {
+	db := testutil.SetupTestDB()
+	bunDB := bun.NewDB(db, pgdialect.New())
+
+	cu, cID, _ := testutil.CreateCompanyUser(db, "schedco@ex.com", "schedco", "pass123", "Sched Co", true)
+	jID, _ := testutil.CreateJob(db, cID, "Interview Job", "Technology", true)
+	_, pID, _ := testutil.CreateJobseeker(db, "schedjs@ex.com", "schedjs", "pass123", "Sched JS")
+	appID, _ := testutil.CreateApplication(db, pID, jID, "applied")
+
+	// Advance to "reviewed" so scheduling is allowed
+	ctok := testutil.GenerateToken(cu.String(), "company", 15*time.Minute)
+
+	svc := NewService(db, bunDB)
+	h := NewHandler(svc)
+
+	router := gin.New()
+
+	// Status update route (to advance to reviewed)
+	sg := router.Group("/api/v1/applications")
+	sg.Use(middleware.AuthRequired(testutil.TestJWTSecret), middleware.RequireRole("company"), middleware.RequireVerifiedCompany(bunDB))
+	sg.PUT("/:id/status", h.UpdateStatus)
+	sg.POST("/:id/interview", h.ScheduleInterview)
+
+	// Advance application to "reviewed"
+	{
+		w := httptest.NewRecorder()
+		req := httptest.NewRequest("PUT", fmt.Sprintf("/api/v1/applications/%s/status", appID),
+			bytes.NewBufferString(`{"status":"reviewed"}`))
+		req.Header.Set("Content-Type", "application/json")
+		req.Header.Set("Authorization", "Bearer "+ctok)
+		router.ServeHTTP(w, req)
+		if w.Code != http.StatusOK {
+			t.Fatalf("advance to reviewed: expected 200, got %d: %s", w.Code, w.Body.String())
+		}
+	}
+
+	t.Run("schedule onsite interview", func(t *testing.T) {
+		body := `{"scheduledAt":"2026-09-01T10:00:00Z","mode":"onsite","location":"Office 5th floor","interviewer":"Head of Eng","notes":"Bring ID"}`
+		w := httptest.NewRecorder()
+		req := httptest.NewRequest("POST", fmt.Sprintf("/api/v1/applications/%s/interview", appID),
+			bytes.NewBufferString(body))
+		req.Header.Set("Content-Type", "application/json")
+		req.Header.Set("Authorization", "Bearer "+ctok)
+		router.ServeHTTP(w, req)
+		if w.Code != http.StatusOK {
+			t.Fatalf("expected 200, got %d: %s", w.Code, w.Body.String())
+		}
+		var result ApplicationResult
+		json.Unmarshal(w.Body.Bytes(), &result)
+		if result.Status != "interviewed" {
+			t.Fatalf("expected status interviewed, got %q", result.Status)
+		}
+	})
+
+	t.Run("schedule online interview", func(t *testing.T) {
+		body := `{"scheduledAt":"2026-09-02T14:00:00Z","mode":"online","meetingLink":"https://meet.google.com/abc-defg-hij"}`
+		w := httptest.NewRecorder()
+		req := httptest.NewRequest("POST", fmt.Sprintf("/api/v1/applications/%s/interview", appID),
+			bytes.NewBufferString(body))
+		req.Header.Set("Content-Type", "application/json")
+		req.Header.Set("Authorization", "Bearer "+ctok)
+		router.ServeHTTP(w, req)
+		if w.Code != http.StatusOK {
+			t.Fatalf("expected 200, got %d: %s", w.Code, w.Body.String())
+		}
+	})
+
+	t.Run("invalid mode rejected", func(t *testing.T) {
+		body := `{"scheduledAt":"2026-09-03T10:00:00Z","mode":"zoom","location":"Nowhere"}`
+		w := httptest.NewRecorder()
+		req := httptest.NewRequest("POST", fmt.Sprintf("/api/v1/applications/%s/interview", appID),
+			bytes.NewBufferString(body))
+		req.Header.Set("Content-Type", "application/json")
+		req.Header.Set("Authorization", "Bearer "+ctok)
+		router.ServeHTTP(w, req)
+		if w.Code != http.StatusBadRequest {
+			t.Fatalf("expected 400 for invalid mode, got %d: %s", w.Code, w.Body.String())
+		}
+	})
+
+	t.Run("missing scheduledAt rejected", func(t *testing.T) {
+		body := `{"mode":"onsite","location":"Office"}`
+		w := httptest.NewRecorder()
+		req := httptest.NewRequest("POST", fmt.Sprintf("/api/v1/applications/%s/interview", appID),
+			bytes.NewBufferString(body))
+		req.Header.Set("Content-Type", "application/json")
+		req.Header.Set("Authorization", "Bearer "+ctok)
+		router.ServeHTTP(w, req)
+		if w.Code != http.StatusBadRequest {
+			t.Fatalf("expected 400 for missing scheduledAt, got %d: %s", w.Code, w.Body.String())
+		}
+	})
+
+	t.Run("wrong company forbidden", func(t *testing.T) {
+		cu2, _, _ := testutil.CreateCompanyUser(db, "other@ex.com", "other", "pass123", "Other Co", true)
+		ctok2 := testutil.GenerateToken(cu2.String(), "company", 15*time.Minute)
+		body := `{"scheduledAt":"2026-09-04T10:00:00Z","mode":"onsite","location":"Other office"}`
+		w := httptest.NewRecorder()
+		req := httptest.NewRequest("POST", fmt.Sprintf("/api/v1/applications/%s/interview", appID),
+			bytes.NewBufferString(body))
+		req.Header.Set("Content-Type", "application/json")
+		req.Header.Set("Authorization", "Bearer "+ctok2)
+		router.ServeHTTP(w, req)
+		if w.Code != http.StatusForbidden {
+			t.Fatalf("expected 403, got %d: %s", w.Code, w.Body.String())
+		}
+	})
+
+	t.Run("online meeting link redacted at rest", func(t *testing.T) {
+		// SEC-01: query-string credentials (?pwd=…) must never persist.
+		body := `{"scheduledAt":"2026-09-06T10:00:00Z","mode":"online","meetingLink":"https://meet.google.com/redact-me?pwd=SuperSecret2026#sess"}`
+		w := httptest.NewRecorder()
+		req := httptest.NewRequest("POST", fmt.Sprintf("/api/v1/applications/%s/interview", appID),
+			bytes.NewBufferString(body))
+		req.Header.Set("Content-Type", "application/json")
+		req.Header.Set("Authorization", "Bearer "+ctok)
+		router.ServeHTTP(w, req)
+		if w.Code != http.StatusOK {
+			t.Fatalf("expected 200, got %d: %s", w.Code, w.Body.String())
+		}
+		var stored string
+		db.QueryRowContext(context.Background(),
+			`SELECT meeting_link FROM interview_schedules
+			 WHERE application_id = $1 ORDER BY scheduled_at DESC LIMIT 1`, appID,
+		).Scan(&stored)
+		if stored != "https://meet.google.com/redact-me" {
+			t.Fatalf("expected redacted link, got %q", stored)
+		}
+		if strings.Contains(stored, "pwd=") || strings.Contains(stored, "#sess") {
+			t.Fatalf("stored meeting link leaked credentials: %q", stored)
+		}
+	})
+
+	t.Run("invalid meeting link rejected", func(t *testing.T) {
+		// F14: javascript:/data: URLs must not be accepted as meeting links.
+		body := `{"scheduledAt":"2026-09-07T10:00:00Z","mode":"online","meetingLink":"javascript:alert(1)"}`
+		w := httptest.NewRecorder()
+		req := httptest.NewRequest("POST", fmt.Sprintf("/api/v1/applications/%s/interview", appID),
+			bytes.NewBufferString(body))
+		req.Header.Set("Content-Type", "application/json")
+		req.Header.Set("Authorization", "Bearer "+ctok)
+		router.ServeHTTP(w, req)
+		if w.Code != http.StatusBadRequest {
+			t.Fatalf("expected 400 for invalid meeting link, got %d: %s", w.Code, w.Body.String())
+		}
+	})
+
+	t.Run("onsite without location rejected", func(t *testing.T) {
+		body := `{"scheduledAt":"2026-09-08T10:00:00Z","mode":"onsite"}`
+		w := httptest.NewRecorder()
+		req := httptest.NewRequest("POST", fmt.Sprintf("/api/v1/applications/%s/interview", appID),
+			bytes.NewBufferString(body))
+		req.Header.Set("Content-Type", "application/json")
+		req.Header.Set("Authorization", "Bearer "+ctok)
+		router.ServeHTTP(w, req)
+		if w.Code != http.StatusBadRequest {
+			t.Fatalf("expected 400 for missing onsite location, got %d: %s", w.Code, w.Body.String())
+		}
+	})
+
+	t.Run("transaction atomicity — all or nothing", func(t *testing.T) {
+		// Create a fresh application in "applied" status that can't be
+		// scheduled (no valid transition from applied to interviewed).
+		_, pID2, _ := testutil.CreateJobseeker(db, "schedjs2@ex.com", "schedjs2", "pass123", "Sched JS 2")
+		jID2, _ := testutil.CreateJob(db, cID, "Interview Job 2", "Technology", true)
+		appID2, _ := testutil.CreateApplication(db, pID2, jID2, "applied")
+
+		body := `{"scheduledAt":"2026-09-05T10:00:00Z","mode":"onsite","location":"Office"}`
+		w := httptest.NewRecorder()
+		req := httptest.NewRequest("POST", fmt.Sprintf("/api/v1/applications/%s/interview", appID2),
+			bytes.NewBufferString(body))
+		req.Header.Set("Content-Type", "application/json")
+		req.Header.Set("Authorization", "Bearer "+ctok)
+		router.ServeHTTP(w, req)
+		if w.Code != http.StatusBadRequest {
+			t.Fatalf("expected 400 for invalid transition, got %d: %s", w.Code, w.Body.String())
+		}
+
+		// Verify no orphaned interview_schedules row was created
+		var count int
+		db.QueryRowContext(context.Background(),
+			`SELECT COUNT(*) FROM interview_schedules WHERE application_id = $1`, appID2,
+		).Scan(&count)
+		if count != 0 {
+			t.Fatalf("expected 0 orphaned schedules, got %d (transaction not atomic)", count)
 		}
 	})
 }

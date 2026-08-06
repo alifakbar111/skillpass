@@ -3,8 +3,8 @@ testdata_dir = "testdata"
 tmp_dir = "tmp"
 
 [build]
-  cmd = "go build -tags dev -o ./tmp/server.exe ./cmd/server/"
-  entrypoint = "tmp/server.exe"
+  cmd = "go build -tags dev -o ./tmp/server ./cmd/server/"
+  entrypoint = "tmp/server"
   delay = 1000
   exclude_dir = ["assets", "tmp", "vendor", "testdata", ".gen"]
   exclude_file = []

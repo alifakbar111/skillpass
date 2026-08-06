@@ -40,6 +40,13 @@ definitions:
       updatedAt:
         type: string
     type: object
+  AssignRoleRequest:
+    properties:
+      roleId:
+        type: string
+    required:
+    - roleId
+    type: object
   CandidateMatch:
     properties:
       headline:
@@ -211,11 +218,170 @@ definitions:
     - industry
     - title
     type: object
+  CreateRequest:
+    properties:
+      address:
+        type: string
+      bankAccountHolder:
+        type: string
+      bankAccountNumber:
+        type: string
+      bankName:
+        type: string
+      baseSalary:
+        type: number
+      bpjsKesehatanId:
+        type: string
+      bpjsKetenagakerjaanId:
+        type: string
+      branchId:
+        type: string
+      city:
+        type: string
+      dateOfBirth:
+        type: string
+      departmentId:
+        type: string
+      email:
+        type: string
+      emergencyContactName:
+        type: string
+      emergencyContactPhone:
+        type: string
+      emergencyContactRelation:
+        type: string
+      employmentType:
+        enum:
+        - permanent
+        - contract
+        - probation
+        - intern
+        type: string
+      firstName:
+        type: string
+      gender:
+        type: string
+      joinDate:
+        type: string
+      lastName:
+        type: string
+      managerId:
+        type: string
+      maritalStatus:
+        type: string
+      nationalId:
+        type: string
+      npwp:
+        type: string
+      phone:
+        type: string
+      positionId:
+        type: string
+      postalCode:
+        type: string
+      province:
+        type: string
+    required:
+    - email
+    - employmentType
+    - firstName
+    - joinDate
+    type: object
+  CreateRoleRequest:
+    properties:
+      description:
+        type: string
+      name:
+        type: string
+    required:
+    - name
+    type: object
   DevelopmentStep:
     properties:
       action:
         type: string
       area:
+        type: string
+    type: object
+  Employee:
+    properties:
+      address:
+        type: string
+      bankAccountHolder:
+        type: string
+      bankAccountNumber:
+        type: string
+      bankName:
+        type: string
+      baseSalary:
+        type: number
+      bpjsKesehatanId:
+        type: string
+      bpjsKetenagakerjaanId:
+        type: string
+      branchId:
+        type: string
+      branchName:
+        type: string
+      city:
+        type: string
+      companyId:
+        type: string
+      createdAt:
+        type: string
+      dateOfBirth:
+        type: string
+      departmentId:
+        type: string
+      departmentName:
+        type: string
+      email:
+        type: string
+      emergencyContactName:
+        type: string
+      emergencyContactPhone:
+        type: string
+      emergencyContactRelation:
+        type: string
+      employeeIdNumber:
+        type: string
+      employmentStatus:
+        type: string
+      employmentType:
+        type: string
+      endDate:
+        type: string
+      firstName:
+        type: string
+      gender:
+        type: string
+      id:
+        type: string
+      joinDate:
+        type: string
+      lastName:
+        type: string
+      managerId:
+        type: string
+      maritalStatus:
+        type: string
+      nationalId:
+        type: string
+      npwp:
+        type: string
+      phone:
+        type: string
+      positionId:
+        type: string
+      positionName:
+        type: string
+      postalCode:
+        type: string
+      province:
+        type: string
+      updatedAt:
+        type: string
+      userId:
         type: string
     type: object
   EvaluationResponse:
@@ -372,6 +538,19 @@ definitions:
       yearsExperienceMin:
         type: integer
     type: object
+  ListResult:
+    properties:
+      employees:
+        items:
+          $ref: '#/definitions/Employee'
+        type: array
+      page:
+        type: integer
+      pageSize:
+        type: integer
+      total:
+        type: integer
+    type: object
   LoginRequest:
     properties:
       email:
@@ -390,6 +569,17 @@ definitions:
     properties:
       message:
         type: string
+    type: object
+  MyPermissionsResponse:
+    properties:
+      permissions:
+        items:
+          type: string
+        type: array
+      roles:
+        items:
+          $ref: '#/definitions/RoleResponse'
+        type: array
     type: object
   PendingCompany:
     properties:
@@ -414,6 +604,17 @@ definitions:
       verifiedAt:
         type: string
       website:
+        type: string
+    type: object
+  PermissionResponse:
+    properties:
+      code:
+        type: string
+      description:
+        type: string
+      id:
+        type: string
+      module:
         type: string
     type: object
   ProfileResponse:
@@ -533,6 +734,24 @@ definitions:
     - id
     - sortOrder
     type: object
+  RolePermissionsResponse:
+    properties:
+      permissionIds:
+        items:
+          type: string
+        type: array
+    type: object
+  RoleResponse:
+    properties:
+      description:
+        type: string
+      id:
+        type: string
+      isSystem:
+        type: boolean
+      name:
+        type: string
+    type: object
   ScheduleInterviewRequest:
     properties:
       interviewer:
@@ -553,6 +772,47 @@ definitions:
         type: string
     required:
     - scheduledAt
+    type: object
+  SelfUpdateRequest:
+    properties:
+      address:
+        type: string
+      city:
+        type: string
+      dateOfBirth:
+        type: string
+      emergencyContactName:
+        type: string
+      emergencyContactPhone:
+        type: string
+      emergencyContactRelation:
+        type: string
+      gender:
+        enum:
+        - male
+        - female
+        - other
+        type: string
+      maritalStatus:
+        enum:
+        - single
+        - married
+        - divorced
+        - widowed
+        type: string
+      phone:
+        type: string
+      postalCode:
+        type: string
+      province:
+        type: string
+    type: object
+  SetRolePermissionsRequest:
+    properties:
+      permissionIds:
+        items:
+          type: string
+        type: array
     type: object
   SkillNote:
     properties:
@@ -725,6 +985,86 @@ definitions:
         type: string
       yearsOfExperience:
         type: integer
+    type: object
+  UpdateRequest:
+    properties:
+      address:
+        type: string
+      bankAccountHolder:
+        type: string
+      bankAccountNumber:
+        type: string
+      bankName:
+        type: string
+      baseSalary:
+        type: number
+      bpjsKesehatanId:
+        type: string
+      bpjsKetenagakerjaanId:
+        type: string
+      branchId:
+        type: string
+      city:
+        type: string
+      dateOfBirth:
+        type: string
+      departmentId:
+        type: string
+      email:
+        type: string
+      emergencyContactName:
+        type: string
+      emergencyContactPhone:
+        type: string
+      emergencyContactRelation:
+        type: string
+      employmentStatus:
+        enum:
+        - active
+        - resigned
+        - terminated
+        - on_leave
+        type: string
+      employmentType:
+        enum:
+        - permanent
+        - contract
+        - probation
+        - intern
+        type: string
+      endDate:
+        type: string
+      firstName:
+        type: string
+      gender:
+        type: string
+      lastName:
+        type: string
+      managerId:
+        type: string
+      maritalStatus:
+        type: string
+      nationalId:
+        type: string
+      npwp:
+        type: string
+      phone:
+        type: string
+      positionId:
+        type: string
+      postalCode:
+        type: string
+      province:
+        type: string
+    type: object
+  UpdateRoleRequest:
+    properties:
+      description:
+        type: string
+      name:
+        type: string
+    required:
+    - name
     type: object
   UserResponse:
     properties:
@@ -2417,6 +2757,701 @@ paths:
       summary: Health check
       tags:
       - health
+  /hris/employees:
+    get:
+      description: |-
+        Paginated employee list with filters (status, department,
+        branch, search). Requires employee.view or employee.view_team.
+      parameters:
+      - description: Page number (default 1)
+        in: query
+        name: page
+        type: integer
+      - description: Page size (default 20, max 100)
+        in: query
+        name: pageSize
+        type: integer
+      - description: Employment status
+        in: query
+        name: status
+        type: string
+      - description: Department UUID
+        in: query
+        name: departmentId
+        type: string
+      - description: Branch UUID
+        in: query
+        name: branchId
+        type: string
+      - description: Search term (name/email/ID)
+        in: query
+        name: search
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/ListResult'
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: List employees
+      tags:
+      - hris-employees
+    post:
+      consumes:
+      - application/json
+      description: Adds an employee to the company. Requires employee.create.
+      parameters:
+      - description: Employee details
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/CreateRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/Employee'
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Create an employee
+      tags:
+      - hris-employees
+  /hris/employees/{id}:
+    get:
+      description: |-
+        Returns one employee record. Self-view is allowed; other
+        employees require employee.view or employee.view_team.
+      parameters:
+      - description: Employee UUID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/Employee'
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "403":
+          description: Forbidden
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Get an employee
+      tags:
+      - hris-employees
+    put:
+      consumes:
+      - application/json
+      description: HR-only update of an employee record. Requires employee.update.
+      parameters:
+      - description: Employee UUID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Fields to update
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/UpdateRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/Employee'
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Update an employee
+      tags:
+      - hris-employees
+  /hris/employees/{id}/invite:
+    post:
+      description: |-
+        Creates a login account and returns a one-time temporary
+        password for HR to share. Requires employee.update.
+      parameters:
+      - description: Employee UUID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "409":
+          description: Conflict
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Create a login for an employee
+      tags:
+      - hris-employees
+  /hris/employees/{id}/roles:
+    get:
+      description: Returns all roles assigned to a specific employee
+      parameters:
+      - description: Employee UUID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/RoleResponse'
+            type: array
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: List employee roles
+      tags:
+      - rbac
+    post:
+      consumes:
+      - application/json
+      description: Assigns a role to an employee
+      parameters:
+      - description: Employee UUID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Role to assign
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/AssignRoleRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Assign role to employee
+      tags:
+      - rbac
+  /hris/employees/{id}/roles/{roleId}:
+    delete:
+      description: Removes a role from an employee
+      parameters:
+      - description: Employee UUID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Role UUID
+        in: path
+        name: roleId
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Remove role from employee
+      tags:
+      - rbac
+  /hris/me/employee:
+    get:
+      description: Returns the current user's own employee record (self-service).
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/Employee'
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Get my employee record
+      tags:
+      - hris-employees
+    put:
+      consumes:
+      - application/json
+      description: |-
+        Self-service update of personal fields only. Bank details and
+        tax identifiers (NIK/NPWP) are HR-managed and rejected here.
+      parameters:
+      - description: Editable personal fields
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/SelfUpdateRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/Employee'
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Update my employee record
+      tags:
+      - hris-employees
+  /hris/me/permissions:
+    get:
+      description: Returns the current employee's permissions and roles
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/MyPermissionsResponse'
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Get my permissions and roles
+      tags:
+      - rbac
+  /hris/permissions:
+    get:
+      description: Returns all permissions grouped by module
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/PermissionResponse'
+            type: array
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: List all permissions
+      tags:
+      - rbac
+  /hris/roles:
+    get:
+      description: Returns all HRIS roles for the authenticated company
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/RoleResponse'
+            type: array
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: List company roles
+      tags:
+      - rbac
+    post:
+      consumes:
+      - application/json
+      description: Creates a new non-system role for the company
+      parameters:
+      - description: Role details
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/CreateRoleRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/RoleResponse'
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Create a custom role
+      tags:
+      - rbac
+  /hris/roles/{roleId}:
+    delete:
+      description: Deletes a non-system role from the company
+      parameters:
+      - description: Role UUID
+        in: path
+        name: roleId
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Delete a custom role
+      tags:
+      - rbac
+    put:
+      consumes:
+      - application/json
+      description: Updates name/description of a non-system role
+      parameters:
+      - description: Role UUID
+        in: path
+        name: roleId
+        required: true
+        type: string
+      - description: Role details
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/UpdateRoleRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/RoleResponse'
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Update a custom role
+      tags:
+      - rbac
+  /hris/roles/{roleId}/permissions:
+    get:
+      description: Returns the permission IDs currently granted to a specific role
+      parameters:
+      - description: Role UUID
+        in: path
+        name: roleId
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/RolePermissionsResponse'
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Get role permission IDs
+      tags:
+      - rbac
+    put:
+      consumes:
+      - application/json
+      description: Replaces the entire permission set for a role. System roles are
+        protected.
+      parameters:
+      - description: Role UUID
+        in: path
+        name: roleId
+        required: true
+        type: string
+      - description: Permission IDs
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/SetRolePermissionsRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Replace role permissions
+      tags:
+      - rbac
   /industries:
     get:
       description: Get all industry categories for filtering

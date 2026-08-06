@@ -3,11 +3,31 @@ package rbac
 import (
 	"context"
 	"database/sql"
+	"errors"
 	"fmt"
 	"strings"
 
 	"github.com/google/uuid"
 )
+
+// ErrRoleNotFound is returned when a role does not exist (or does not belong
+// to the requesting company).
+var ErrRoleNotFound = errors.New("role not found")
+
+// ErrEmployeeNotFound is returned when an employee does not exist (or does not
+// belong to the requesting company).
+var ErrEmployeeNotFound = errors.New("employee not found")
+
+// ErrSystemRole is returned when an operation would modify a protected system
+// role (e.g. rewriting the permission set of "Company Admin" or "Employee").
+var ErrSystemRole = errors.New("cannot modify system role")
+
+// ErrCannotSelfAssign is returned when a user tries to assign a role to
+// themselves — the vector for a one-call privilege escalation to Company Admin.
+var ErrCannotSelfAssign = errors.New("cannot assign a role to yourself")
+
+// ErrInvalidPermission is returned when one or more permission IDs do not exist.
+var ErrInvalidPermission = errors.New("invalid permission IDs")
 
 type Service struct {
 	db *sql.DB
@@ -76,14 +96,15 @@ type Role struct {
 	IsSystem    bool      `json:"isSystem"`
 }
 
-func (s *Service) GetEmployeeRoles(ctx context.Context, employeeID uuid.UUID) ([]Role, error) {
+func (s *Service) GetEmployeeRoles(ctx context.Context, companyID, employeeID uuid.UUID) ([]Role, error) {
 	rows, err := s.db.QueryContext(ctx,
 		`SELECT r.id, r.name, r.description, r.is_system
 		 FROM hris_roles r
 		 JOIN employee_roles er ON er.role_id = r.id
-		 WHERE er.employee_id = $1
+		 JOIN employees e ON e.id = er.employee_id
+		 WHERE er.employee_id = $1 AND e.company_id = $2
 		 ORDER BY r.name`,
-		employeeID,
+		employeeID, companyID,
 	)
 	if err != nil {
 		return nil, err
@@ -101,15 +122,16 @@ func (s *Service) GetEmployeeRoles(ctx context.Context, employeeID uuid.UUID) ([
 	return roles, rows.Err()
 }
 
-func (s *Service) GetEmployeePermissions(ctx context.Context, employeeID uuid.UUID) ([]string, error) {
+func (s *Service) GetEmployeePermissions(ctx context.Context, companyID, employeeID uuid.UUID) ([]string, error) {
 	rows, err := s.db.QueryContext(ctx,
 		`SELECT DISTINCT p.code
 		 FROM permissions p
 		 JOIN role_permissions rp ON rp.permission_id = p.id
 		 JOIN employee_roles er ON er.role_id = rp.role_id
-		 WHERE er.employee_id = $1
+		 JOIN employees e ON e.id = er.employee_id
+		 WHERE er.employee_id = $1 AND e.company_id = $2
 		 ORDER BY p.code`,
-		employeeID,
+		employeeID, companyID,
 	)
 	if err != nil {
 		return nil, err
@@ -124,24 +146,54 @@ func (s *Service) GetEmployeePermissions(ctx context.Context, employeeID uuid.UU
 		}
 		codes = append(codes, code)
 	}
-	return codes, rows.Err()
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	if codes == nil {
+		codes = []string{}
+	}
+	return codes, nil
 }
 
-func (s *Service) AssignRole(ctx context.Context, companyID, employeeID, roleID uuid.UUID) error {
+func (s *Service) AssignRole(ctx context.Context, companyID, requesterEmployeeID, employeeID, roleID uuid.UUID) error {
+	if requesterEmployeeID == employeeID {
+		return ErrCannotSelfAssign
+	}
+
+	// The role must exist and belong to this company.
+	var exists bool
+	if err := s.db.QueryRowContext(ctx,
+		`SELECT EXISTS(SELECT 1 FROM hris_roles WHERE id = $1 AND company_id = $2)`,
+		roleID, companyID,
+	).Scan(&exists); err != nil {
+		return fmt.Errorf("verify role: %w", err)
+	}
+	if !exists {
+		return ErrRoleNotFound
+	}
+
+	// The target employee must belong to this company.
+	if err := s.db.QueryRowContext(ctx,
+		`SELECT EXISTS(SELECT 1 FROM employees WHERE id = $1 AND company_id = $2)`,
+		employeeID, companyID,
+	).Scan(&exists); err != nil {
+		return fmt.Errorf("verify employee: %w", err)
+	}
+	if !exists {
+		return ErrEmployeeNotFound
+	}
+
 	_, err := s.db.ExecContext(ctx,
 		`INSERT INTO employee_roles (employee_id, role_id)
-		 SELECT $2, $3
-		 FROM employees e, hris_roles r
-		 WHERE e.id = $2 AND e.company_id = $1
-		   AND r.id = $3 AND r.company_id = $1
+		 VALUES ($1, $2)
 		 ON CONFLICT DO NOTHING`,
-		companyID, employeeID, roleID,
+		employeeID, roleID,
 	)
 	return err
 }
 
 func (s *Service) RemoveRole(ctx context.Context, companyID, employeeID, roleID uuid.UUID) error {
-	_, err := s.db.ExecContext(ctx,
+	result, err := s.db.ExecContext(ctx,
 		`DELETE FROM employee_roles er
 		 USING employees e, hris_roles r
 		 WHERE er.employee_id = e.id AND er.role_id = r.id
@@ -149,7 +201,14 @@ func (s *Service) RemoveRole(ctx context.Context, companyID, employeeID, roleID 
 		   AND r.id = $3 AND r.company_id = $1`,
 		companyID, employeeID, roleID,
 	)
-	return err
+	if err != nil {
+		return err
+	}
+	n, _ := result.RowsAffected()
+	if n == 0 {
+		return ErrRoleNotFound
+	}
+	return nil
 }
 
 func (s *Service) ListRoles(ctx context.Context, companyID uuid.UUID) ([]Role, error) {
@@ -303,17 +362,56 @@ func (s *Service) DeleteRole(ctx context.Context, companyID uuid.UUID, roleID uu
 }
 
 func (s *Service) SetRolePermissions(ctx context.Context, companyID uuid.UUID, roleID uuid.UUID, permissionIDs []string) error {
-	// Verify the role exists and belongs to this company
-	var exists bool
+	// Verify the role exists, belongs to this company, and is not a protected
+	// system role (rewriting a system role's permission set is how a
+	// `roles.manage` holder escalates — e.g. granting `roles.manage` to the
+	// base "Employee" role).
+	var isSystem bool
 	err := s.db.QueryRowContext(ctx,
-		`SELECT EXISTS(SELECT 1 FROM hris_roles WHERE id = $1 AND company_id = $2)`,
+		`SELECT is_system FROM hris_roles WHERE id = $1 AND company_id = $2`,
 		roleID, companyID,
-	).Scan(&exists)
+	).Scan(&isSystem)
+	if errors.Is(err, sql.ErrNoRows) {
+		return ErrRoleNotFound
+	}
 	if err != nil {
 		return fmt.Errorf("verify role: %w", err)
 	}
-	if !exists {
-		return fmt.Errorf("role not found")
+	if isSystem {
+		return ErrSystemRole
+	}
+
+	// Validate all permission IDs exist before starting the transaction
+	if len(permissionIDs) > 0 {
+		rows, err := s.db.QueryContext(ctx,
+			`SELECT id FROM permissions WHERE id = ANY($1)`, permissionIDs,
+		)
+		if err != nil {
+			return fmt.Errorf("validate permissions: %w", err)
+		}
+		defer rows.Close()
+
+		found := make(map[string]bool)
+		for rows.Next() {
+			var id string
+			if err := rows.Scan(&id); err != nil {
+				return fmt.Errorf("scan permission id: %w", err)
+			}
+			found[id] = true
+		}
+		if err := rows.Err(); err != nil {
+			return fmt.Errorf("iterate permission ids: %w", err)
+		}
+
+		var invalid []string
+		for _, pid := range permissionIDs {
+			if !found[pid] {
+				invalid = append(invalid, pid)
+			}
+		}
+		if len(invalid) > 0 {
+			return fmt.Errorf("%w: %v", ErrInvalidPermission, invalid)
+		}
 	}
 
 	tx, err := s.db.BeginTx(ctx, nil)
@@ -354,7 +452,7 @@ func (s *Service) GetRolePermissionIDs(ctx context.Context, companyID, roleID uu
 		return nil, fmt.Errorf("verify role: %w", err)
 	}
 	if !exists {
-		return nil, fmt.Errorf("role not found")
+		return nil, ErrRoleNotFound
 	}
 
 	rows, err := s.db.QueryContext(ctx,

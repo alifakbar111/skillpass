@@ -1,10 +1,10 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Check, KeyRound, ShieldCheck, UserPlus } from 'lucide-react';
 import { useState } from 'react';
+import { usePermissions } from '@/hooks/usePermissions';
 import { ApiError } from '@/lib/api';
 import { inviteEmployeeLogin } from '@/lib/hris/employees';
 import { assignRole, getEmployeeRoles, listRoles, removeRole } from '@/lib/hris/rbac';
-import { usePermissions } from '@/hooks/usePermissions';
 
 interface Props {
   employeeId: string;

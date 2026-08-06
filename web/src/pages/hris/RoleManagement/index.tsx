@@ -32,7 +32,8 @@ export default function RoleManagement() {
   const canManage = hasPermission('roles.manage');
 
   const { data: roles = [], isLoading: rolesLoading } = useQuery({ queryKey: ['hris', 'roles'], queryFn: listRoles });
-  const { data: permissions = [] } = useQuery({ queryKey: ['hris', 'permissions'], queryFn: listPermissions });
+  // Distinct from usePermissions' ['hris', 'my-permissions'] key (F1/H-2).
+  const { data: permissions = [] } = useQuery({ queryKey: ['hris', 'all-permissions'], queryFn: listPermissions });
 
   const [selectedRoleId, setSelectedRoleId] = useState<string | null>(null);
   const selectedRole = roles.find((r) => r.id === selectedRoleId) ?? null;
@@ -42,17 +43,21 @@ export default function RoleManagement() {
     if (!selectedRoleId && roles.length > 0) setSelectedRoleId(roles[0].id);
   }, [roles, selectedRoleId]);
 
-  const { data: rolePermIds = [] } = useQuery({
+  const rolePermsQuery = useQuery({
     queryKey: ['hris', 'role-permissions', selectedRoleId],
     queryFn: () => getRolePermissionIds(selectedRoleId ?? ''),
     enabled: !!selectedRoleId,
   });
+  const { data: rolePermIds = [] } = rolePermsQuery;
 
   // Local editable checked-set, seeded from the server each time role changes.
+  // Only seed once the query for the selected role has loaded — seeding from
+  // the default empty array while loading would flag every role as "dirty"
+  // and let a hasty Save wipe its permissions (F20).
   const [checked, setChecked] = useState<Set<string>>(new Set());
   useEffect(() => {
-    setChecked(new Set(rolePermIds));
-  }, [rolePermIds]);
+    if (rolePermsQuery.isSuccess) setChecked(new Set(rolePermIds));
+  }, [rolePermsQuery.isSuccess, rolePermIds]);
 
   const dirty = useMemo(() => {
     const server = new Set(rolePermIds);
@@ -98,7 +103,7 @@ export default function RoleManagement() {
   const [newRoleName, setNewRoleName] = useState('');
 
   function toggle(id: string) {
-    if (!canManage) return;
+    if (!canManage || selectedRole?.isSystem) return;
     setChecked((prev) => {
       const next = new Set(prev);
       if (next.has(id)) next.delete(id);
@@ -108,7 +113,7 @@ export default function RoleManagement() {
   }
 
   function toggleModule(mod: string, on: boolean) {
-    if (!canManage) return;
+    if (!canManage || selectedRole?.isSystem) return;
     const ids = (grouped.find(([m]) => m === mod)?.[1] ?? []).map((p) => p.id);
     setChecked((prev) => {
       const next = new Set(prev);
@@ -146,7 +151,6 @@ export default function RoleManagement() {
               }}
             >
               <input
-                autoFocus
                 className="input input-sm input-bordered w-full mb-2"
                 placeholder="Role name…"
                 value={newRoleName}
@@ -221,11 +225,17 @@ export default function RoleManagement() {
                     <button
                       type="button"
                       className="btn btn-primary btn-sm gap-2"
-                      disabled={!dirty || saveMutation.isPending}
+                      disabled={!dirty || saveMutation.isPending || selectedRole.isSystem || !rolePermsQuery.isSuccess}
                       onClick={() => saveMutation.mutate()}
                     >
                       <Save className="h-4 w-4" />
-                      {saveMutation.isPending ? 'Saving…' : dirty ? 'Save changes' : 'Saved'}
+                      {selectedRole.isSystem
+                        ? 'System role'
+                        : saveMutation.isPending
+                          ? 'Saving…'
+                          : dirty
+                            ? 'Save changes'
+                            : 'Saved'}
                     </button>
                   )}
                 </div>
@@ -240,7 +250,7 @@ export default function RoleManagement() {
                         <h3 className="text-xs font-semibold uppercase tracking-wider text-base-content/50">
                           {MODULE_LABELS[mod] ?? mod}
                         </h3>
-                        {canManage && (
+                        {canManage && !selectedRole.isSystem && (
                           <button
                             type="button"
                             className="text-xs text-primary hover:underline"
@@ -253,15 +263,17 @@ export default function RoleManagement() {
                       <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
                         {perms.map((p) => {
                           const on = checked.has(p.id);
+                          const readOnly = !canManage || selectedRole.isSystem;
                           return (
                             <button
                               key={p.id}
                               type="button"
-                              disabled={!canManage}
+                              disabled={readOnly}
                               onClick={() => toggle(p.id)}
+                              title={readOnly ? 'System role permissions are fixed' : undefined}
                               className={`flex items-start gap-2 rounded-lg border px-3 py-2 text-left text-sm transition-colors ${
                                 on ? 'border-primary/40 bg-primary/5' : 'border-base-300 hover:bg-base-200'
-                              } ${canManage ? 'cursor-pointer' : 'cursor-default'}`}
+                              } ${readOnly ? 'cursor-default opacity-70' : 'cursor-pointer'}`}
                             >
                               <span
                                 className={`mt-0.5 grid h-4 w-4 shrink-0 place-items-center rounded border ${

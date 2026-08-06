@@ -5,6 +5,7 @@ import (
 	"errors"
 	"log/slog"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -424,6 +425,12 @@ func (h *Handler) ScheduleInterview(c *gin.Context) {
 			c.JSON(http.StatusForbidden, gin.H{"error": err.Error()})
 		case errors.Is(err, ErrInvalidStatus):
 			c.JSON(http.StatusBadRequest, gin.H{"error": "Candidate must be in the reviewed stage to schedule an interview"})
+		case errors.Is(err, ErrInvalidMode):
+			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		case errors.Is(err, ErrInvalidMeetingLink):
+			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		case errors.Is(err, ErrMissingLocation):
+			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		default:
 			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to schedule interview"})
 		}
@@ -431,9 +438,12 @@ func (h *Handler) ScheduleInterview(c *gin.Context) {
 	}
 
 	// Best-effort: notify + email the candidate with the appointment details.
+	// Mirror the service's mode normalization so "ONLINE"/" online " get the
+	// meeting link as the place, matching what was persisted.
 	if h.notifier != nil {
+		mode := strings.ToLower(strings.TrimSpace(req.Mode))
 		place := req.Location
-		if req.Mode == "online" {
+		if mode == "online" {
 			place = req.MeetingLink
 		}
 		if place == "" {

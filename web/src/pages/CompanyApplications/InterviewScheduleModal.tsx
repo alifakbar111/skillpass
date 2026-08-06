@@ -20,7 +20,17 @@ export function InterviewScheduleModal({ applicationId, candidateName, onClose, 
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const placeValid = mode === 'onsite' ? location.trim() !== '' : meetingLink.trim() !== '';
+  const isUrlValid = (url: string) => {
+    try {
+      new URL(url);
+      return true;
+    } catch {
+      return false;
+    }
+  };
+
+  const placeValid =
+    mode === 'onsite' ? location.trim() !== '' : meetingLink.trim() !== '' && isUrlValid(meetingLink.trim());
   const canSubmit = scheduledAt !== '' && placeValid && !submitting;
 
   async function handleSubmit() {
@@ -124,6 +134,9 @@ export function InterviewScheduleModal({ applicationId, candidateName, onClose, 
                 value={meetingLink}
                 onChange={(e) => setMeetingLink(e.target.value)}
               />
+              {mode === 'online' && meetingLink.trim() !== '' && !isUrlValid(meetingLink.trim()) && (
+                <p className="text-error text-xs mt-1">Please enter a valid URL (e.g. https://meet.google.com/...)</p>
+              )}
             </div>
           )}
 

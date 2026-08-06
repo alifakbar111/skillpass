@@ -30,6 +30,18 @@ func mustParseCompanyID(c *gin.Context) (uuid.UUID, bool) {
 	return id, true
 }
 
+// Create godoc
+// @Summary      Create an employee
+// @Description  Adds an employee to the company. Requires employee.create.
+// @Tags         hris-employees
+// @Accept       json
+// @Produce      json
+// @Security     BearerAuth
+// @Param        body body CreateRequest true "Employee details"
+// @Success      201 {object} Employee
+// @Failure      400 {object} map[string]string
+// @Failure      500 {object} map[string]string
+// @Router       /hris/employees [post]
 func (h *Handler) Create(c *gin.Context) {
 	companyID, ok := mustParseCompanyID(c)
 	if !ok {
@@ -51,6 +63,21 @@ func (h *Handler) Create(c *gin.Context) {
 	c.JSON(http.StatusCreated, emp)
 }
 
+// Get godoc
+// @Summary      Get an employee
+// @Description  Returns one employee record. Self-view is allowed; other
+// @Description  employees require employee.view or employee.view_team.
+// @Tags         hris-employees
+// @Produce      json
+// @Security     BearerAuth
+// @Param        id path string true "Employee UUID"
+// @Success      200 {object} Employee
+// @Failure      400 {object} map[string]string
+// @Failure      401 {object} map[string]string
+// @Failure      403 {object} map[string]string
+// @Failure      404 {object} map[string]string
+// @Failure      500 {object} map[string]string
+// @Router       /hris/employees/{id} [get]
 func (h *Handler) Get(c *gin.Context) {
 	companyID, ok := mustParseCompanyID(c)
 	if !ok {
@@ -106,8 +133,20 @@ func (h *Handler) Get(c *gin.Context) {
 	c.JSON(http.StatusOK, emp)
 }
 
-// Invite creates a login account for an employee and returns a one-time
-// temporary password for HR to share. Requires employee.update.
+// Invite godoc
+// @Summary      Create a login for an employee
+// @Description  Creates a login account and returns a one-time temporary
+// @Description  password for HR to share. Requires employee.update.
+// @Tags         hris-employees
+// @Produce      json
+// @Security     BearerAuth
+// @Param        id path string true "Employee UUID"
+// @Success      200 {object} map[string]string
+// @Failure      400 {object} map[string]string
+// @Failure      404 {object} map[string]string
+// @Failure      409 {object} map[string]string
+// @Failure      500 {object} map[string]string
+// @Router       /hris/employees/{id}/invite [post]
 func (h *Handler) Invite(c *gin.Context) {
 	companyID, ok := mustParseCompanyID(c)
 	if !ok {
@@ -137,8 +176,17 @@ func (h *Handler) Invite(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"email": email, "tempPassword": tempPassword})
 }
 
-// GetMe returns the current user's own employee record (self-service).
-// Available to any active company member; no extra permission needed.
+// GetMe godoc
+// @Summary      Get my employee record
+// @Description  Returns the current user's own employee record (self-service).
+// @Tags         hris-employees
+// @Produce      json
+// @Security     BearerAuth
+// @Success      200 {object} Employee
+// @Failure      401 {object} map[string]string
+// @Failure      404 {object} map[string]string
+// @Failure      500 {object} map[string]string
+// @Router       /hris/me/employee [get]
 func (h *Handler) GetMe(c *gin.Context) {
 	companyID, ok := mustParseCompanyID(c)
 	if !ok {
@@ -163,27 +211,38 @@ func (h *Handler) GetMe(c *gin.Context) {
 
 // SelfUpdateRequest is the whitelist of fields an employee may edit on their
 // own record. Employment terms (status, department, salary, etc.) are
-// deliberately excluded — those remain HR-controlled.
+// deliberately excluded — those remain HR-controlled. Bank account details and
+// tax identifiers (NIK/NPWP) are also HR-only: they are verified payroll data
+// that employees could otherwise rewrite with arbitrary values.
 type SelfUpdateRequest struct {
 	Phone                    *string `json:"phone,omitempty"`
 	DateOfBirth              *string `json:"dateOfBirth,omitempty"`
-	Gender                   *string `json:"gender,omitempty"`
-	MaritalStatus            *string `json:"maritalStatus,omitempty"`
+	Gender                   *string `json:"gender,omitempty" binding:"omitempty,oneof=male female other"`
+	MaritalStatus            *string `json:"maritalStatus,omitempty" binding:"omitempty,oneof=single married divorced widowed"`
 	Address                  *string `json:"address,omitempty"`
 	City                     *string `json:"city,omitempty"`
 	Province                 *string `json:"province,omitempty"`
-	PostalCode               *string `json:"postalCode,omitempty"`
-	NationalID               *string `json:"nationalId,omitempty"`
-	NPWP                     *string `json:"npwp,omitempty"`
-	BankName                 *string `json:"bankName,omitempty"`
-	BankAccountNumber        *string `json:"bankAccountNumber,omitempty"`
-	BankAccountHolder        *string `json:"bankAccountHolder,omitempty"`
+	PostalCode               *string `json:"postalCode,omitempty" binding:"omitempty,len=5"`
 	EmergencyContactName     *string `json:"emergencyContactName,omitempty"`
 	EmergencyContactPhone    *string `json:"emergencyContactPhone,omitempty"`
 	EmergencyContactRelation *string `json:"emergencyContactRelation,omitempty"`
 } //@name SelfUpdateRequest
 
-// UpdateMe lets the current user edit their own personal fields (self-service).
+// UpdateMe godoc
+// @Summary      Update my employee record
+// @Description  Self-service update of personal fields only. Bank details and
+// @Description  tax identifiers (NIK/NPWP) are HR-managed and rejected here.
+// @Tags         hris-employees
+// @Accept       json
+// @Produce      json
+// @Security     BearerAuth
+// @Param        body body SelfUpdateRequest true "Editable personal fields"
+// @Success      200 {object} Employee
+// @Failure      400 {object} map[string]string
+// @Failure      401 {object} map[string]string
+// @Failure      404 {object} map[string]string
+// @Failure      500 {object} map[string]string
+// @Router       /hris/me/employee [put]
 func (h *Handler) UpdateMe(c *gin.Context) {
 	companyID, ok := mustParseCompanyID(c)
 	if !ok {
@@ -197,7 +256,7 @@ func (h *Handler) UpdateMe(c *gin.Context) {
 
 	var req SelfUpdateRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request body"})
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request: " + err.Error()})
 		return
 	}
 
@@ -210,11 +269,6 @@ func (h *Handler) UpdateMe(c *gin.Context) {
 		City:                     req.City,
 		Province:                 req.Province,
 		PostalCode:               req.PostalCode,
-		NationalID:               req.NationalID,
-		NPWP:                     req.NPWP,
-		BankName:                 req.BankName,
-		BankAccountNumber:        req.BankAccountNumber,
-		BankAccountHolder:        req.BankAccountHolder,
 		EmergencyContactName:     req.EmergencyContactName,
 		EmergencyContactPhone:    req.EmergencyContactPhone,
 		EmergencyContactRelation: req.EmergencyContactRelation,
@@ -231,6 +285,23 @@ func (h *Handler) UpdateMe(c *gin.Context) {
 	c.JSON(http.StatusOK, emp)
 }
 
+// List godoc
+// @Summary      List employees
+// @Description  Paginated employee list with filters (status, department,
+// @Description  branch, search). Requires employee.view or employee.view_team.
+// @Tags         hris-employees
+// @Produce      json
+// @Security     BearerAuth
+// @Param        page query int false "Page number (default 1)"
+// @Param        pageSize query int false "Page size (default 20, max 100)"
+// @Param        status query string false "Employment status"
+// @Param        departmentId query string false "Department UUID"
+// @Param        branchId query string false "Branch UUID"
+// @Param        search query string false "Search term (name/email/ID)"
+// @Success      200 {object} ListResult
+// @Failure      400 {object} map[string]string
+// @Failure      500 {object} map[string]string
+// @Router       /hris/employees [get]
 func (h *Handler) List(c *gin.Context) {
 	companyID, ok := mustParseCompanyID(c)
 	if !ok {
@@ -243,10 +314,10 @@ func (h *Handler) List(c *gin.Context) {
 	status := c.Query("status")
 	if status != "" {
 		validStatuses := map[string]bool{
-			"active":    true,
-			"resigned":  true,
+			"active":     true,
+			"resigned":   true,
 			"terminated": true,
-			"on_leave":  true,
+			"on_leave":   true,
 		}
 		if !validStatuses[status] {
 			c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid status value"})
@@ -284,6 +355,20 @@ func (h *Handler) List(c *gin.Context) {
 	c.JSON(http.StatusOK, result)
 }
 
+// Update godoc
+// @Summary      Update an employee
+// @Description  HR-only update of an employee record. Requires employee.update.
+// @Tags         hris-employees
+// @Accept       json
+// @Produce      json
+// @Security     BearerAuth
+// @Param        id path string true "Employee UUID"
+// @Param        body body UpdateRequest true "Fields to update"
+// @Success      200 {object} Employee
+// @Failure      400 {object} map[string]string
+// @Failure      404 {object} map[string]string
+// @Failure      500 {object} map[string]string
+// @Router       /hris/employees/{id} [put]
 func (h *Handler) Update(c *gin.Context) {
 	companyID, ok := mustParseCompanyID(c)
 	if !ok {

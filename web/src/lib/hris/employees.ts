@@ -134,11 +134,6 @@ export interface SelfUpdateRequest {
   city?: string;
   province?: string;
   postalCode?: string;
-  nationalId?: string;
-  npwp?: string;
-  bankName?: string;
-  bankAccountNumber?: string;
-  bankAccountHolder?: string;
   emergencyContactName?: string;
   emergencyContactPhone?: string;
   emergencyContactRelation?: string;

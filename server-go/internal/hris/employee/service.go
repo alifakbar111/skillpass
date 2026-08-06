@@ -11,7 +11,8 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"golang.org/x/crypto/bcrypt"
+
+	"skillpass-server-go/internal/lib"
 )
 
 // ErrAlreadyLinked is returned when an employee already has a login account.
@@ -21,19 +22,31 @@ var ErrAlreadyLinked = errors.New("employee already has a login account")
 var ErrEmailTaken = errors.New("a user account with this email already exists")
 
 // randomPassword returns a short URL-safe temporary password.
-func randomPassword() string {
+func randomPassword() (string, error) {
 	b := make([]byte, 9)
-	_, _ = rand.Read(b)
-	return base64.RawURLEncoding.EncodeToString(b)
+	if _, err := rand.Read(b); err != nil {
+		return "", err
+	}
+	return base64.RawURLEncoding.EncodeToString(b), nil
 }
 
 // InviteUser creates a login account for an employee (linking users.id to
 // employees.user_id) so they can sign in and use HRIS self-service. Returns the
 // login email and a one-time temporary password for HR to share.
+//
+// The email-taken check, user INSERT and employee UPDATE run in a single
+// transaction; the INSERT uses ON CONFLICT (email) DO NOTHING so two
+// concurrent invites for the same email can never both succeed.
 func (s *Service) InviteUser(ctx context.Context, companyID, employeeID uuid.UUID) (email, tempPassword string, err error) {
+	tx, err := s.db.BeginTx(ctx, nil)
+	if err != nil {
+		return "", "", fmt.Errorf("begin tx: %w", err)
+	}
+	defer func() { _ = tx.Rollback() }()
+
 	var first, last string
 	var existingUserID *uuid.UUID
-	err = s.db.QueryRowContext(ctx,
+	err = tx.QueryRowContext(ctx,
 		`SELECT email, first_name, last_name, user_id FROM employees WHERE id = $1 AND company_id = $2`,
 		employeeID, companyID,
 	).Scan(&email, &first, &last, &existingUserID)
@@ -44,39 +57,45 @@ func (s *Service) InviteUser(ctx context.Context, companyID, employeeID uuid.UUI
 		return "", "", ErrAlreadyLinked
 	}
 
-	var taken bool
-	if err = s.db.QueryRowContext(ctx, `SELECT EXISTS(SELECT 1 FROM users WHERE email = $1)`, email).Scan(&taken); err != nil {
-		return "", "", err
-	}
-	if taken {
-		return "", "", ErrEmailTaken
-	}
-
-	tempPassword = randomPassword()
-	hash, err := bcrypt.GenerateFromPassword([]byte(tempPassword), bcrypt.DefaultCost)
+	tempPassword, err = randomPassword()
 	if err != nil {
-		return "", "", err
+		return "", "", fmt.Errorf("generate password: %w", err)
+	}
+	hash, err := lib.HashPassword(tempPassword)
+	if err != nil {
+		return "", "", fmt.Errorf("hash password: %w", err)
 	}
 	name := strings.TrimSpace(first + " " + last)
 	if name == "" {
 		name = email
 	}
 
+	// Atomic email-taken check: under a concurrent invite the loser sees no
+	// inserted row here (sql.ErrNoRows) instead of racing past a pre-check.
 	var userID uuid.UUID
-	err = s.db.QueryRowContext(ctx,
+	err = tx.QueryRowContext(ctx,
 		`INSERT INTO users (email, username, password_hash, role, name, is_verified)
-		 VALUES ($1, $2, $3, 'company', $4, true) RETURNING id`,
-		email, email, string(hash), name,
+		 VALUES ($1, $2, $3, 'company', $4, true)
+		 ON CONFLICT (email) DO NOTHING
+		 RETURNING id`,
+		email, email, hash, name,
 	).Scan(&userID)
+	if errors.Is(err, sql.ErrNoRows) {
+		return "", "", ErrEmailTaken
+	}
 	if err != nil {
 		return "", "", fmt.Errorf("create user: %w", err)
 	}
 
-	if _, err = s.db.ExecContext(ctx,
+	if _, err = tx.ExecContext(ctx,
 		`UPDATE employees SET user_id = $1, updated_at = now() WHERE id = $2 AND company_id = $3`,
 		userID, employeeID, companyID,
 	); err != nil {
 		return "", "", fmt.Errorf("link user: %w", err)
+	}
+
+	if err := tx.Commit(); err != nil {
+		return "", "", fmt.Errorf("commit: %w", err)
 	}
 	return email, tempPassword, nil
 }
@@ -90,109 +109,109 @@ func NewService(db *sql.DB) *Service {
 }
 
 type Employee struct {
-	ID                      uuid.UUID  `json:"id"`
-	CompanyID               uuid.UUID  `json:"companyId"`
-	UserID                  *uuid.UUID `json:"userId,omitempty"`
-	EmployeeIDNumber        string     `json:"employeeIdNumber"`
-	FirstName               string     `json:"firstName"`
-	LastName                string     `json:"lastName"`
-	Email                   string     `json:"email"`
-	Phone                   *string    `json:"phone,omitempty"`
-	DateOfBirth             *string    `json:"dateOfBirth,omitempty"`
-	Gender                  *string    `json:"gender,omitempty"`
-	MaritalStatus           *string    `json:"maritalStatus,omitempty"`
-	Address                 *string    `json:"address,omitempty"`
-	City                    *string    `json:"city,omitempty"`
-	Province                *string    `json:"province,omitempty"`
-	PostalCode              *string    `json:"postalCode,omitempty"`
-	NationalID              *string    `json:"nationalId,omitempty"`
-	NPWP                    *string    `json:"npwp,omitempty"`
-	BPJSKesehatanID         *string    `json:"bpjsKesehatanId,omitempty"`
-	BPJSKetenagakerjaanID   *string    `json:"bpjsKetenagakerjaanId,omitempty"`
-	BankName                *string    `json:"bankName,omitempty"`
-	BankAccountNumber       *string    `json:"bankAccountNumber,omitempty"`
-	BankAccountHolder       *string    `json:"bankAccountHolder,omitempty"`
-	EmergencyContactName    *string    `json:"emergencyContactName,omitempty"`
-	EmergencyContactPhone   *string    `json:"emergencyContactPhone,omitempty"`
-	EmergencyContactRelation *string   `json:"emergencyContactRelation,omitempty"`
-	EmploymentType          string     `json:"employmentType"`
-	EmploymentStatus        string     `json:"employmentStatus"`
-	JoinDate                string     `json:"joinDate"`
-	EndDate                 *string    `json:"endDate,omitempty"`
-	DepartmentID            *uuid.UUID `json:"departmentId,omitempty"`
-	PositionID              *uuid.UUID `json:"positionId,omitempty"`
-	BranchID                *uuid.UUID `json:"branchId,omitempty"`
-	ManagerID               *uuid.UUID `json:"managerId,omitempty"`
-	BaseSalary              *float64   `json:"baseSalary,omitempty"`
-	DepartmentName          *string    `json:"departmentName,omitempty"`
-	PositionName            *string    `json:"positionName,omitempty"`
-	BranchName              *string    `json:"branchName,omitempty"`
-	CreatedAt               time.Time  `json:"createdAt"`
-	UpdatedAt               time.Time  `json:"updatedAt"`
-}
+	ID                       uuid.UUID  `json:"id"`
+	CompanyID                uuid.UUID  `json:"companyId"`
+	UserID                   *uuid.UUID `json:"userId,omitempty"`
+	EmployeeIDNumber         string     `json:"employeeIdNumber"`
+	FirstName                string     `json:"firstName"`
+	LastName                 string     `json:"lastName"`
+	Email                    string     `json:"email"`
+	Phone                    *string    `json:"phone,omitempty"`
+	DateOfBirth              *string    `json:"dateOfBirth,omitempty"`
+	Gender                   *string    `json:"gender,omitempty"`
+	MaritalStatus            *string    `json:"maritalStatus,omitempty"`
+	Address                  *string    `json:"address,omitempty"`
+	City                     *string    `json:"city,omitempty"`
+	Province                 *string    `json:"province,omitempty"`
+	PostalCode               *string    `json:"postalCode,omitempty"`
+	NationalID               *string    `json:"nationalId,omitempty"`
+	NPWP                     *string    `json:"npwp,omitempty"`
+	BPJSKesehatanID          *string    `json:"bpjsKesehatanId,omitempty"`
+	BPJSKetenagakerjaanID    *string    `json:"bpjsKetenagakerjaanId,omitempty"`
+	BankName                 *string    `json:"bankName,omitempty"`
+	BankAccountNumber        *string    `json:"bankAccountNumber,omitempty"`
+	BankAccountHolder        *string    `json:"bankAccountHolder,omitempty"`
+	EmergencyContactName     *string    `json:"emergencyContactName,omitempty"`
+	EmergencyContactPhone    *string    `json:"emergencyContactPhone,omitempty"`
+	EmergencyContactRelation *string    `json:"emergencyContactRelation,omitempty"`
+	EmploymentType           string     `json:"employmentType"`
+	EmploymentStatus         string     `json:"employmentStatus"`
+	JoinDate                 string     `json:"joinDate"`
+	EndDate                  *string    `json:"endDate,omitempty"`
+	DepartmentID             *uuid.UUID `json:"departmentId,omitempty"`
+	PositionID               *uuid.UUID `json:"positionId,omitempty"`
+	BranchID                 *uuid.UUID `json:"branchId,omitempty"`
+	ManagerID                *uuid.UUID `json:"managerId,omitempty"`
+	BaseSalary               *float64   `json:"baseSalary,omitempty"`
+	DepartmentName           *string    `json:"departmentName,omitempty"`
+	PositionName             *string    `json:"positionName,omitempty"`
+	BranchName               *string    `json:"branchName,omitempty"`
+	CreatedAt                time.Time  `json:"createdAt"`
+	UpdatedAt                time.Time  `json:"updatedAt"`
+} //@name Employee
 
 type CreateRequest struct {
-	FirstName               string     `json:"firstName" binding:"required"`
-	LastName                string     `json:"lastName"`
-	Email                   string     `json:"email" binding:"required,email"`
-	Phone                   *string    `json:"phone,omitempty"`
-	DateOfBirth             *string    `json:"dateOfBirth,omitempty"`
-	Gender                  *string    `json:"gender,omitempty"`
-	MaritalStatus           *string    `json:"maritalStatus,omitempty"`
-	Address                 *string    `json:"address,omitempty"`
-	City                    *string    `json:"city,omitempty"`
-	Province                *string    `json:"province,omitempty"`
-	PostalCode              *string    `json:"postalCode,omitempty"`
-	NationalID              *string    `json:"nationalId,omitempty"`
-	NPWP                    *string    `json:"npwp,omitempty"`
-	BPJSKesehatanID         *string    `json:"bpjsKesehatanId,omitempty"`
-	BPJSKetenagakerjaanID   *string    `json:"bpjsKetenagakerjaanId,omitempty"`
-	BankName                *string    `json:"bankName,omitempty"`
-	BankAccountNumber       *string    `json:"bankAccountNumber,omitempty"`
-	BankAccountHolder       *string    `json:"bankAccountHolder,omitempty"`
-	EmergencyContactName    *string    `json:"emergencyContactName,omitempty"`
-	EmergencyContactPhone   *string    `json:"emergencyContactPhone,omitempty"`
-	EmergencyContactRelation *string   `json:"emergencyContactRelation,omitempty"`
-	EmploymentType          string     `json:"employmentType" binding:"required,oneof=permanent contract probation intern"`
-	JoinDate                string     `json:"joinDate" binding:"required"`
-	DepartmentID            *uuid.UUID `json:"departmentId,omitempty"`
-	PositionID              *uuid.UUID `json:"positionId,omitempty"`
-	BranchID                *uuid.UUID `json:"branchId,omitempty"`
-	ManagerID               *uuid.UUID `json:"managerId,omitempty"`
-	BaseSalary              *float64   `json:"baseSalary,omitempty"`
-}
+	FirstName                string     `json:"firstName" binding:"required"`
+	LastName                 string     `json:"lastName"`
+	Email                    string     `json:"email" binding:"required,email"`
+	Phone                    *string    `json:"phone,omitempty"`
+	DateOfBirth              *string    `json:"dateOfBirth,omitempty"`
+	Gender                   *string    `json:"gender,omitempty"`
+	MaritalStatus            *string    `json:"maritalStatus,omitempty"`
+	Address                  *string    `json:"address,omitempty"`
+	City                     *string    `json:"city,omitempty"`
+	Province                 *string    `json:"province,omitempty"`
+	PostalCode               *string    `json:"postalCode,omitempty"`
+	NationalID               *string    `json:"nationalId,omitempty"`
+	NPWP                     *string    `json:"npwp,omitempty"`
+	BPJSKesehatanID          *string    `json:"bpjsKesehatanId,omitempty"`
+	BPJSKetenagakerjaanID    *string    `json:"bpjsKetenagakerjaanId,omitempty"`
+	BankName                 *string    `json:"bankName,omitempty"`
+	BankAccountNumber        *string    `json:"bankAccountNumber,omitempty"`
+	BankAccountHolder        *string    `json:"bankAccountHolder,omitempty"`
+	EmergencyContactName     *string    `json:"emergencyContactName,omitempty"`
+	EmergencyContactPhone    *string    `json:"emergencyContactPhone,omitempty"`
+	EmergencyContactRelation *string    `json:"emergencyContactRelation,omitempty"`
+	EmploymentType           string     `json:"employmentType" binding:"required,oneof=permanent contract probation intern"`
+	JoinDate                 string     `json:"joinDate" binding:"required"`
+	DepartmentID             *uuid.UUID `json:"departmentId,omitempty"`
+	PositionID               *uuid.UUID `json:"positionId,omitempty"`
+	BranchID                 *uuid.UUID `json:"branchId,omitempty"`
+	ManagerID                *uuid.UUID `json:"managerId,omitempty"`
+	BaseSalary               *float64   `json:"baseSalary,omitempty"`
+} //@name CreateRequest
 
 type UpdateRequest struct {
-	FirstName               *string    `json:"firstName,omitempty"`
-	LastName                *string    `json:"lastName,omitempty"`
-	Email                   *string    `json:"email,omitempty" binding:"omitempty,email"`
-	Phone                   *string    `json:"phone,omitempty"`
-	DateOfBirth             *string    `json:"dateOfBirth,omitempty"`
-	Gender                  *string    `json:"gender,omitempty"`
-	MaritalStatus           *string    `json:"maritalStatus,omitempty"`
-	Address                 *string    `json:"address,omitempty"`
-	City                    *string    `json:"city,omitempty"`
-	Province                *string    `json:"province,omitempty"`
-	PostalCode              *string    `json:"postalCode,omitempty"`
-	NationalID              *string    `json:"nationalId,omitempty"`
-	NPWP                    *string    `json:"npwp,omitempty"`
-	BPJSKesehatanID         *string    `json:"bpjsKesehatanId,omitempty"`
-	BPJSKetenagakerjaanID   *string    `json:"bpjsKetenagakerjaanId,omitempty"`
-	BankName                *string    `json:"bankName,omitempty"`
-	BankAccountNumber       *string    `json:"bankAccountNumber,omitempty"`
-	BankAccountHolder       *string    `json:"bankAccountHolder,omitempty"`
-	EmergencyContactName    *string    `json:"emergencyContactName,omitempty"`
-	EmergencyContactPhone   *string    `json:"emergencyContactPhone,omitempty"`
-	EmergencyContactRelation *string   `json:"emergencyContactRelation,omitempty"`
-	EmploymentType          *string    `json:"employmentType,omitempty" binding:"omitempty,oneof=permanent contract probation intern"`
-	EmploymentStatus        *string    `json:"employmentStatus,omitempty" binding:"omitempty,oneof=active resigned terminated on_leave"`
-	EndDate                 *string    `json:"endDate,omitempty"`
-	DepartmentID            *uuid.UUID `json:"departmentId,omitempty"`
-	PositionID              *uuid.UUID `json:"positionId,omitempty"`
-	BranchID                *uuid.UUID `json:"branchId,omitempty"`
-	ManagerID               *uuid.UUID `json:"managerId,omitempty"`
-	BaseSalary              *float64   `json:"baseSalary,omitempty"`
-}
+	FirstName                *string    `json:"firstName,omitempty"`
+	LastName                 *string    `json:"lastName,omitempty"`
+	Email                    *string    `json:"email,omitempty" binding:"omitempty,email"`
+	Phone                    *string    `json:"phone,omitempty"`
+	DateOfBirth              *string    `json:"dateOfBirth,omitempty"`
+	Gender                   *string    `json:"gender,omitempty"`
+	MaritalStatus            *string    `json:"maritalStatus,omitempty"`
+	Address                  *string    `json:"address,omitempty"`
+	City                     *string    `json:"city,omitempty"`
+	Province                 *string    `json:"province,omitempty"`
+	PostalCode               *string    `json:"postalCode,omitempty"`
+	NationalID               *string    `json:"nationalId,omitempty"`
+	NPWP                     *string    `json:"npwp,omitempty"`
+	BPJSKesehatanID          *string    `json:"bpjsKesehatanId,omitempty"`
+	BPJSKetenagakerjaanID    *string    `json:"bpjsKetenagakerjaanId,omitempty"`
+	BankName                 *string    `json:"bankName,omitempty"`
+	BankAccountNumber        *string    `json:"bankAccountNumber,omitempty"`
+	BankAccountHolder        *string    `json:"bankAccountHolder,omitempty"`
+	EmergencyContactName     *string    `json:"emergencyContactName,omitempty"`
+	EmergencyContactPhone    *string    `json:"emergencyContactPhone,omitempty"`
+	EmergencyContactRelation *string    `json:"emergencyContactRelation,omitempty"`
+	EmploymentType           *string    `json:"employmentType,omitempty" binding:"omitempty,oneof=permanent contract probation intern"`
+	EmploymentStatus         *string    `json:"employmentStatus,omitempty" binding:"omitempty,oneof=active resigned terminated on_leave"`
+	EndDate                  *string    `json:"endDate,omitempty"`
+	DepartmentID             *uuid.UUID `json:"departmentId,omitempty"`
+	PositionID               *uuid.UUID `json:"positionId,omitempty"`
+	BranchID                 *uuid.UUID `json:"branchId,omitempty"`
+	ManagerID                *uuid.UUID `json:"managerId,omitempty"`
+	BaseSalary               *float64   `json:"baseSalary,omitempty"`
+} //@name UpdateRequest
 
 type ListParams struct {
 	CompanyID    uuid.UUID
@@ -314,14 +333,19 @@ type ListResult struct {
 	Total     int        `json:"total"`
 	Page      int        `json:"page"`
 	PageSize  int        `json:"pageSize"`
-}
+} //@name ListResult
 
 func (s *Service) List(ctx context.Context, params ListParams) (*ListResult, error) {
 	if params.Page < 1 {
 		params.Page = 1
 	}
-	if params.PageSize < 1 || params.PageSize > 100 {
+	// Clamp to a sane cap instead of silently falling back to 20 when the
+	// caller asks for a larger page (e.g. CSV export requesting pageSize 1000).
+	if params.PageSize < 1 {
 		params.PageSize = 20
+	}
+	if params.PageSize > 100 {
+		params.PageSize = 100
 	}
 
 	baseWhere := "WHERE e.company_id = $1"
@@ -344,15 +368,20 @@ func (s *Service) List(ctx context.Context, params ListParams) (*ListResult, err
 		argIdx++
 	}
 	if params.Search != "" {
+		// Match the pg_trgm index expression from migration 000033/000034
+		// (COALESCE so NULL columns don't drop the row from the index).
 		baseWhere += fmt.Sprintf(
-			" AND (e.first_name ILIKE $%d OR e.last_name ILIKE $%d OR e.email ILIKE $%d OR e.employee_id_number ILIKE $%d)",
-			argIdx, argIdx, argIdx, argIdx,
+			" AND (COALESCE(e.first_name,'') || ' ' || COALESCE(e.last_name,'') || ' ' || COALESCE(e.email,'') || ' ' || COALESCE(e.employee_id_number,'')) ILIKE $%d",
+			argIdx,
 		)
 		args = append(args, "%"+params.Search+"%")
 		argIdx++
 	}
 
 	var total int
+	// Copy args for the COUNT query because the main query below appends
+	// pagination parameters (LIMIT, OFFSET) to the same args slice.
+	// Without the copy, those extra params would be sent to COUNT too.
 	countArgs := make([]any, len(args))
 	copy(countArgs, args)
 	err := s.db.QueryRowContext(ctx,

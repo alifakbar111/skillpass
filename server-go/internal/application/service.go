@@ -6,6 +6,8 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
+	"net/url"
+	"strings"
 	"time"
 
 	"github.com/google/uuid"
@@ -18,13 +20,16 @@ import (
 
 // Sentinel errors for error type discrimination.
 var (
-	ErrJobNotFound     = errors.New("job posting not found")
-	ErrJobClosed       = errors.New("job posting is not open for applications")
-	ErrDuplicate       = errors.New("already applied to this job")
-	ErrInvalidStatus   = errors.New("invalid status")
-	ErrAppNotFound     = errors.New("application not found")
-	ErrProfileNotFound = errors.New("jobseeker profile not found")
-	ErrForbidden       = errors.New("company does not own this application")
+	ErrJobNotFound        = errors.New("job posting not found")
+	ErrJobClosed          = errors.New("job posting is not open for applications")
+	ErrDuplicate          = errors.New("already applied to this job")
+	ErrInvalidStatus      = errors.New("invalid status")
+	ErrAppNotFound        = errors.New("application not found")
+	ErrProfileNotFound    = errors.New("jobseeker profile not found")
+	ErrForbidden          = errors.New("company does not own this application")
+	ErrInvalidMode        = errors.New("invalid mode: must be \"onsite\" or \"online\"")
+	ErrInvalidMeetingLink = errors.New("invalid meeting link: must be an http(s) URL or a host form like meet.google.com/abc")
+	ErrMissingLocation    = errors.New("location is required for onsite interviews")
 )
 
 // Allowed status transitions.
@@ -321,16 +326,41 @@ func (s *Service) ScheduleInterview(ctx context.Context, applicationID, companyI
 		return nil, ErrInvalidStatus
 	}
 
-	mode := d.Mode
-	if mode != "online" {
+	// Validate mode
+	mode := strings.ToLower(strings.TrimSpace(d.Mode))
+	if mode == "" {
 		mode = "onsite"
 	}
-	place := d.Location
-	if mode == "online" {
-		place = d.MeetingLink
+	if mode != "onsite" && mode != "online" {
+		return nil, ErrInvalidMode
 	}
 
-	if _, err := s.db.ExecContext(ctx, `
+	// Validate and sanitize the place. Online interviews must carry a usable
+	// meeting link; the stored value is redacted so query-string credentials
+	// (e.g. ?pwd=…) never persist in the DB, in the message thread, or in the
+	// in-app notification. The candidate still receives the full link by email
+	// (NotifyJobseekerOfInterview is called with the raw input by the handler).
+	place := d.Location
+	if mode == "online" {
+		if !isValidMeetingLink(d.MeetingLink) {
+			return nil, ErrInvalidMeetingLink
+		}
+		d.MeetingLink = lib.RedactURL(d.MeetingLink)
+		place = d.MeetingLink
+	} else if strings.TrimSpace(d.Location) == "" {
+		return nil, ErrMissingLocation
+	}
+
+	// All three writes (schedule, message, status) must be atomic: a failure
+	// halfway leaves orphaned rows. The candidate-facing notification is
+	// dispatched by the handler after this returns, so it stays outside.
+	tx, err := s.db.BeginTx(ctx, nil)
+	if err != nil {
+		return nil, fmt.Errorf("begin tx: %w", err)
+	}
+	defer tx.Rollback()
+
+	if _, err := tx.ExecContext(ctx, `
 		INSERT INTO interview_schedules
 			(application_id, scheduled_at, mode, location, meeting_link, interviewer, notes, created_by)
 		VALUES ($1, $2, $3, NULLIF($4,''), NULLIF($5,''), NULLIF($6,''), NULLIF($7,''), $8)
@@ -344,7 +374,7 @@ func (s *Service) ScheduleInterview(ctx context.Context, applicationID, companyI
 	if d.Notes != "" {
 		noteBody += " Note: " + d.Notes
 	}
-	if _, err := s.db.ExecContext(ctx, `
+	if _, err := tx.ExecContext(ctx, `
 		INSERT INTO application_messages (application_id, sender_user_id, message_type, body)
 		VALUES ($1, $2, 'interview', $3)
 	`, applicationID, createdByUserID, noteBody); err != nil {
@@ -353,10 +383,24 @@ func (s *Service) ScheduleInterview(ctx context.Context, applicationID, companyI
 
 	app := current
 	if movingToInterviewed {
-		app = models.Application{ID: applicationUUID, Status: "interviewed"}
-		if _, err := s.bun.NewUpdate().Model(&app).Column("status").WherePK().Returning("*").Exec(ctx); err != nil {
-			return nil, fmt.Errorf("update application: %w", err)
+		res, err := tx.ExecContext(ctx,
+			`UPDATE applications SET status = 'interviewed', updated_at = now() WHERE id = $1`,
+			applicationUUID,
+		)
+		if err != nil {
+			return nil, fmt.Errorf("update application status: %w", err)
 		}
+		n, _ := res.RowsAffected()
+		if n == 0 {
+			return nil, fmt.Errorf("application not found during status update")
+		}
+		app.Status = "interviewed"
+		// Reflect the DB's now() so the response doesn't carry a stale timestamp.
+		app.UpdatedAt = time.Now()
+	}
+
+	if err := tx.Commit(); err != nil {
+		return nil, fmt.Errorf("commit tx: %w", err)
 	}
 
 	return &ApplicationResult{
@@ -367,6 +411,26 @@ func (s *Service) ScheduleInterview(ctx context.Context, applicationID, companyI
 		CreatedAt:    app.CreatedAt.Format(time.RFC3339),
 		UpdatedAt:    app.UpdatedAt.Format(time.RFC3339),
 	}, nil
+}
+
+// isValidMeetingLink reports whether s is a usable meeting link: either an
+// absolute http(s) URL or a scheme-less host form (meet.google.com/abc).
+// Scheme-less inputs must look like a domain (contain a dot) and must not
+// carry a scheme separator — that rejects javascript:/data: URLs while
+// accepting the plain host forms people paste from meeting UIs.
+func isValidMeetingLink(s string) bool {
+	s = strings.TrimSpace(s)
+	if s == "" {
+		return false
+	}
+	if strings.Contains(s, "://") {
+		u, err := url.Parse(s)
+		if err != nil {
+			return false
+		}
+		return u.Scheme == "http" || u.Scheme == "https"
+	}
+	return strings.Contains(s, ".") && !strings.Contains(s, ":")
 }
 
 // CompanyApplicationResult extends ApplicationResult with candidate info for company views.
