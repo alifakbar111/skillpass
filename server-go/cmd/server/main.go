@@ -24,15 +24,18 @@ import (
 	swaggerFiles "github.com/swaggo/files"
 	ginSwagger "github.com/swaggo/gin-swagger"
 
+	_ "skillpass-server-go/docs"
 	"skillpass-server-go/internal/analytics"
 	"skillpass-server-go/internal/application"
 	"skillpass-server-go/internal/authtoken"
 	"skillpass-server-go/internal/config"
 	"skillpass-server-go/internal/db"
-	_ "skillpass-server-go/docs"
+	"skillpass-server-go/internal/documents"
 	"skillpass-server-go/internal/email"
 	"skillpass-server-go/internal/evaluation"
+	"skillpass-server-go/internal/face"
 	"skillpass-server-go/internal/handlers"
+	"skillpass-server-go/internal/hris/ats"
 	"skillpass-server-go/internal/hris/attendance"
 	"skillpass-server-go/internal/hris/employee"
 	"skillpass-server-go/internal/hris/holiday"
@@ -42,13 +45,14 @@ import (
 	"skillpass-server-go/internal/hris/payroll"
 	"skillpass-server-go/internal/hris/report"
 	"skillpass-server-go/internal/hris/shift"
-	"skillpass-server-go/internal/spdid"
+	"skillpass-server-go/internal/identity"
 	"skillpass-server-go/internal/lib"
 	"skillpass-server-go/internal/matching"
 	"skillpass-server-go/internal/middleware"
 	"skillpass-server-go/internal/notification"
 	"skillpass-server-go/internal/rbac"
 	"skillpass-server-go/internal/resume"
+	"skillpass-server-go/internal/spdid"
 	"skillpass-server-go/internal/storage"
 	"skillpass-server-go/internal/webhook"
 
@@ -352,8 +356,101 @@ func main() {
 	empHandler := employee.NewHandler(database, rbacService)
 	orgHandler := org.NewHandler(database)
 
+	// Documents (Phase 2 · Sprint 1): private storage + optional ClamAV scan.
+	docStore := storage.NewLocalStoreAt(cfg.DocumentsDir)
+	docScanner := documents.NewScanner(cfg.ClamAVAddr)
+	docService := documents.NewService(database, bunDB, docStore, docScanner)
+	docHandler := documents.NewHandler(docService)
+
+	// Face recognition (Phase 2 · Sprint 2): embeddings encrypted at rest.
+	faceService, err := face.NewService(database, bunDB, face.NewClient(cfg.FaceServiceURL), cfg.JWTSecret, cfg.FaceMatchThreshold, cfg.FaceReviewThreshold)
+	if err != nil {
+		log.Fatalf("Failed to init face service: %v", err)
+	}
+	faceHandler := face.NewHandler(faceService)
+
+	// Verifiable identity (Phase 2 · Sprint 3): Ed25519 signatures, no blockchain.
+	identityService := identity.NewService(database, identity.NewSigner(cfg.JWTSecret))
+	identityHandler := identity.NewHandler(identityService)
+	// Anchor eligible documents into the signed integrity log after a clean scan (Sprint 6).
+	docService.SetAnchorer(identityService)
+
+	// ATS full pipeline + ATS→HRIS bridge (Phase 2 · Sprint 5).
+	atsService := ats.NewService(database)
+	atsService.SetNotifier(notifService)
+	atsHandler := ats.NewHandler(atsService)
+
 	hris := api.Group("/hris")
 	hris.Use(middleware.AuthRequired(cfg.JWTSecret), rbac.RequireCompanyMember(rbacService))
+
+	hrisDocs := hris.Group("/documents")
+	hrisDocs.GET("", rbac.RequirePermission(rbacService, "documents.view", "documents.view_self"), docHandler.List)
+	hrisDocs.POST("", rbac.RequirePermission(rbacService, "documents.upload"), docHandler.Upload)
+	hrisDocs.GET("/:id/download", rbac.RequirePermission(rbacService, "documents.view", "documents.view_self"), docHandler.Download)
+	hrisDocs.DELETE("/:id", rbac.RequirePermission(rbacService, "documents.delete"), docHandler.Delete)
+	// Sibling path — /documents/audit-log would collide with /documents/:id in Gin.
+	hris.GET("/documents-audit-log", rbac.RequirePermission(rbacService, "documents.audit_log"), docHandler.AuditLog)
+
+	hrisFace := hris.Group("/face")
+	hrisFace.POST("/enroll", rbac.RequirePermission(rbacService, "face.enroll"), faceHandler.Enroll)
+	hrisFace.GET("/status", rbac.RequirePermission(rbacService, "face.view"), faceHandler.Status)
+	hrisFace.GET("/employees/:id", rbac.RequirePermission(rbacService, "face.admin"), faceHandler.EmployeeStatus)
+
+	// Verifiable identity — separate path from the Phase 1 SP-DID stub.
+	hrisIdentity := hris.Group("/identity")
+	hrisIdentity.POST("/employees/:id/did", rbac.RequirePermission(rbacService, "org.manage", "employee.update"), identityHandler.IssueDID)
+	hrisIdentity.GET("/employees/:id/did", rbac.RequirePermission(rbacService, "org.view", "employee.view"), identityHandler.GetDID)
+	hrisIdentity.GET("/employees/:id/credentials", rbac.RequirePermission(rbacService, "org.view", "employee.view"), identityHandler.ListCredentials)
+	// Signed skill attestations (Sprint 6).
+	hrisIdentity.POST("/employees/:id/attest", rbac.RequirePermission(rbacService, "performance.manage"), identityHandler.AttestSkills)
+	hrisIdentity.GET("/employees/:id/attestations", rbac.RequirePermission(rbacService, "org.view", "employee.view"), identityHandler.ListAttestations)
+	// External identity verification (Dukcapil / PDDikti / manual).
+	hrisIdentity.POST("/employees/:id/verify", rbac.RequirePermission(rbacService, "org.manage", "employee.update"), identityHandler.RunVerification)
+	hrisIdentity.GET("/employees/:id/verifications", rbac.RequirePermission(rbacService, "org.view", "employee.view"), identityHandler.ListVerifications)
+	// Public Skill Passport settings.
+	hrisIdentity.GET("/employees/:id/passport", rbac.RequirePermission(rbacService, "org.view", "employee.view"), identityHandler.GetPassport)
+	hrisIdentity.PUT("/employees/:id/passport", rbac.RequirePermission(rbacService, "org.manage", "employee.update"), identityHandler.SetPassportVisibility)
+
+	// Public DID-document resolver (no auth).
+	api.GET("/did/:id", identityHandler.Resolve)
+	// Public verification surface (no auth): JWKS, credential check, Skill Passport.
+	r.GET("/.well-known/jwks.json", identityHandler.JWKS)
+	api.GET("/verify/credential", identityHandler.VerifyCredential)
+	api.GET("/verify/passport/:slug", identityHandler.PublicPassport)
+
+	// ── ATS (Phase 2 · Sprint 5) ──
+	hrisATS := hris.Group("/ats")
+	// Pipelines (configurable stage sequences).
+	hrisATS.GET("/pipelines", rbac.RequirePermission(rbacService, "ats.view", "ats.manage"), atsHandler.ListPipelines)
+	hrisATS.POST("/pipelines", rbac.RequirePermission(rbacService, "ats.manage"), atsHandler.CreatePipeline)
+	hrisATS.PUT("/pipelines/:id", rbac.RequirePermission(rbacService, "ats.manage"), atsHandler.UpdatePipeline)
+	hrisATS.DELETE("/pipelines/:id", rbac.RequirePermission(rbacService, "ats.manage"), atsHandler.DeletePipeline)
+	// Candidates.
+	hrisATS.GET("/candidates", rbac.RequirePermission(rbacService, "ats.view"), atsHandler.ListCandidates)
+	hrisATS.POST("/candidates", rbac.RequirePermission(rbacService, "ats.manage"), atsHandler.AddCandidate)
+	hrisATS.GET("/candidates/:id", rbac.RequirePermission(rbacService, "ats.view"), atsHandler.GetCandidate)
+	hrisATS.PUT("/candidates/:id/move", rbac.RequirePermission(rbacService, "ats.manage"), atsHandler.MoveCandidate)
+	hrisATS.PUT("/candidates/:id/status", rbac.RequirePermission(rbacService, "ats.manage"), atsHandler.SetCandidateStatus)
+	// Scorecards (per-candidate).
+	hrisATS.GET("/candidates/:id/scorecards", rbac.RequirePermission(rbacService, "ats.view", "ats.scorecard"), atsHandler.ListScorecards)
+	hrisATS.POST("/candidates/:id/scorecards", rbac.RequirePermission(rbacService, "ats.scorecard"), atsHandler.AddScorecard)
+	// Interviews (per-candidate).
+	hrisATS.GET("/candidates/:id/interviews", rbac.RequirePermission(rbacService, "ats.view", "ats.interview"), atsHandler.ListInterviews)
+	hrisATS.POST("/candidates/:id/interviews", rbac.RequirePermission(rbacService, "ats.interview"), atsHandler.ScheduleInterview)
+	hrisATS.PUT("/interviews/:id/status", rbac.RequirePermission(rbacService, "ats.interview"), atsHandler.UpdateInterviewStatus)
+	// Offers (per-candidate) + offer templates.
+	hrisATS.GET("/candidates/:id/offers", rbac.RequirePermission(rbacService, "ats.view", "ats.offer"), atsHandler.ListOffers)
+	hrisATS.POST("/candidates/:id/offers", rbac.RequirePermission(rbacService, "ats.offer"), atsHandler.CreateOffer)
+	hrisATS.POST("/offers/:id/send", rbac.RequirePermission(rbacService, "ats.offer"), atsHandler.SendOffer)
+	hrisATS.GET("/offer-templates", rbac.RequirePermission(rbacService, "ats.view", "ats.manage"), atsHandler.ListOfferTemplates)
+	hrisATS.POST("/offer-templates", rbac.RequirePermission(rbacService, "ats.manage"), atsHandler.CreateOfferTemplate)
+	hrisATS.PUT("/offer-templates/:id", rbac.RequirePermission(rbacService, "ats.manage"), atsHandler.UpdateOfferTemplate)
+	hrisATS.DELETE("/offer-templates/:id", rbac.RequirePermission(rbacService, "ats.manage"), atsHandler.DeleteOfferTemplate)
+
+	// Public offer acceptance (candidate token — no auth; the token is the credential).
+	api.GET("/ats/offers/:token", atsHandler.GetPublicOffer)
+	api.POST("/ats/offers/:token/accept", atsHandler.AcceptOffer)
+	api.POST("/ats/offers/:token/decline", atsHandler.DeclineOffer)
 
 	hrisEmployees := hris.Group("/employees")
 	hrisEmployees.GET("", rbac.RequirePermission(rbacService, "employee.view", "employee.view_team"), empHandler.List)
@@ -414,6 +511,7 @@ func main() {
 
 	// Attendance
 	attHandler := attendance.NewHandler(database)
+	attHandler.SetFaceVerifier(faceService) // face-verified clock-in (Sprint 3)
 	hrisAttendance := hris.Group("/attendance")
 	hrisAttendance.POST("/clock-in", rbac.RequirePermission(rbacService, "attendance.clock"), attHandler.ClockIn)
 	hrisAttendance.POST("/clock-out", rbac.RequirePermission(rbacService, "attendance.clock"), attHandler.ClockOut)
@@ -473,6 +571,13 @@ func main() {
 	hrisPayroll.POST("/:id/approve", rbac.RequirePermission(rbacService, "payroll.approve"), payrollHandler.ApproveRun)
 	hrisPayroll.POST("/:id/mark-paid", rbac.RequirePermission(rbacService, "payroll.approve"), payrollHandler.MarkPaid)
 	hrisPayroll.GET("/:id/payslips", rbac.RequirePermission(rbacService, "payroll.view"), payrollHandler.ListPayslips)
+	hrisPayroll.GET("/:id/export/bank", rbac.RequirePermission(rbacService, "payroll.view", "payroll.manage"), payrollHandler.ExportBank)
+	hrisPayroll.GET("/:id/export/spt-masa", rbac.RequirePermission(rbacService, "payroll.view", "payroll.manage"), payrollHandler.ExportSPT)
+
+	// BPJS config — separate group ("/payroll/bpjs-config" would collide with /payroll-runs/:id in Gin).
+	hrisPayrollCfg := hris.Group("/payroll")
+	hrisPayrollCfg.GET("/bpjs-config", rbac.RequirePermission(rbacService, "payroll.view", "payroll.manage"), payrollHandler.GetBPJSConfig)
+	hrisPayrollCfg.PUT("/bpjs-config", rbac.RequirePermission(rbacService, "payroll.manage"), payrollHandler.UpdateBPJSConfig)
 
 	hrisPayslips := hris.Group("/payslips")
 	hrisPayslips.GET("/my", rbac.RequirePermission(rbacService, "payroll.view_self"), payrollHandler.MyPayslips)

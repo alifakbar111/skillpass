@@ -3,6 +3,7 @@ package config
 import (
 	"fmt"
 	"os"
+	"strconv"
 )
 
 type Config struct {
@@ -12,6 +13,22 @@ type Config struct {
 	CORSOrigin    string
 	ServeStatic   bool
 	MarkItDownURL string
+
+	// Phase 2 · Sprint 1 — documents / storage / scanning.
+	DocumentsDir    string // private dir for local document storage
+	ClamAVAddr      string // host:port of clamd (INSTREAM); empty = scanning skipped
+	StorageProvider string // "disk" (default) | "s3"
+	RedisURL        string // for Asynq (next increment); empty = inline processing
+	S3Bucket        string
+	S3Region        string
+	S3Endpoint      string
+	S3AccessKey     string
+	S3SecretKey     string
+
+	// Phase 2 · Sprint 2 — face recognition.
+	FaceServiceURL      string  // base URL of the Python face-service; empty = disabled
+	FaceMatchThreshold  float64 // accept a verification at/above this match score
+	FaceReviewThreshold float64 // flag for review between review and match thresholds
 }
 
 // MinJWTSecretLen is the minimum acceptable JWT_SECRET length in bytes.
@@ -56,7 +73,30 @@ func Load() *Config {
 		CORSOrigin:    getEnv("CORS_ORIGIN", "http://localhost:4200"),
 		ServeStatic:   getEnv("SERVE_STATIC", "true") == "true",
 		MarkItDownURL: getEnv("MARKITDOWN_URL", ""),
+
+		DocumentsDir:    getEnv("DOCUMENTS_DIR", "./data/documents"),
+		ClamAVAddr:      getEnv("CLAMAV_ADDR", ""),
+		StorageProvider: getEnv("STORAGE_PROVIDER", "disk"),
+		RedisURL:        getEnv("REDIS_URL", ""),
+		S3Bucket:        getEnv("S3_BUCKET", ""),
+		S3Region:        getEnv("S3_REGION", ""),
+		S3Endpoint:      getEnv("S3_ENDPOINT", ""),
+		S3AccessKey:     getEnv("S3_ACCESS_KEY", ""),
+		S3SecretKey:     getEnv("S3_SECRET_KEY", ""),
+
+		FaceServiceURL:      getEnv("FACE_SERVICE_URL", ""),
+		FaceMatchThreshold:  getEnvFloat("FACE_MATCH_THRESHOLD", 0.82),
+		FaceReviewThreshold: getEnvFloat("FACE_REVIEW_THRESHOLD", 0.70),
 	}
+}
+
+func getEnvFloat(key string, fallback float64) float64 {
+	if v := os.Getenv(key); v != "" {
+		if f, err := strconv.ParseFloat(v, 64); err == nil {
+			return f
+		}
+	}
+	return fallback
 }
 
 func getEnv(key, fallback string) string {

@@ -27,6 +27,9 @@ web/src/**/*.js.map
 server-go/uploads/
 uploads/
 
+# Private document storage (Phase 2 documents) — runtime files, never commit
+server-go/data/
+
 # Accidental go-jet generation from non-local DB
 server-go/.gen/neondb/
 
@@ -38,4 +41,9 @@ markitdown-service/export-pdf/*
 # PII-shaped data: names, NIK/NPWP, bank accounts). See server-go/cmd/seed/README.md.
 server-go/cmd/seeddemo/
 server-go/cmd/seedhris/
+server-go/cmd/seedphase2/
 server-go/cmd/seed-local*/
+
+# Python bytecode cache
+__pycache__/
+*.pyc

@@ -15,6 +15,25 @@ const docTemplate = `{
     "host": "{{.Host}}",
     "basePath": "{{.BasePath}}",
     "paths": {
+        "/.well-known/jwks.json": {
+            "get": {
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Verify"
+                ],
+                "summary": "Issuer public keys (JWKS)",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/JWKS"
+                        }
+                    }
+                }
+            }
+        },
         "/admin/verifications/pending": {
             "get": {
                 "description": "Get all companies with pending verification status. Requires admin role.",
@@ -421,6 +440,65 @@ const docTemplate = `{
                         "BearerAuth": []
                     }
                 ]
+            }
+        },
+        "/ats/offers/{token}": {
+            "get": {
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "ATS"
+                ],
+                "summary": "Public offer view (candidate token)",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Accept token",
+                        "name": "token",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/PublicOffer"
+                        }
+                    }
+                }
+            }
+        },
+        "/ats/offers/{token}/accept": {
+            "post": {
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "ATS"
+                ],
+                "summary": "Accept an offer (public, candidate token)",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Accept token",
+                        "name": "token",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/AcceptOfferResult"
+                        }
+                    }
+                }
             }
         },
         "/auth/forgot-password": {
@@ -2018,6 +2096,275 @@ const docTemplate = `{
                 }
             }
         },
+        "/hris/ats/pipelines": {
+            "get": {
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "ATS"
+                ],
+                "summary": "List ATS pipelines",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/AtsPipeline"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/hris/documents": {
+            "get": {
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "documents"
+                ],
+                "summary": "List documents",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/DocumentResponse"
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ]
+            },
+            "post": {
+                "consumes": [
+                    "multipart/form-data"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "documents"
+                ],
+                "summary": "Upload a document",
+                "parameters": [
+                    {
+                        "type": "file",
+                        "description": "File (max 25MB)",
+                        "name": "file",
+                        "in": "formData",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "identity|contract|certificate|payslip|tax|other",
+                        "name": "category",
+                        "in": "formData"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Employee to attach the document to",
+                        "name": "employeeId",
+                        "in": "formData"
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Created",
+                        "schema": {
+                            "$ref": "#/definitions/DocumentResponse"
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/hris/documents/audit-log": {
+            "get": {
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "documents"
+                ],
+                "summary": "Document access audit log",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/DocumentAccessLog"
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/hris/documents/{id}": {
+            "delete": {
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "documents"
+                ],
+                "summary": "Delete a document",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Document ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {},
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/hris/documents/{id}/download": {
+            "get": {
+                "produces": [
+                    "application/octet-stream"
+                ],
+                "tags": [
+                    "documents"
+                ],
+                "summary": "Download a document",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Document ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {},
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/hris/face/employees/{id}": {
+            "get": {
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "face"
+                ],
+                "summary": "A specific employee's face-enrolment status (admin)",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Employee ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/FaceStatusResponse"
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/hris/face/enroll": {
+            "post": {
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "face"
+                ],
+                "summary": "Enrol the current employee's face",
+                "parameters": [
+                    {
+                        "description": "{ image: base64 }",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "type": "object"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/FaceEnrollResponse"
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/hris/face/status": {
+            "get": {
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "face"
+                ],
+                "summary": "Current employee's face-enrolment status",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/FaceStatusResponse"
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ]
+            }
+        },
         "/industries": {
             "get": {
                 "description": "Get all industry categories for filtering",
@@ -3520,6 +3867,62 @@ const docTemplate = `{
                     }
                 }
             }
+        },
+        "/verify/credential": {
+            "get": {
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Verify"
+                ],
+                "summary": "Verify a signed credential (public)",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Attestation ID",
+                        "name": "id",
+                        "in": "query",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/VerifiedCredential"
+                        }
+                    }
+                }
+            }
+        },
+        "/verify/passport/{slug}": {
+            "get": {
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Verify"
+                ],
+                "summary": "Public Skill Passport (verified badges)",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Passport slug",
+                        "name": "slug",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/PublicPassport"
+                        }
+                    }
+                }
+            }
         }
     },
     "definitions": {
@@ -3530,6 +3933,21 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "tip": {
+                    "type": "string"
+                }
+            }
+        },
+        "AcceptOfferResult": {
+            "type": "object",
+            "properties": {
+                "employeeLinked": {
+                    "description": "true if bound to the candidate's existing login",
+                    "type": "boolean"
+                },
+                "message": {
+                    "type": "string"
+                },
+                "status": {
                     "type": "string"
                 }
             }
@@ -3580,6 +3998,46 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "updatedAt": {
+                    "type": "string"
+                }
+            }
+        },
+        "AtsPipeline": {
+            "type": "object",
+            "properties": {
+                "createdAt": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "isDefault": {
+                    "type": "boolean"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "stages": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/AtsStage"
+                    }
+                }
+            }
+        },
+        "AtsStage": {
+            "type": "object",
+            "properties": {
+                "id": {
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "sortOrder": {
+                    "type": "integer"
+                },
+                "stageType": {
                     "type": "string"
                 }
             }
@@ -3847,6 +4305,67 @@ const docTemplate = `{
                 }
             }
         },
+        "DocumentAccessLog": {
+            "type": "object",
+            "properties": {
+                "accessedByName": {
+                    "type": "string"
+                },
+                "action": {
+                    "type": "string"
+                },
+                "createdAt": {
+                    "type": "string"
+                },
+                "documentId": {
+                    "type": "string"
+                },
+                "filename": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "ipAddress": {
+                    "type": "string"
+                }
+            }
+        },
+        "DocumentResponse": {
+            "type": "object",
+            "properties": {
+                "category": {
+                    "type": "string"
+                },
+                "createdAt": {
+                    "type": "string"
+                },
+                "employeeId": {
+                    "type": "string"
+                },
+                "employeeName": {
+                    "type": "string"
+                },
+                "fileSize": {
+                    "type": "integer"
+                },
+                "filename": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "mimeType": {
+                    "type": "string"
+                },
+                "scanStatus": {
+                    "type": "string"
+                },
+                "uploadedByName": {
+                    "type": "string"
+                }
+            }
+        },
         "EvaluationResponse": {
             "type": "object",
             "properties": {
@@ -3938,6 +4457,34 @@ const docTemplate = `{
                 }
             }
         },
+        "FaceEnrollResponse": {
+            "type": "object",
+            "properties": {
+                "enrolled": {
+                    "type": "boolean"
+                },
+                "enrolledAt": {
+                    "type": "string"
+                },
+                "livenessScore": {
+                    "type": "number"
+                }
+            }
+        },
+        "FaceStatusResponse": {
+            "type": "object",
+            "properties": {
+                "enrolled": {
+                    "type": "boolean"
+                },
+                "enrolledAt": {
+                    "type": "string"
+                },
+                "livenessScore": {
+                    "type": "number"
+                }
+            }
+        },
         "Feedback": {
             "type": "object",
             "properties": {
@@ -3981,6 +4528,45 @@ const docTemplate = `{
                 },
                 "name": {
                     "type": "string"
+                }
+            }
+        },
+        "JWK": {
+            "type": "object",
+            "properties": {
+                "alg": {
+                    "description": "EdDSA",
+                    "type": "string"
+                },
+                "crv": {
+                    "description": "Ed25519",
+                    "type": "string"
+                },
+                "kid": {
+                    "type": "string"
+                },
+                "kty": {
+                    "description": "OKP",
+                    "type": "string"
+                },
+                "use": {
+                    "description": "sig",
+                    "type": "string"
+                },
+                "x": {
+                    "description": "base64url public key (no padding)",
+                    "type": "string"
+                }
+            }
+        },
+        "JWKS": {
+            "type": "object",
+            "properties": {
+                "keys": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/JWK"
+                    }
                 }
             }
         },
@@ -4193,6 +4779,55 @@ const docTemplate = `{
                 }
             }
         },
+        "PublicOffer": {
+            "type": "object",
+            "properties": {
+                "body": {
+                    "type": "string"
+                },
+                "candidateName": {
+                    "type": "string"
+                },
+                "companyName": {
+                    "type": "string"
+                },
+                "positionTitle": {
+                    "type": "string"
+                },
+                "salary": {
+                    "type": "string"
+                },
+                "startDate": {
+                    "type": "string"
+                },
+                "status": {
+                    "type": "string"
+                }
+            }
+        },
+        "PublicPassport": {
+            "type": "object",
+            "properties": {
+                "companyName": {
+                    "type": "string"
+                },
+                "identityVerified": {
+                    "type": "boolean"
+                },
+                "issuerDid": {
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "skills": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/PublicSkillBadge"
+                    }
+                }
+            }
+        },
         "PublicProfileResponse": {
             "type": "object",
             "properties": {
@@ -4219,6 +4854,27 @@ const docTemplate = `{
                 },
                 "yearsOfExperience": {
                     "type": "integer"
+                }
+            }
+        },
+        "PublicSkillBadge": {
+            "type": "object",
+            "properties": {
+                "attestationId": {
+                    "type": "string"
+                },
+                "score": {
+                    "type": "integer"
+                },
+                "skillName": {
+                    "type": "string"
+                },
+                "verified": {
+                    "type": "boolean"
+                },
+                "verifyPath": {
+                    "description": "/verify/credential?id=\u003cattestationId\u003e",
+                    "type": "string"
                 }
             }
         },
@@ -4688,6 +5344,35 @@ const docTemplate = `{
                 },
                 "status": {
                     "type": "string"
+                }
+            }
+        },
+        "VerifiedCredential": {
+            "type": "object",
+            "properties": {
+                "id": {
+                    "type": "string"
+                },
+                "issuedAt": {
+                    "type": "string"
+                },
+                "issuerDid": {
+                    "type": "string"
+                },
+                "revoked": {
+                    "type": "boolean"
+                },
+                "score": {
+                    "type": "integer"
+                },
+                "skillName": {
+                    "type": "string"
+                },
+                "type": {
+                    "type": "string"
+                },
+                "verified": {
+                    "type": "boolean"
                 }
             }
         },

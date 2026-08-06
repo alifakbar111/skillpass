@@ -337,3 +337,63 @@ func (h *Handler) GetPayslip(c *gin.Context) {
 	}
 	c.JSON(http.StatusOK, slip)
 }
+
+// ── BPJS config + statutory exports (Sprint 4) ──
+
+func (h *Handler) GetBPJSConfig(c *gin.Context) {
+	companyID, err := uuid.Parse(c.GetString("companyId"))
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid company ID"})
+		return
+	}
+	c.JSON(http.StatusOK, h.svc.GetBPJSConfig(c.Request.Context(), companyID))
+}
+
+func (h *Handler) UpdateBPJSConfig(c *gin.Context) {
+	companyID, err := uuid.Parse(c.GetString("companyId"))
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid company ID"})
+		return
+	}
+	var cfg BPJSConfig
+	if err := c.ShouldBindJSON(&cfg); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request body"})
+		return
+	}
+	if err := h.svc.UpdateBPJSConfig(c.Request.Context(), companyID, cfg); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to save BPJS config"})
+		return
+	}
+	c.JSON(http.StatusOK, cfg)
+}
+
+func (h *Handler) exportCSV(c *gin.Context, kind string) {
+	companyID, err := uuid.Parse(c.GetString("companyId"))
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid company ID"})
+		return
+	}
+	runID, err := uuid.Parse(c.Param("id"))
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid run ID"})
+		return
+	}
+	var data []byte
+	var filename string
+	if kind == "bank" {
+		data, err = h.svc.ExportBankCSV(c.Request.Context(), companyID, runID)
+		filename = "bank-transfer.csv"
+	} else {
+		data, err = h.svc.ExportSPTMasa(c.Request.Context(), companyID, runID)
+		filename = "spt-masa-pph21.csv"
+	}
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to export"})
+		return
+	}
+	c.Header("Content-Disposition", "attachment; filename="+filename)
+	c.Data(http.StatusOK, "text/csv; charset=utf-8", data)
+}
+
+func (h *Handler) ExportBank(c *gin.Context) { h.exportCSV(c, "bank") }
+func (h *Handler) ExportSPT(c *gin.Context)  { h.exportCSV(c, "spt") }

@@ -1,6 +1,7 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { Clock, MapPin } from 'lucide-react';
+import { Clock, MapPin, ScanFace } from 'lucide-react';
 import { useEffect, useState } from 'react';
+import { FaceCapture } from '@/components/hris/FaceCapture';
 import { clockIn, clockOut } from '@/lib/hris/attendance';
 
 export default function ClockInPage() {
@@ -9,6 +10,8 @@ export default function ClockInPage() {
   const [lng, setLng] = useState<number | null>(null);
   const [geoError, setGeoError] = useState('');
   const [now, setNow] = useState(new Date());
+  const [useFace, setUseFace] = useState(false);
+  const [faceImage, setFaceImage] = useState<string | null>(null);
 
   useEffect(() => {
     const timer = setInterval(() => setNow(new Date()), 1000);
@@ -31,7 +34,7 @@ export default function ClockInPage() {
   }, []);
 
   const clockInMut = useMutation({
-    mutationFn: () => clockIn({ lat: lat ?? 0, lng: lng ?? 0 }),
+    mutationFn: () => clockIn({ lat: lat ?? 0, lng: lng ?? 0, faceImage: faceImage ?? undefined }),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['hris', 'my-attendance'] });
       qc.invalidateQueries({ queryKey: ['hris', 'attendance-dashboard'] });
@@ -70,11 +73,32 @@ export default function ClockInPage() {
             </div>
           )}
 
+          <label className="label mt-4 cursor-pointer gap-2 self-center">
+            <input
+              type="checkbox"
+              className="toggle toggle-primary toggle-sm"
+              checked={useFace}
+              onChange={(e) => {
+                setUseFace(e.target.checked);
+                setFaceImage(null);
+              }}
+            />
+            <span className="label-text flex items-center gap-1 text-sm">
+              <ScanFace className="h-4 w-4" /> Verify with Face ID
+            </span>
+          </label>
+
+          {useFace && (
+            <div className="mt-2 w-full">
+              <FaceCapture captured={faceImage} onCapture={(d) => setFaceImage(d || null)} />
+            </div>
+          )}
+
           <div className="grid grid-cols-2 gap-3 w-full mt-6">
             <button
               type="button"
               className="btn btn-primary btn-lg"
-              disabled={lat === null || clockInMut.isPending}
+              disabled={lat === null || clockInMut.isPending || (useFace && !faceImage)}
               onClick={() => clockInMut.mutate()}
             >
               {clockInMut.isPending ? <span className="loading loading-spinner loading-sm" /> : 'Clock In'}

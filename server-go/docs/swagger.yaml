@@ -7,6 +7,16 @@ definitions:
       tip:
         type: string
     type: object
+  AcceptOfferResult:
+    properties:
+      employeeLinked:
+        description: true if bound to the candidate's existing login
+        type: boolean
+      message:
+        type: string
+      status:
+        type: string
+    type: object
   ApplicationMessage:
     properties:
       body:
@@ -38,6 +48,32 @@ definitions:
       status:
         type: string
       updatedAt:
+        type: string
+    type: object
+  AtsPipeline:
+    properties:
+      createdAt:
+        type: string
+      id:
+        type: string
+      isDefault:
+        type: boolean
+      name:
+        type: string
+      stages:
+        items:
+          $ref: '#/definitions/AtsStage'
+        type: array
+    type: object
+  AtsStage:
+    properties:
+      id:
+        type: string
+      name:
+        type: string
+      sortOrder:
+        type: integer
+      stageType:
         type: string
     type: object
   CandidateMatch:
@@ -218,6 +254,46 @@ definitions:
       area:
         type: string
     type: object
+  DocumentAccessLog:
+    properties:
+      accessedByName:
+        type: string
+      action:
+        type: string
+      createdAt:
+        type: string
+      documentId:
+        type: string
+      filename:
+        type: string
+      id:
+        type: string
+      ipAddress:
+        type: string
+    type: object
+  DocumentResponse:
+    properties:
+      category:
+        type: string
+      createdAt:
+        type: string
+      employeeId:
+        type: string
+      employeeName:
+        type: string
+      fileSize:
+        type: integer
+      filename:
+        type: string
+      id:
+        type: string
+      mimeType:
+        type: string
+      scanStatus:
+        type: string
+      uploadedByName:
+        type: string
+    type: object
   EvaluationResponse:
     properties:
       createdAt:
@@ -278,6 +354,24 @@ definitions:
       url:
         type: string
     type: object
+  FaceEnrollResponse:
+    properties:
+      enrolled:
+        type: boolean
+      enrolledAt:
+        type: string
+      livenessScore:
+        type: number
+    type: object
+  FaceStatusResponse:
+    properties:
+      enrolled:
+        type: boolean
+      enrolledAt:
+        type: string
+      livenessScore:
+        type: number
+    type: object
   Feedback:
     properties:
       aiSuggestions:
@@ -307,6 +401,33 @@ definitions:
         type: string
       name:
         type: string
+    type: object
+  JWK:
+    properties:
+      alg:
+        description: EdDSA
+        type: string
+      crv:
+        description: Ed25519
+        type: string
+      kid:
+        type: string
+      kty:
+        description: OKP
+        type: string
+      use:
+        description: sig
+        type: string
+      x:
+        description: base64url public key (no padding)
+        type: string
+    type: object
+  JWKS:
+    properties:
+      keys:
+        items:
+          $ref: '#/definitions/JWK'
+        type: array
     type: object
   JobMatch:
     properties:
@@ -445,6 +566,38 @@ definitions:
       yearsOfExperience:
         type: integer
     type: object
+  PublicOffer:
+    properties:
+      body:
+        type: string
+      candidateName:
+        type: string
+      companyName:
+        type: string
+      positionTitle:
+        type: string
+      salary:
+        type: string
+      startDate:
+        type: string
+      status:
+        type: string
+    type: object
+  PublicPassport:
+    properties:
+      companyName:
+        type: string
+      identityVerified:
+        type: boolean
+      issuerDid:
+        type: string
+      name:
+        type: string
+      skills:
+        items:
+          $ref: '#/definitions/PublicSkillBadge'
+        type: array
+    type: object
   PublicProfileResponse:
     properties:
       about:
@@ -463,6 +616,20 @@ definitions:
         type: integer
       yearsOfExperience:
         type: integer
+    type: object
+  PublicSkillBadge:
+    properties:
+      attestationId:
+        type: string
+      score:
+        type: integer
+      skillName:
+        type: string
+      verified:
+        type: boolean
+      verifyPath:
+        description: /verify/credential?id=<attestationId>
+        type: string
     type: object
   RatingArea:
     properties:
@@ -780,6 +947,25 @@ definitions:
         type: string
       status:
         type: string
+    type: object
+  VerifiedCredential:
+    properties:
+      id:
+        type: string
+      issuedAt:
+        type: string
+      issuerDid:
+        type: string
+      revoked:
+        type: boolean
+      score:
+        type: integer
+      skillName:
+        type: string
+      type:
+        type: string
+      verified:
+        type: boolean
     type: object
   internal_analytics.CompanyAnalytics:
     properties:
@@ -1115,6 +1301,18 @@ info:
   title: SkillPass API
   version: "1.0"
 paths:
+  /.well-known/jwks.json:
+    get:
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/JWKS'
+      summary: Issuer public keys (JWKS)
+      tags:
+      - Verify
   /admin/verifications/{id}:
     post:
       consumes:
@@ -1382,6 +1580,44 @@ paths:
       summary: List my applications
       tags:
       - applications
+  /ats/offers/{token}:
+    get:
+      parameters:
+      - description: Accept token
+        in: path
+        name: token
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/PublicOffer'
+      summary: Public offer view (candidate token)
+      tags:
+      - ATS
+  /ats/offers/{token}/accept:
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: Accept token
+        in: path
+        name: token
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/AcceptOfferResult'
+      summary: Accept an offer (public, candidate token)
+      tags:
+      - ATS
   /auth/forgot-password:
     post:
       consumes:
@@ -2417,6 +2653,170 @@ paths:
       summary: Health check
       tags:
       - health
+  /hris/ats/pipelines:
+    get:
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/AtsPipeline'
+            type: array
+      summary: List ATS pipelines
+      tags:
+      - ATS
+  /hris/documents:
+    get:
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/DocumentResponse'
+            type: array
+      security:
+      - BearerAuth: []
+      summary: List documents
+      tags:
+      - documents
+    post:
+      consumes:
+      - multipart/form-data
+      parameters:
+      - description: File (max 25MB)
+        in: formData
+        name: file
+        required: true
+        type: file
+      - description: identity|contract|certificate|payslip|tax|other
+        in: formData
+        name: category
+        type: string
+      - description: Employee to attach the document to
+        in: formData
+        name: employeeId
+        type: string
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/DocumentResponse'
+      security:
+      - BearerAuth: []
+      summary: Upload a document
+      tags:
+      - documents
+  /hris/documents/{id}:
+    delete:
+      parameters:
+      - description: Document ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses: {}
+      security:
+      - BearerAuth: []
+      summary: Delete a document
+      tags:
+      - documents
+  /hris/documents/{id}/download:
+    get:
+      parameters:
+      - description: Document ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/octet-stream
+      responses: {}
+      security:
+      - BearerAuth: []
+      summary: Download a document
+      tags:
+      - documents
+  /hris/documents/audit-log:
+    get:
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/DocumentAccessLog'
+            type: array
+      security:
+      - BearerAuth: []
+      summary: Document access audit log
+      tags:
+      - documents
+  /hris/face/employees/{id}:
+    get:
+      parameters:
+      - description: Employee ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/FaceStatusResponse'
+      security:
+      - BearerAuth: []
+      summary: A specific employee's face-enrolment status (admin)
+      tags:
+      - face
+  /hris/face/enroll:
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: '{ image: base64 }'
+        in: body
+        name: body
+        required: true
+        schema:
+          type: object
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/FaceEnrollResponse'
+      security:
+      - BearerAuth: []
+      summary: Enrol the current employee's face
+      tags:
+      - face
+  /hris/face/status:
+    get:
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/FaceStatusResponse'
+      security:
+      - BearerAuth: []
+      summary: Current employee's face-enrolment status
+      tags:
+      - face
   /industries:
     get:
       description: Get all industry categories for filtering
@@ -3391,6 +3791,42 @@ paths:
       summary: List tags
       tags:
       - reference
+  /verify/credential:
+    get:
+      parameters:
+      - description: Attestation ID
+        in: query
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/VerifiedCredential'
+      summary: Verify a signed credential (public)
+      tags:
+      - Verify
+  /verify/passport/{slug}:
+    get:
+      parameters:
+      - description: Passport slug
+        in: path
+        name: slug
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/PublicPassport'
+      summary: Public Skill Passport (verified badges)
+      tags:
+      - Verify
 securityDefinitions:
   BearerAuth:
     in: header

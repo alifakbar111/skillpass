@@ -3,6 +3,7 @@ import { lazy, Suspense } from 'react';
 import { createBrowserRouter, RouterProvider } from 'react-router-dom';
 import { RootLayout } from '@/components/layout/RootLayout';
 import { ErrorBoundary } from '@/components/ui/ErrorBoundary';
+import { HrisRoute } from '@/components/ui/HrisRoute';
 import { LoadingFallback } from '@/components/ui/LoadingFallback';
 import { ProtectedRoute } from '@/components/ui/ProtectedRoute';
 import { AuthProvider } from '@/hooks/useAuth';
@@ -67,6 +68,9 @@ const ClockInPage = lazy(() => import('./pages/hris/ClockIn'));
 const AttendanceDashboard = lazy(() => import('./pages/hris/AttendanceDashboard'));
 const MyAttendance = lazy(() => import('./pages/hris/MyAttendance'));
 const MyInfo = lazy(() => import('./pages/hris/MyInfo'));
+const Documents = lazy(() => import('./pages/hris/Documents'));
+const FaceEnrollment = lazy(() => import('./pages/hris/FaceEnrollment'));
+const TaxConfig = lazy(() => import('./pages/hris/TaxConfig'));
 const AttendanceExceptions = lazy(() => import('./pages/hris/AttendanceExceptions'));
 const LeaveTypes = lazy(() => import('./pages/hris/LeaveTypes'));
 const LeaveRequest = lazy(() => import('./pages/hris/LeaveRequest'));
@@ -83,12 +87,22 @@ const HRAnalytics = lazy(() => import('./pages/hris/HRAnalytics'));
 const OnboardingTemplates = lazy(() => import('./pages/hris/OnboardingTemplates'));
 const OnboardingChecklists = lazy(() => import('./pages/hris/OnboardingChecklists'));
 const MyOnboarding = lazy(() => import('./pages/hris/MyOnboarding'));
+const ATSPipeline = lazy(() => import('./pages/hris/ATSPipeline'));
+const ATSCandidateDetail = lazy(() => import('./pages/hris/ATSCandidateDetail'));
+const ATSOfferTemplates = lazy(() => import('./pages/hris/ATSOfferTemplates'));
+const IdentityVerification = lazy(() => import('./pages/hris/IdentityVerification'));
+const OfferAccept = lazy(() => import('./pages/OfferAccept'));
+const VerifyCredentialPage = lazy(() => import('./pages/VerifyCredential'));
+const VerifiablePassport = lazy(() => import('./pages/VerifiablePassport'));
 
 const router = createBrowserRouter([
   {
     element: <RootLayout />,
     children: [
       { path: '/', element: <Landing /> },
+      { path: '/offer/:token', element: <OfferAccept /> },
+      { path: '/verify', element: <VerifyCredentialPage /> },
+      { path: '/passport/:slug', element: <VerifiablePassport /> },
       { path: '/auth/login', element: <Login /> },
       { path: '/auth/register', element: <Register /> },
       { path: '/auth/forgot-password', element: <ForgotPassword /> },
@@ -245,9 +259,9 @@ const router = createBrowserRouter([
       {
         path: '/hris',
         element: (
-          <ProtectedRoute requiredRole="company">
+          <HrisRoute>
             <HRISLayout />
-          </ProtectedRoute>
+          </HrisRoute>
         ),
         children: [
           { index: true, element: <EmployeeList /> },
@@ -263,6 +277,9 @@ const router = createBrowserRouter([
           { path: 'clock-in', element: <ClockInPage /> },
           { path: 'attendance', element: <AttendanceDashboard /> },
           { path: 'my-info', element: <MyInfo /> },
+          { path: 'documents', element: <Documents /> },
+          { path: 'face-enrollment', element: <FaceEnrollment /> },
+          { path: 'tax-config', element: <TaxConfig /> },
           { path: 'my-attendance', element: <MyAttendance /> },
           { path: 'attendance-exceptions', element: <AttendanceExceptions /> },
           { path: 'leave-types', element: <LeaveTypes /> },
@@ -280,6 +297,10 @@ const router = createBrowserRouter([
           { path: 'onboarding-templates', element: <OnboardingTemplates /> },
           { path: 'onboarding-checklists', element: <OnboardingChecklists /> },
           { path: 'my-onboarding', element: <MyOnboarding /> },
+          { path: 'ats', element: <ATSPipeline /> },
+          { path: 'ats/candidates/:id', element: <ATSCandidateDetail /> },
+          { path: 'ats/offer-templates', element: <ATSOfferTemplates /> },
+          { path: 'identity', element: <IdentityVerification /> },
         ],
       },
     ],
